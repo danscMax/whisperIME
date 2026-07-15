@@ -8,6 +8,8 @@ import com.whispertflite.engine.WhisperEngineJava;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -42,6 +44,10 @@ public class Whisper {
     private final Lock taskLock = new ReentrantLock();
     private final Condition hasTask = taskLock.newCondition();
     private volatile boolean taskAvailable = false;
+
+    // Chunked mode: chunks (16-bit PCM @16k) are queued and transcribed sequentially on the worker.
+    private final BlockingQueue<byte[]> chunkQueue = new LinkedBlockingQueue<>();
+    private volatile boolean chunkMode = false;
 
     public Whisper(Context context) {
         this.mWhisperEngine = new WhisperEngineJava(context);
@@ -103,10 +109,29 @@ public class Whisper {
 
     public void stop() {
         mInProgress.set(false);
+        chunkQueue.clear();
     }
 
     public boolean isInProgress() {
-        return mInProgress.get();
+        return mInProgress.get() || !chunkQueue.isEmpty();
+    }
+
+    /**
+     * Chunked mode: enqueue a completed audio chunk for sequential transcription. Each chunk's text
+     * is delivered via onResultReceived; MSG_PROCESSING_DONE is sent once the queue drains so the UI
+     * can leave the PROCESSING state. Action/language must be set before recording starts.
+     */
+    public void enqueueChunk(byte[] pcm16k) {
+        chunkMode = true;
+        mInProgress.set(true);
+        chunkQueue.offer(pcm16k);
+        taskLock.lock();
+        try {
+            taskAvailable = true;
+            hasTask.signal();
+        } finally {
+            taskLock.unlock();
+        }
     }
 
     private void processRecordBufferLoop() {
@@ -116,14 +141,29 @@ public class Whisper {
                 while (!taskAvailable) {
                     hasTask.await();
                 }
-                processRecordBuffer();
                 taskAvailable = false;
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
+                continue;
             } finally {
                 taskLock.unlock();
             }
+
+            if (chunkMode) drainChunks();
+            else processRecordBuffer();
         }
+    }
+
+    private void drainChunks() {
+        byte[] chunk;
+        while ((chunk = chunkQueue.poll()) != null) {
+            // ponytail: reuse the existing single-buffer transcription path by pointing the shared
+            // RecordBuffer at this chunk. Safe because draining is sequential on this one worker.
+            RecordBuffer.setOutputBuffer(chunk);
+            processRecordBuffer();
+        }
+        mInProgress.set(false);
+        sendUpdate(MSG_PROCESSING_DONE);
     }
 
     private void processRecordBuffer() {

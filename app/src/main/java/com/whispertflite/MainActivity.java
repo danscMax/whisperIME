@@ -111,6 +111,12 @@ public class MainActivity extends AppCompatActivity {
     private UiState currentState = UiState.READY;
     private final Handler timerHandler = new Handler(Looper.getMainLooper());
     private long recordStartMs = 0;
+    // Chunked recording: recording can outlive many transcriptions; the result state is reached
+    // only once recording stopped AND the transcription queue has drained.
+    private volatile boolean recordingStopped = false;
+    private boolean resultFinalized = false;
+    private String lastLanguage = "";
+    private long recordDurationMs = 0;
     private final Runnable timerTick = new Runnable() {
         @Override
         public void run() {
@@ -287,19 +293,24 @@ public class MainActivity extends AppCompatActivity {
         mRecorder.setRmsListener(rms -> runOnUiThread(() -> {
             if (currentState == UiState.RECORDING) waveform.push(rms);
         }));
+        // Each VAD chunk feeds the Whisper queue for live, sequential (pseudo-streaming) transcription.
+        mRecorder.setChunkListener(pcm -> mWhisper.enqueueChunk(pcm));
         mRecorder.setListener(new Recorder.RecorderListener() {
             @Override
             public void onUpdateReceived(String message) {
                 Log.d(TAG, "Update is received, Message: " + message);
                 if (message.equals(Recorder.MSG_RECORDING)) {
                     if (!append.isChecked()) runOnUiThread(() -> tvResult.setText(""));
-                } else if (message.equals(Recorder.MSG_RECORDING_DONE)) {
+                } else if (message.equals(Recorder.MSG_RECORDING_DONE) || message.equals(Recorder.MSG_RECORDING_ERROR)) {
                     if (sp.getBoolean("hapticFeedback", true)) HapticFeedback.vibrate(mContext);
-                    if (translate.isChecked()) startProcessing(Whisper.ACTION_TRANSLATE);
-                    else startProcessing(Whisper.ACTION_TRANSCRIBE);
-                } else if (message.equals(Recorder.MSG_RECORDING_ERROR)) {
-                    if (sp.getBoolean("hapticFeedback", true)) HapticFeedback.vibrate(mContext);
-                    runOnUiThread(() -> applyState(UiState.ERROR));
+                    recordingStopped = true;
+                    recordDurationMs = System.currentTimeMillis() - recordStartMs;
+                    // Queued chunks may still be transcribing: PROCESSING until the queue drains,
+                    // then finishToResult() (which shows ERROR if nothing was recognized).
+                    runOnUiThread(() -> {
+                        if (mWhisper.isInProgress()) applyState(UiState.PROCESSING);
+                        else finishToResult();
+                    });
                 }
             }
         });
@@ -391,10 +402,15 @@ public class MainActivity extends AppCompatActivity {
                 Log.d(TAG, "Update is received, Message: " + message);
                 if (message.equals(Whisper.MSG_PROCESSING)) {
                     startTime = System.currentTimeMillis();
-                    runOnUiThread(() -> {
+                    // While still recording, chunks transcribe in the background: stay in RECORDING.
+                    if (recordingStopped) runOnUiThread(() -> {
                         applyState(UiState.PROCESSING);
                         spinnerTflite.setEnabled(false);
                     });
+                } else if (message.equals(Whisper.MSG_PROCESSING_DONE)) {
+                    if (recordingStopped && !mWhisper.isInProgress()) {
+                        runOnUiThread(MainActivity.this::finishToResult);
+                    }
                 }
             }
 
@@ -404,14 +420,9 @@ public class MainActivity extends AppCompatActivity {
                 Log.d(TAG, "Result: " + whisperResult.getResult() + " " + whisperResult.getLanguage() + " " + (whisperResult.getTask() == Whisper.Action.TRANSCRIBE ? "transcribing" : "translating"));
 
                 String raw = whisperResult.getResult();
-                if (raw == null || raw.trim().isEmpty()) {
-                    runOnUiThread(() -> {
-                        spinnerTflite.setEnabled(true);
-                        applyState(UiState.ERROR);
-                    });
-                    return;
-                }
+                if (raw == null || raw.trim().isEmpty()) return; // empty chunk: skip; completion handled on drain
 
+                lastLanguage = whisperResult.getLanguage();
                 final String out;
                 if (whisperResult.getLanguage().equals("zh") && whisperResult.getTask() == Whisper.Action.TRANSCRIBE) {
                     boolean simpleChinese = sp.getBoolean("simpleChinese", false);
@@ -424,18 +435,11 @@ public class MainActivity extends AppCompatActivity {
                 double audioSec = audioDurationSeconds();
                 double realtime = procSec > 0 ? audioSec / procSec : 0;
 
+                // Append each chunk live (pseudo-streaming); history/TTS happen once in finishToResult().
                 runOnUiThread(() -> {
                     tvResult.append(out);
                     perfChip.setText(getString(R.string.main_perf_chip, procSec, realtime));
-                    spinnerTflite.setEnabled(true);
-                    applyState(UiState.RESULT);
                 });
-
-                if (sp.getBoolean("historyEnabled", true)) {
-                    HistoryDb.get(mContext).insert(out.trim(), whisperResult.getLanguage(),
-                            selectedTfliteFile.getName(), timeTaken);
-                }
-                if (sp.getBoolean("speakResult", false)) speak(out);
             }
         });
     }
@@ -541,8 +545,31 @@ public class MainActivity extends AppCompatActivity {
     // Recording calls
     private void startRecording() {
         checkPermissions();
+        recordingStopped = false;
+        resultFinalized = false;
+        lastLanguage = "";
+        // Flags apply to every chunk of this session.
+        mWhisper.setAction(translate.isChecked() ? Whisper.ACTION_TRANSLATE : Whisper.ACTION_TRANSCRIBE);
+        mWhisper.setLanguage(langToken);
         applyState(UiState.RECORDING);
         mRecorder.start();
+    }
+
+    /** Recording stopped and the transcription queue drained: reveal the result and log history once. */
+    private void finishToResult() {
+        if (resultFinalized) return;
+        resultFinalized = true;
+        spinnerTflite.setEnabled(true);
+        String text = tvResult.getText().toString().trim();
+        if (text.isEmpty()) {
+            applyState(UiState.ERROR);
+            return;
+        }
+        applyState(UiState.RESULT);
+        if (sp.getBoolean("historyEnabled", true)) {
+            HistoryDb.get(mContext).insert(text, lastLanguage, selectedTfliteFile.getName(), recordDurationMs);
+        }
+        if (sp.getBoolean("speakResult", false)) speak(text);
     }
 
     private void stopRecording() {
@@ -550,13 +577,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // Transcription calls
-    private void startProcessing(Whisper.Action action) {
-        runOnUiThread(() -> applyState(UiState.PROCESSING));
-        mWhisper.setAction(action);
-        mWhisper.setLanguage(langToken);
-        mWhisper.start();
-    }
-
     private void stopProcessing() {
         if (mWhisper != null && mWhisper.isInProgress()) mWhisper.stop();
     }

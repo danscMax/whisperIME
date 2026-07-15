@@ -36,6 +36,15 @@ public class Recorder {
         void onRms(float rms);
     }
 
+    /**
+     * Emits a completed audio chunk (16-bit little-endian PCM @16k) at a VAD speech pause (or hard
+     * cap) while recording keeps going. When a ChunkListener is set the recorder switches to
+     * chunked/unlimited mode; otherwise it keeps the legacy single-buffer 30 s behavior.
+     */
+    public interface ChunkListener {
+        void onChunk(byte[] pcm16k);
+    }
+
     private static final String TAG = "Recorder";
     public static final String ACTION_STOP = "Stop";
     public static final String ACTION_RECORD = "Record";
@@ -48,6 +57,7 @@ public class Recorder {
 
     private RecorderListener mListener;
     private RmsListener mRmsListener;
+    private ChunkListener mChunkListener;
     private final Lock lock = new ReentrantLock();
     private final Condition hasTask = lock.newCondition();
     private final Object fileSavedLock = new Object(); // Lock object for wait/notify
@@ -55,7 +65,9 @@ public class Recorder {
     private volatile boolean shouldStartRecording = false;
     private boolean useVAD = false;
     private VadWebRTC vad = null;
-    private static final int VAD_FRAME_SIZE = 480;
+    private static final int VAD_FRAME_SIZE = 480;                 // 30 ms @ 16 kHz
+    private static final int CHUNK_SILENCE_FRAMES = 700 / 30;      // ~700 ms pause splits a chunk
+    private static final int CHUNK_HARD_CAP_BYTES = 16000 * 2 * 28; // 28 s force-split mid-speech
 
     private final Thread workerThread;
 
@@ -73,6 +85,11 @@ public class Recorder {
 
     public void setRmsListener(RmsListener listener) {
         this.mRmsListener = listener;
+    }
+
+    /** Setting a ChunkListener enables chunked/unlimited recording (used by MainActivity). */
+    public void setChunkListener(ChunkListener listener) {
+        this.mChunkListener = listener;
     }
 
 
@@ -158,7 +175,8 @@ public class Recorder {
 
             // Start recording process
             try {
-                recordAudio();
+                if (mChunkListener != null) recordAudioChunked();
+                else recordAudio();
             } catch (Exception e) {
                 Log.e(TAG, "Recording error...", e);
                 sendUpdate(e.getMessage());
@@ -275,6 +293,106 @@ public class Recorder {
             fileSavedLock.notify(); // Notify that recording is finished
         }
 
+    }
+
+    /**
+     * Chunked/unlimited recording: no 30 s cap. A local webrtc VAD splits the stream into chunks at
+     * ~700 ms speech pauses (or a 28 s hard cap mid-speech); each completed chunk is handed to the
+     * ChunkListener while recording continues. Stops only on stop()/release. Legacy modeAuto
+     * auto-stop-on-silence lives in recordAudio() and is untouched.
+     */
+    private void recordAudioChunked() {
+        if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            Log.d(TAG, "AudioRecord permission is not granted");
+            sendUpdate(mContext.getString(R.string.need_record_audio_permission));
+            return;
+        }
+
+        int channelConfig = AudioFormat.CHANNEL_IN_MONO;
+        int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
+        int sampleRateInHz = 16000;
+        int audioSource = MediaRecorder.AudioSource.VOICE_RECOGNITION;
+
+        int bufferSize = AudioRecord.getMinBufferSize(sampleRateInHz, channelConfig, audioFormat);
+        if (bufferSize < VAD_FRAME_SIZE * 2) bufferSize = VAD_FRAME_SIZE * 2;
+
+        AudioManager audioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
+        audioManager.startBluetoothSco();
+        audioManager.setBluetoothScoOn(true);
+
+        AudioRecord audioRecord = new AudioRecord.Builder()
+                .setAudioSource(audioSource)
+                .setAudioFormat(new AudioFormat.Builder()
+                        .setChannelMask(channelConfig)
+                        .setEncoding(audioFormat)
+                        .setSampleRate(sampleRateInHz)
+                        .build())
+                .setBufferSizeInBytes(bufferSize)
+                .build();
+        audioRecord.startRecording();
+
+        VadWebRTC chunkVad = Vad.builder()
+                .setSampleRate(SampleRate.SAMPLE_RATE_16K)
+                .setFrameSize(FrameSize.FRAME_SIZE_480)
+                .setMode(Mode.VERY_AGGRESSIVE)
+                .setSilenceDurationMs(300)
+                .setSpeechDurationMs(100)
+                .build();
+
+        ByteArrayOutputStream chunk = new ByteArrayOutputStream();
+        byte[] frame = new byte[VAD_FRAME_SIZE * 2];
+        int silenceFrames = 0;
+        boolean chunkHasSpeech = false;
+        boolean announced = false;
+        int chunksEmitted = 0;
+
+        while (mInProgress.get()) {
+            int bytesRead = audioRecord.read(frame, 0, VAD_FRAME_SIZE * 2);
+            if (bytesRead <= 0) {
+                Log.d(TAG, "AudioRecord error, bytes read: " + bytesRead);
+                break;
+            }
+            chunk.write(frame, 0, bytesRead);
+            emitRms(frame, bytesRead);
+
+            boolean isSpeech = bytesRead == VAD_FRAME_SIZE * 2 && chunkVad.isSpeech(frame);
+            if (isSpeech) {
+                if (!announced) { announced = true; sendUpdate(MSG_RECORDING); }
+                chunkHasSpeech = true;
+                silenceFrames = 0;
+            } else if (chunkHasSpeech) {
+                silenceFrames++;
+            }
+
+            boolean pauseSplit = chunkHasSpeech && silenceFrames >= CHUNK_SILENCE_FRAMES;
+            boolean capSplit = chunk.size() >= CHUNK_HARD_CAP_BYTES;
+            if (pauseSplit || capSplit) {
+                mChunkListener.onChunk(chunk.toByteArray());
+                chunksEmitted++;
+                chunk.reset();
+                chunkHasSpeech = false;
+                silenceFrames = 0;
+            }
+        }
+
+        // Flush the trailing chunk (whatever was captured since the last split).
+        if (chunkHasSpeech && chunk.size() > 6400) {  // min 0.2 s
+            mChunkListener.onChunk(chunk.toByteArray());
+            chunksEmitted++;
+        }
+
+        chunkVad.close();
+        audioRecord.stop();
+        audioRecord.release();
+        audioManager.stopBluetoothSco();
+        audioManager.setBluetoothScoOn(false);
+
+        Log.d(TAG, "Chunked recording done, chunks emitted: " + chunksEmitted);
+        sendUpdate(chunksEmitted > 0 ? MSG_RECORDING_DONE : MSG_RECORDING_ERROR);
+
+        synchronized (fileSavedLock) {
+            fileSavedLock.notify();
+        }
     }
 
 }

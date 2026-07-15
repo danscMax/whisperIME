@@ -14,6 +14,7 @@ public final class ModelInfo {
     public final boolean englishOnly;
     public final int speedClass;      // 1 fast .. 3 slow
     public final int qualityClass;    // 1 basic .. 3 best
+    public final boolean heavy;       // slow on a phone CPU (gguf medium/large-class)
 
     public ModelInfo(String id, String displayName, Engine engine, String url, long sizeBytes,
                      String filename, int languages, boolean englishOnly,
@@ -28,6 +29,15 @@ public final class ModelInfo {
         this.englishOnly = englishOnly;
         this.speedClass = speedClass;
         this.qualityClass = qualityClass;
+        // Derived, single source of truth: too heavy for a phone CPU. Rule = medium/large-class
+        // gguf (>= ~500 MB or id names medium/large). Kept in the constructor so no call site can
+        // set it inconsistently with the size/id it already passes.
+        this.heavy = sizeBytes >= 500L * 1024 * 1024 || id.contains("medium") || id.contains("large");
+    }
+
+    /** True when the model is slow on a phone CPU (catalog UI shows a "slow on phone" chip). */
+    public boolean isHeavy() {
+        return heavy;
     }
 
     /** Convenience factory to keep registry entries compact. */

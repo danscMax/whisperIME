@@ -38,4 +38,98 @@
     <string name="auto_button">automatic mode</string>
     <string name="error_no_input">No voice input received</string>
     <string name="auto_lang">Detect language</string>
+    <string name="history_title">History</string>
+    <string name="history_search_hint">Search transcriptions</string>
+    <string name="history_empty_emoji">🗒</string>
+    <string name="history_empty_hint">No transcriptions yet</string>
+    <string name="history_copied">Copied to clipboard</string>
+    <string name="history_share">Share</string>
+    <string name="history_delete">Delete</string>
+    <string name="history_clear_all">Clear all</string>
+    <string name="history_clear_all_confirm">Delete all recognition history? This cannot be undone.</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_palette">Color palette</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_recognition">Recognition</string>
+    <string name="settings_haptic">Haptic feedback</string>
+    <string name="settings_tts">Speak result</string>
+    <string name="settings_simple_chinese">Simplified Chinese</string>
+    <string name="settings_history">History</string>
+    <string name="settings_history_save">Save history</string>
+    <string name="settings_history_from_ime">History from keyboard</string>
+    <string name="settings_history_open">Open history</string>
+    <string name="settings_system">System</string>
+    <string name="settings_enable_keyboard">Enable keyboard</string>
+    <string name="settings_voice_input">Voice input settings</string>
+    <string name="settings_models">Models &amp; engines</string>
+    <string name="settings_github">Project on GitHub</string>
+    <!-- Onboarding -->
+    <string name="onboarding_title">Choose your model</string>
+    <string name="onboarding_subtitle">One to start, the rest later. Everything offline.</string>
+    <string name="onboarding_base_title">Recommended · base</string>
+    <string name="onboarding_base_desc">Russian + 77 languages, fast</string>
+    <string name="onboarding_small_title">More accurate · small</string>
+    <string name="onboarding_tiny_title">English · tiny.en</string>
+    <string name="onboarding_cta">Download and start</string>
+    <string name="onboarding_more">More models</string>
+    <string name="onboarding_downloading">Downloading… %1$d%%</string>
+    <!-- Main screen -->
+    <string name="main_badge_tflite" translatable="false">TFLite</string>
+    <string name="main_hint_ready">Press the mic and speak</string>
+    <string name="main_error_title">Didn\'t catch that</string>
+    <string name="main_error_hint">Speak closer to the mic or check that it isn\'t used by another app.</string>
+    <string name="main_retry">Try again</string>
+    <string name="main_perf_chip">%1$.1f s · ×%2$.1f</string>
+    <string name="append_short">Append</string>
+    <string name="translate_short">Translate to EN</string>
+    <string name="main_cd_menu">More options</string>
+    <string name="main_cd_speak">Speak result</string>
+    <string name="main_cd_share">Share</string>
+
+    <!-- IME strip -->
+    <string name="ime_hint">Tap and speak</string>
+    <string name="ime_cd_settings">Settings</string>
+
+    <!-- Recognition dialog -->
+    <string name="dialog_hold_to_speak">Hold to talk</string>
+    <string name="dialog_listening">Listening…</string>
+    <string name="dialog_processing">Processing…</string>
+    <string name="dialog_no_model_title">Model not downloaded yet</string>
+    <string name="dialog_no_model_desc">Voice input needs a recognition model.</string>
+    <string name="dialog_open_catalog">Open catalog</string>
+    <string name="dialog_dictate">Dictate</string>
+    <string name="dialog_copied">Copied</string>
+
+    <string name="catalog_title">Models</string>
+    <string name="catalog_filter_all">All</string>
+    <string name="catalog_filter_tflite" translatable="false">TFLite</string>
+    <string name="catalog_filter_whispercpp" translatable="false">whisper.cpp</string>
+    <string name="catalog_engine_tflite" translatable="false">TFLite</string>
+    <string name="catalog_engine_whispercpp" translatable="false">whisper.cpp</string>
+    <string name="catalog_active">Active</string>
+    <string name="catalog_engine_soon">engine soon</string>
+    <string name="catalog_engine_soon_hint">whisper.cpp engine lands soon</string>
+    <string name="catalog_download">Download</string>
+    <string name="catalog_use">Use</string>
+    <string name="catalog_delete">Delete</string>
+    <string name="catalog_cancel">Cancel</string>
+    <string name="catalog_delete_confirm">Delete %1$s from this device?</string>
+    <string name="catalog_english_only">English only</string>
+    <string name="catalog_languages">%1$d languages</string>
+    <string name="catalog_hint_fast">fast</string>
+    <string name="catalog_hint_balanced">balanced</string>
+    <string name="catalog_hint_best">best quality</string>
+    <string name="catalog_progress">%1$.0f / %2$.0f MB · %3$.1f MB/s</string>
+    <string name="catalog_starting">Starting…</string>
+    <string name="catalog_storage_used">Storage used: %1$s</string>
+    <string name="catalog_wifi_only">Wi-Fi only</string>
+    <string name="catalog_err_wifi">Connect to Wi-Fi to download</string>
+    <string name="catalog_err_download">Download failed</string>
+    <string name="tile_label">Voice input</string>
+    <string name="widget_label">Whisper voice input</string>
+    <string name="widget_mic_description">Start voice input</string>
 </resources>

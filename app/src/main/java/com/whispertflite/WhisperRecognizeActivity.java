@@ -1,12 +1,14 @@
 package com.whispertflite;
 
-import static android.content.Intent.FLAG_ACTIVITY_NEW_TASK;
 import static com.whispertflite.MainActivity.ENGLISH_ONLY_MODEL_EXTENSION;
 import static com.whispertflite.MainActivity.ENGLISH_ONLY_VOCAB_FILE;
 import static com.whispertflite.MainActivity.MULTILINGUAL_VOCAB_FILE;
 import static com.whispertflite.MainActivity.MULTI_LINGUAL_TOP_WORLD_SLOW;
 
+import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -21,6 +23,7 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -31,8 +34,12 @@ import com.github.houbb.opencc4j.util.ZhConverterUtil;
 import com.whispertflite.asr.Recorder;
 import com.whispertflite.asr.Whisper;
 import com.whispertflite.asr.WhisperResult;
+import com.whispertflite.history.HistoryDb;
+import com.whispertflite.models.ModelInfo;
+import com.whispertflite.models.ModelRegistry;
 import com.whispertflite.utils.HapticFeedback;
 import com.whispertflite.utils.InputLang;
+import com.whispertflite.utils.ThemeUtils;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -43,6 +50,8 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     private ImageButton btnCancel;
     private ImageButton btnModeAuto;
     private ProgressBar processingBar = null;
+    private TextView statusText;
+    private TextView partialText;
     private Recorder mRecorder = null;
     private Whisper mWhisper = null;
     private File sdcardDataFolder = null;
@@ -50,98 +59,106 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     private SharedPreferences sp = null;
     private Context mContext;
     private CountDownTimer countDownTimer;
+    private ValueAnimator micPulse;
     private boolean modeAuto = false;
+    private String langCode = "auto";
+
+    // ACTION_PROCESS_TEXT support: dictation replaces the selected text.
+    private boolean processTextMode = false;
+    private boolean processTextReadonly = false;
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mContext = this;
+        ThemeUtils.applyNightMode(this);
+        ThemeUtils.applyPalette(this);
         sp = PreferenceManager.getDefaultSharedPreferences(this);
         sdcardDataFolder = this.getExternalFilesDir(null);
         selectedTfliteFile = new File(sdcardDataFolder, sp.getString("modelName", MULTI_LINGUAL_TOP_WORLD_SLOW));
-        if (!selectedTfliteFile.exists()) {
-            Intent intent = new Intent(this, DownloadActivity.class);
-            intent.addFlags(FLAG_ACTIVITY_NEW_TASK);
-            startActivity(intent);
-            finish();
-        }
-        String targetLang = getIntent().getStringExtra(RecognizerIntent.EXTRA_LANGUAGE);
-        String langCode = sp.getString("language", "auto");
-        int langToken = InputLang.getIdForLanguage(InputLang.getLangList(),langCode);
-        Log.d("WhisperRecognition","default langToken " + langToken);
 
-        if (targetLang != null) {
-            Log.d("WhisperRecognition","StartListening in " + targetLang);
-            langCode = targetLang.split("[-_]")[0].toLowerCase();  //support both de_DE and de-DE
-            langToken = InputLang.getIdForLanguage(InputLang.getLangList(),langCode);
-        } else {
-            Log.d("WhisperRecognition","StartListening, no language specified");
+        Intent intent = getIntent();
+        processTextMode = Intent.ACTION_PROCESS_TEXT.equals(intent.getAction());
+        if (processTextMode) {
+            processTextReadonly = intent.getBooleanExtra(Intent.EXTRA_PROCESS_TEXT_READONLY, false);
         }
-
-        initModel(selectedTfliteFile, langToken);
 
         setContentView(R.layout.activity_recognize);
 
-        // Set the window layout parameters
+        // Position the sheet at the bottom of the screen (floating window).
         WindowManager.LayoutParams params = getWindow().getAttributes();
         params.width = WindowManager.LayoutParams.MATCH_PARENT;
-        params.height =  WindowManager.LayoutParams.WRAP_CONTENT;
-        params.gravity = Gravity.BOTTOM; // Position at the bottom of the screen
+        params.height = WindowManager.LayoutParams.WRAP_CONTENT;
+        params.gravity = Gravity.BOTTOM;
 
         btnCancel = findViewById(R.id.btnCancel);
         btnRecord = findViewById(R.id.btnRecord);
         btnModeAuto = findViewById(R.id.btnModeAuto);
         processingBar = findViewById(R.id.processing_bar);
+        statusText = findViewById(R.id.dialog_status);
+        partialText = findViewById(R.id.dialog_partial);
 
-        modeAuto = sp.getBoolean("imeModeAuto",false);
+        btnCancel.setOnClickListener(v -> {
+            if (mWhisper != null) stopTranscription();
+            setResult(RESULT_CANCELED, null);
+            finish();
+        });
+
+        // Edge state: no recognition model present -> point the user to the catalog.
+        if (!selectedTfliteFile.exists()) {
+            showNoModelState();
+            return;
+        }
+
+        String targetLang = intent.getStringExtra(RecognizerIntent.EXTRA_LANGUAGE);
+        langCode = sp.getString("language", "auto");
+        int langToken = InputLang.getIdForLanguage(InputLang.getLangList(), langCode);
+        if (targetLang != null) {
+            langCode = targetLang.split("[-_]")[0].toLowerCase();  // support both de_DE and de-DE
+            langToken = InputLang.getIdForLanguage(InputLang.getLangList(), langCode);
+        }
+
+        initModel(selectedTfliteFile, langToken);
+        updateChip();
+
+        modeAuto = sp.getBoolean("imeModeAuto", false);
         btnModeAuto.setImageResource(modeAuto ? R.drawable.ic_auto_on_36dp : R.drawable.ic_auto_off_36dp);
 
-        // Audio recording functionality
         mRecorder = new Recorder(this);
-        mRecorder.setListener(new Recorder.RecorderListener() {
-            @Override
-            public void onUpdateReceived(String message) {
-                if (message.equals(Recorder.MSG_RECORDING)) {
-                    runOnUiThread(() -> btnRecord.setBackgroundResource(R.drawable.rounded_button_background_pressed));
-                } else if (message.equals(Recorder.MSG_RECORDING_DONE)) {
-                    HapticFeedback.vibrate(mContext);
-                    runOnUiThread(() -> btnRecord.setBackgroundResource(R.drawable.rounded_button_background));
-                    startTranscription();
-                } else if (message.equals(Recorder.MSG_RECORDING_ERROR)) {
-                    HapticFeedback.vibrate(mContext);
-                    if (countDownTimer!=null) { countDownTimer.cancel();}
-                    runOnUiThread(() -> {
-                        btnRecord.setBackgroundResource(R.drawable.rounded_button_background);
-                        processingBar.setProgress(0);
-                        Toast.makeText(mContext,R.string.error_no_input,Toast.LENGTH_SHORT).show();
-                    });
-                }
+        mRecorder.setListener(message -> {
+            if (message.equals(Recorder.MSG_RECORDING)) {
+                runOnUiThread(() -> {
+                    setStatus(R.string.dialog_listening);
+                    startMicPulse();
+                });
+            } else if (message.equals(Recorder.MSG_RECORDING_DONE)) {
+                HapticFeedback.vibrate(mContext);
+                runOnUiThread(this::stopMicPulse);
+                startTranscription();
+            } else if (message.equals(Recorder.MSG_RECORDING_ERROR)) {
+                HapticFeedback.vibrate(mContext);
+                if (countDownTimer != null) countDownTimer.cancel();
+                runOnUiThread(() -> {
+                    stopMicPulse();
+                    processingBar.setProgress(0);
+                    processingBar.setVisibility(View.INVISIBLE);
+                    setStatus(R.string.dialog_hold_to_speak);
+                    Toast.makeText(mContext, R.string.error_no_input, Toast.LENGTH_SHORT).show();
+                });
             }
-
         });
 
         if (modeAuto) {
             btnRecord.setVisibility(View.GONE);
             HapticFeedback.vibrate(this);
             startRecording();
-            runOnUiThread(() -> processingBar.setProgress(100));
-            countDownTimer = new CountDownTimer(30000, 1000) {
-                @Override
-                public void onTick(long l) {
-                    runOnUiThread(() -> processingBar.setProgress((int) (l / 300)));
-                }
-                @Override
-                public void onFinish() {}
-            };
-            countDownTimer.start();
+            startCountdown();
         }
 
         btnModeAuto.setOnClickListener(v -> {
             modeAuto = !modeAuto;
-            SharedPreferences.Editor editor = sp.edit();
-            editor.putBoolean("imeModeAuto", modeAuto);
-            editor.apply();
+            sp.edit().putBoolean("imeModeAuto", modeAuto).apply();
             btnRecord.setVisibility(modeAuto ? View.GONE : View.VISIBLE);
             btnModeAuto.setImageResource(modeAuto ? R.drawable.ic_auto_on_36dp : R.drawable.ic_auto_off_36dp);
             if (mWhisper != null) stopTranscription();
@@ -151,43 +168,93 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
 
         btnRecord.setOnTouchListener((v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                // Pressed
-                runOnUiThread(() -> btnRecord.setBackgroundResource(R.drawable.rounded_button_background_pressed));
-                if (checkRecordPermission()){
+                if (checkRecordPermission()) {
                     if (!mWhisper.isInProgress()) {
                         HapticFeedback.vibrate(this);
                         startRecording();
-                        runOnUiThread(() -> processingBar.setProgress(100));
-                        countDownTimer = new CountDownTimer(30000, 1000) {
-                            @Override
-                            public void onTick(long l) {
-                                runOnUiThread(() -> processingBar.setProgress((int) (l / 300)));
-                            }
-                            @Override
-                            public void onFinish() {}
-                        };
-                        countDownTimer.start();
+                        startCountdown();
                     } else {
-                        runOnUiThread(() -> Toast.makeText(this, getString(R.string.please_wait),Toast.LENGTH_SHORT).show());
+                        Toast.makeText(this, getString(R.string.please_wait), Toast.LENGTH_SHORT).show();
                     }
                 }
             } else if (event.getAction() == MotionEvent.ACTION_UP) {
-                // Released
-                runOnUiThread(() -> btnRecord.setBackgroundResource(R.drawable.rounded_button_background));
                 if (mRecorder != null && mRecorder.isInProgress()) {
                     mRecorder.stop();
                 }
             }
             return true;
         });
+    }
 
-        btnCancel.setOnClickListener(v -> {
-            if (mWhisper != null) stopTranscription();
+    private void showNoModelState() {
+        findViewById(R.id.dialog_main_group).setVisibility(View.GONE);
+        processingBar.setVisibility(View.GONE);
+        btnModeAuto.setVisibility(View.GONE);
+        View noModel = findViewById(R.id.dialog_no_model_group);
+        noModel.setVisibility(View.VISIBLE);
+        findViewById(R.id.dialog_open_catalog).setOnClickListener(v -> {
+            startActivity(new Intent(this, com.whispertflite.models.ModelCatalogActivity.class));
             setResult(RESULT_CANCELED, null);
             finish();
         });
-
     }
+
+    private void startCountdown() {
+        runOnUiThread(() -> {
+            processingBar.setVisibility(View.VISIBLE);
+            processingBar.setProgress(100);
+        });
+        countDownTimer = new CountDownTimer(30000, 1000) {
+            @Override
+            public void onTick(long l) {
+                runOnUiThread(() -> processingBar.setProgress((int) (l / 300)));
+            }
+            @Override
+            public void onFinish() {}
+        };
+        countDownTimer.start();
+    }
+
+    private void setStatus(int resId) {
+        if (statusText != null) statusText.setText(resId);
+    }
+
+    private void updateChip() {
+        TextView chip = findViewById(R.id.dialog_chip);
+        String modelLabel = selectedTfliteFile.getName();
+        for (ModelInfo m : ModelRegistry.all()) {
+            if (m.filename.equals(selectedTfliteFile.getName())) {
+                modelLabel = m.displayName;
+                break;
+            }
+        }
+        String lang = ("auto".equals(langCode) ? "AUTO" : langCode.toUpperCase());
+        chip.setText(modelLabel + " · " + lang);
+    }
+
+    private void startMicPulse() {
+        if (micPulse != null) return;
+        micPulse = ValueAnimator.ofFloat(1f, 1.12f);
+        micPulse.setDuration(600);
+        micPulse.setRepeatCount(ValueAnimator.INFINITE);
+        micPulse.setRepeatMode(ValueAnimator.REVERSE);
+        micPulse.addUpdateListener(a -> {
+            float s = (float) a.getAnimatedValue();
+            btnRecord.setScaleX(s);
+            btnRecord.setScaleY(s);
+        });
+        micPulse.start();
+    }
+
+    private void stopMicPulse() {
+        if (micPulse != null) {
+            micPulse.cancel();
+            micPulse = null;
+        }
+        btnRecord.setScaleX(1f);
+        btnRecord.setScaleY(1f);
+    }
+
     private void startRecording() {
         if (modeAuto) mRecorder.initVad();
         mRecorder.start();
@@ -201,9 +268,7 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
 
         mWhisper = new Whisper(this);
         mWhisper.loadModel(modelFile, vocabFile, isMultilingualModel);
-        Log.d(TAG, "Initialized: " + modelFile.getName());
         mWhisper.setLanguage(langToken);
-        Log.d(TAG, "Language token " + langToken);
         mWhisper.setListener(new Whisper.WhisperListener() {
             @Override
             public void onUpdateReceived(String message) { }
@@ -213,18 +278,50 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
                 runOnUiThread(() -> processingBar.setIndeterminate(false));
 
                 String result = whisperResult.getResult();
-                if (whisperResult.getLanguage().equals("zh")){
-                    boolean simpleChinese = sp.getBoolean("simpleChinese",false);
+                if (whisperResult.getLanguage().equals("zh")) {
+                    boolean simpleChinese = sp.getBoolean("simpleChinese", false);
                     result = simpleChinese ? ZhConverterUtil.toSimple(result) : ZhConverterUtil.toTraditional(result);
                 }
-                if (result.trim().length() > 0){
-                    sendResult(result.trim());
+                if (result.trim().length() > 0) {
+                    final String text = result.trim();
+                    runOnUiThread(() -> partialText.setText(text));
+                    saveHistory(text, whisperResult.getLanguage());
+                    sendResult(text);
                 }
             }
         });
     }
 
+    private void saveHistory(String text, String lang) {
+        // System dialog: honor historyEnabled (historyFromIme does NOT apply here).
+        if (!sp.getBoolean("historyEnabled", true)) return;
+        String modelId = selectedTfliteFile.getName();
+        for (ModelInfo m : ModelRegistry.all()) {
+            if (m.filename.equals(selectedTfliteFile.getName())) { modelId = m.id; break; }
+        }
+        try {
+            HistoryDb.get(this).insert(text, lang, modelId, 0);
+        } catch (Exception e) {
+            Log.w(TAG, "history insert failed", e);
+        }
+    }
+
     private void sendResult(String result) {
+        if (processTextMode) {
+            if (processTextReadonly) {
+                // Read-only selection: replacement is ignored, so just copy the text.
+                ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("dictation", result));
+                Toast.makeText(this, R.string.dialog_copied, Toast.LENGTH_SHORT).show();
+                setResult(RESULT_OK, null);
+            } else {
+                Intent replace = new Intent();
+                replace.putExtra(Intent.EXTRA_PROCESS_TEXT, result);
+                setResult(RESULT_OK, replace);
+            }
+            finish();
+            return;
+        }
         Intent sendResultIntent = new Intent();
         ArrayList<String> results = new ArrayList<>();
         results.add(result);
@@ -235,15 +332,16 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     }
 
     private void startTranscription() {
-        if (countDownTimer!=null) { countDownTimer.cancel();}
+        if (countDownTimer != null) countDownTimer.cancel();
         runOnUiThread(() -> {
+            setStatus(R.string.dialog_processing);
+            processingBar.setVisibility(View.VISIBLE);
             processingBar.setProgress(0);
             processingBar.setIndeterminate(true);
         });
-        if (mWhisper!=null){
+        if (mWhisper != null) {
             mWhisper.setAction(Whisper.ACTION_TRANSCRIBE);
             mWhisper.start();
-            Log.d(TAG,"Start Transcription");
         }
     }
 
@@ -255,7 +353,7 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     private boolean checkRecordPermission() {
         int permission = ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO);
         if (permission != PackageManager.PERMISSION_GRANTED) {
-            Toast.makeText(this, getString(R.string.need_record_audio_permission),Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.need_record_audio_permission), Toast.LENGTH_SHORT).show();
         }
         return (permission == PackageManager.PERMISSION_GRANTED);
     }
@@ -269,6 +367,7 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
 
     @Override
     public void onDestroy() {
+        stopMicPulse();
         deinitModel();
         if (mRecorder != null && mRecorder.isInProgress()) {
             mRecorder.stop();

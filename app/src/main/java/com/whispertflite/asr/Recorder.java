@@ -168,14 +168,31 @@ public class Recorder {
         return false;
     }
 
+    // Platform effects attached to the current record session; held so they can be released with it.
+    private final java.util.List<android.media.audiofx.AudioEffect> mEffects = new java.util.ArrayList<>();
+
     /** Attach platform AGC/noise-suppression to the record session where the device offers them. */
     private void attachEffects(AudioRecord audioRecord) {
         try {
-            if (android.media.audiofx.AutomaticGainControl.isAvailable())
-                android.media.audiofx.AutomaticGainControl.create(audioRecord.getAudioSessionId()).setEnabled(true);
-            if (android.media.audiofx.NoiseSuppressor.isAvailable())
-                android.media.audiofx.NoiseSuppressor.create(audioRecord.getAudioSessionId()).setEnabled(true);
+            if (android.media.audiofx.AutomaticGainControl.isAvailable()) {
+                android.media.audiofx.AutomaticGainControl agc =
+                        android.media.audiofx.AutomaticGainControl.create(audioRecord.getAudioSessionId());
+                if (agc != null) { agc.setEnabled(true); mEffects.add(agc); }
+            }
+            if (android.media.audiofx.NoiseSuppressor.isAvailable()) {
+                android.media.audiofx.NoiseSuppressor ns =
+                        android.media.audiofx.NoiseSuppressor.create(audioRecord.getAudioSessionId());
+                if (ns != null) { ns.setEnabled(true); mEffects.add(ns); }
+            }
         } catch (Exception ignored) { }
+    }
+
+    /** Release the AGC/noise-suppression effects created for the just-finished record session. */
+    private void releaseEffects() {
+        for (android.media.audiofx.AudioEffect e : mEffects) {
+            try { e.release(); } catch (Exception ignored) { }
+        }
+        mEffects.clear();
     }
 
     /** Compute normalized RMS of a 16-bit little-endian PCM frame and notify the listener. */
@@ -311,6 +328,7 @@ public class Recorder {
         }
         audioRecord.stop();
         audioRecord.release();
+        releaseEffects();
         if (scoStarted) {
             audioManager.stopBluetoothSco();
             audioManager.setBluetoothScoOn(false);
@@ -422,8 +440,13 @@ public class Recorder {
             }
         }
 
-        // Flush the trailing chunk (whatever was captured since the last split).
-        if (chunkHasSpeech && chunk.size() > 6400) {  // min 0.2 s
+        // Flush the trailing chunk (whatever was captured since the last split). Also, if the VAD
+        // never fired for the whole session (soft/quiet speech that stayed under the aggressive
+        // threshold), fall back to transcribing the captured audio anyway once it's ~0.5 s+, so quiet
+        // speech is not silently dropped — the legacy single-buffer path always transcribed.
+        boolean trailing = chunkHasSpeech && chunk.size() > 6400;   // 0.2 s of detected speech
+        boolean softFallback = chunksEmitted == 0 && chunk.size() > 16000; // ~0.5 s, VAD never fired
+        if (trailing || softFallback) {
             byte[] out = chunk.toByteArray();
             normalizePcm(out);
             mChunkListener.onChunk(out);
@@ -433,6 +456,7 @@ public class Recorder {
         chunkVad.close();
         audioRecord.stop();
         audioRecord.release();
+        releaseEffects();
         if (scoStarted) {
             audioManager.stopBluetoothSco();
             audioManager.setBluetoothScoOn(false);

@@ -113,6 +113,10 @@ public class MainActivity extends AppCompatActivity {
     private LanguagePairAdapter languagePairAdapter;
     private List<ModelInfo> currentDownloadedModels;
     private AdapterView.OnItemSelectedListener modelSelectedListener;
+    // Serialize every model load/unload so concurrent switches (spinner + onResume) can't run
+    // deinit/init in parallel and corrupt the engine lifecycle.
+    private final java.util.concurrent.ExecutorService modelExecutor =
+            java.util.concurrent.Executors.newSingleThreadExecutor();
     private TextView badgeEngine;
     private int langToken = -1;
     private long startTime = 0;
@@ -138,6 +142,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        modelExecutor.shutdownNow();
         deinitModel();
         deinitTTS();
         super.onDestroy();
@@ -231,8 +236,8 @@ public class MainActivity extends AppCompatActivity {
         selectedModel = resolveSelectedModel(downloadedModels);
 
         // Initialize the selected model off the UI thread: a GGUF model can be ~0.5 GB and would
-        // otherwise ANR at launch. btnRecord is enabled once the model is ready.
-        new Thread(this::initModel).start();
+        // otherwise ANR at launch. Serialized on modelExecutor with every later switch.
+        modelExecutor.submit(this::initModel);
 
         btnInfo = findViewById(R.id.btnInfo);
         btnInfo.setOnClickListener(view -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/woheller69/whisperIME#Donate"))));
@@ -353,7 +358,8 @@ public class MainActivity extends AppCompatActivity {
             if (currentState == UiState.RECORDING) { waveform.push(rms); orb.pushLevel(rms); }
         }));
         // Each VAD chunk feeds the Whisper queue for live, sequential (pseudo-streaming) transcription.
-        mRecorder.setChunkListener(pcm -> mWhisper.enqueueChunk(pcm));
+        // Guard the mutable field: a model switch can null mWhisper while the recorder still emits a chunk.
+        mRecorder.setChunkListener(pcm -> { Whisper w = mWhisper; if (w != null) w.enqueueChunk(pcm); });
         mRecorder.setListener(new Recorder.RecorderListener() {
             @Override
             public void onUpdateReceived(String message) {
@@ -461,7 +467,7 @@ public class MainActivity extends AppCompatActivity {
         btnRecord.setEnabled(false);
         spinnerModel.setEnabled(false);
         processingBar.setVisibility(View.VISIBLE);
-        new Thread(() -> {
+        modelExecutor.submit(() -> {
             deinitModel();
             initModel();
             runOnUiThread(() -> {
@@ -469,7 +475,7 @@ public class MainActivity extends AppCompatActivity {
                 spinnerModel.setEnabled(true);
                 if (currentState != UiState.RESULT) processingBar.setVisibility(View.INVISIBLE);
             });
-        }).start();
+        });
     }
 
     private void initModel() {

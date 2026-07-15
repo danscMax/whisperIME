@@ -3,7 +3,6 @@ package com.whispertflite.asr;
 import android.content.Context;
 import android.util.Log;
 
-import androidx.preference.PreferenceManager;
 
 import com.whispertflite.engine.AsrEngine;
 import com.whispertflite.engine.TfliteEngine;
@@ -77,34 +76,34 @@ public class Whisper {
     }
 
     /**
-     * Load the engine for the active model. Routes by {@code selectedModelId} pref: a WHISPER_CPP
-     * model uses {@link WhisperCppEngine} (its GGUF file under getExternalFilesDir), otherwise the
-     * TFLite path uses the modelPath/vocabPath passed by legacy call sites. {@code isMultilingual}
-     * is retained for source compatibility; the chosen engine derives it from the model/filename.
+     * Load the engine for the model FILE the caller passed. The engine is chosen from the file
+     * itself (whisper.cpp GGUF models end in {@code .bin}, TFLite models in {@code .tflite}), NOT
+     * from the global {@code selectedModelId} pref — different entry points (the standalone app, the
+     * RecognitionService, the recognize dialog) each resolve their own file, and routing by a shared
+     * pref would load the wrong model for the non-app entry points. {@code isMultilingual} is kept
+     * for source compatibility; the engine derives it from the matched model/filename.
      */
     public void loadModel(File modelPath, File vocabPath, boolean isMultilingual) {
-        ModelInfo selected = selectedModel();
+        ModelInfo hint = modelInfoForFile(modelPath); // registry match by filename, may be null
+        boolean cpp = modelPath.getName().endsWith(".bin"); // GGUF whisper.cpp model files are .bin
         try {
-            if (selected != null && selected.engine == ModelInfo.Engine.WHISPER_CPP) {
-                File gguf = new File(mContext.getExternalFilesDir(null), selected.filename);
-                mEngine = new WhisperCppEngine();
-                mEngine.load(selected, gguf, null);
-                currentModelPath = gguf.getAbsolutePath();
-            } else {
-                mEngine = new TfliteEngine(mContext);
-                mEngine.load(selected, modelPath, vocabPath);
-                currentModelPath = modelPath.getAbsolutePath();
-            }
+            AsrEngine engine = cpp ? new WhisperCppEngine() : new TfliteEngine(mContext);
+            engine.load(hint, modelPath, cpp ? null : vocabPath);
+            mEngine = engine;
+            currentModelPath = modelPath.getAbsolutePath();
         } catch (IOException e) {
             Log.e(TAG, "Error initializing model...", e);
             sendUpdate("Model initialization failed");
         }
     }
 
-    private ModelInfo selectedModel() {
-        String id = PreferenceManager.getDefaultSharedPreferences(mContext)
-                .getString("selectedModelId", null);
-        return id != null ? ModelRegistry.byId(id) : null;
+    /** Registry entry whose filename matches this file (handles the gguf/ subdir), or null. */
+    private ModelInfo modelInfoForFile(File file) {
+        String name = file.getName();
+        for (ModelInfo m : ModelRegistry.all()) {
+            if (m.filename.equals(name) || m.filename.endsWith("/" + name)) return m;
+        }
+        return null;
     }
 
     public String getCurrentModelPath(){
@@ -112,7 +111,14 @@ public class Whisper {
     }
 
     public void unloadModel() {
-        if (mEngine != null) mEngine.unload();
+        AsrEngine engine = mEngine;
+        if (engine != null) {
+            engine.cancel();            // ask an in-flight transcribe() to abort so we don't block long
+            synchronized (engine) {     // wait until the worker has left transcribe(), THEN free the
+                engine.unload();        // native context — prevents a use-after-free of whisper_context
+            }
+        }
+        mEngine = null;
         currentModelPath = "";
     }
 
@@ -129,6 +135,7 @@ public class Whisper {
             Log.d(TAG, "Execution is already in progress...");
             return;
         }
+        chunkMode = false; // single-buffer path; enqueueChunk() flips this on for chunked recording
         taskLock.lock();
         try {
             taskAvailable = true;
@@ -201,14 +208,15 @@ public class Whisper {
 
     private void processRecordBuffer() {
         try {
+            AsrEngine engine = mEngine; // capture once: unloadModel() may null the field concurrently
             byte[] pcm = RecordBuffer.getOutputBuffer();
-            if (mEngine != null && mEngine.isLoaded() && pcm != null) {
+            if (engine != null && engine.isLoaded() && pcm != null) {
                 long startTime = System.currentTimeMillis();
                 sendUpdate(MSG_PROCESSING);
 
                 WhisperResult whisperResult;
-                synchronized (mEngine) {
-                    whisperResult = mEngine.transcribe(pcm, mAction, mLangToken);
+                synchronized (engine) {
+                    whisperResult = engine.transcribe(pcm, mAction, mLangToken);
                 }
                 sendResult(whisperResult);
 

@@ -95,6 +95,12 @@
             android:parentActivityName=".MainActivity" />
 
         <activity
+            android:name=".models.ModelCatalogActivity"
+            android:exported="false"
+            android:label="@string/catalog_title"
+            android:parentActivityName=".SettingsActivity" />
+
+        <activity
             android:name=".SettingsActivity"
             android:exported="false"
             android:label="@string/settings_title"

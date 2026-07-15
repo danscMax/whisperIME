@@ -78,4 +78,30 @@
     <string name="main_cd_menu">More options</string>
     <string name="main_cd_speak">Speak result</string>
     <string name="main_cd_share">Share</string>
+
+    <string name="catalog_title">Models</string>
+    <string name="catalog_filter_all">All</string>
+    <string name="catalog_filter_tflite" translatable="false">TFLite</string>
+    <string name="catalog_filter_whispercpp" translatable="false">whisper.cpp</string>
+    <string name="catalog_engine_tflite" translatable="false">TFLite</string>
+    <string name="catalog_engine_whispercpp" translatable="false">whisper.cpp</string>
+    <string name="catalog_active">Active</string>
+    <string name="catalog_engine_soon">engine soon</string>
+    <string name="catalog_engine_soon_hint">whisper.cpp engine lands soon</string>
+    <string name="catalog_download">Download</string>
+    <string name="catalog_use">Use</string>
+    <string name="catalog_delete">Delete</string>
+    <string name="catalog_cancel">Cancel</string>
+    <string name="catalog_delete_confirm">Delete %1$s from this device?</string>
+    <string name="catalog_english_only">English only</string>
+    <string name="catalog_languages">%1$d languages</string>
+    <string name="catalog_hint_fast">fast</string>
+    <string name="catalog_hint_balanced">balanced</string>
+    <string name="catalog_hint_best">best quality</string>
+    <string name="catalog_progress">%1$.0f / %2$.0f MB · %3$.1f MB/s</string>
+    <string name="catalog_starting">Starting…</string>
+    <string name="catalog_storage_used">Storage used: %1$s</string>
+    <string name="catalog_wifi_only">Wi-Fi only</string>
+    <string name="catalog_err_wifi">Connect to Wi-Fi to download</string>
+    <string name="catalog_err_download">Download failed</string>
 </resources>

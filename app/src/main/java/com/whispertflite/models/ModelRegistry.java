@@ -11,6 +11,9 @@ public final class ModelRegistry {
 
     private ModelRegistry() {}
 
+    /** whisper.cpp engine is not wired yet (Task 3.3 flips this to true). */
+    public static final boolean WHISPER_CPP_READY = false;
+
     // Base URLs.
     private static final String TFLITE_BASE =
             "https://huggingface.co/DocWolle/whisper_tflite_models/resolve/main/";

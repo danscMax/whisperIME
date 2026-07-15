@@ -77,4 +77,26 @@
     <string name="main_cd_menu">Ещё</string>
     <string name="main_cd_speak">Озвучить результат</string>
     <string name="main_cd_share">Поделиться</string>
+
+    <string name="catalog_title">Модели</string>
+    <string name="catalog_filter_all">Все</string>
+    <string name="catalog_active">Активна</string>
+    <string name="catalog_engine_soon">скоро движок</string>
+    <string name="catalog_engine_soon_hint">Движок whisper.cpp появится в следующей волне</string>
+    <string name="catalog_download">Скачать</string>
+    <string name="catalog_use">Использовать</string>
+    <string name="catalog_delete">Удалить</string>
+    <string name="catalog_cancel">Отмена</string>
+    <string name="catalog_delete_confirm">Удалить %1$s с устройства?</string>
+    <string name="catalog_english_only">Только английский</string>
+    <string name="catalog_languages">%1$d языков</string>
+    <string name="catalog_hint_fast">быстро</string>
+    <string name="catalog_hint_balanced">баланс</string>
+    <string name="catalog_hint_best">лучшее качество</string>
+    <string name="catalog_progress">%1$.0f / %2$.0f МБ · %3$.1f МБ/с</string>
+    <string name="catalog_starting">Запуск…</string>
+    <string name="catalog_storage_used">Занято: %1$s</string>
+    <string name="catalog_wifi_only">Только Wi-Fi</string>
+    <string name="catalog_err_wifi">Подключитесь к Wi-Fi для загрузки</string>
+    <string name="catalog_err_download">Ошибка загрузки</string>
 </resources>

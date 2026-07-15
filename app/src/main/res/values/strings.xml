@@ -104,4 +104,7 @@
     <string name="catalog_wifi_only">Wi-Fi only</string>
     <string name="catalog_err_wifi">Connect to Wi-Fi to download</string>
     <string name="catalog_err_download">Download failed</string>
+    <string name="tile_label">Voice input</string>
+    <string name="widget_label">Whisper voice input</string>
+    <string name="widget_mic_description">Start voice input</string>
 </resources>

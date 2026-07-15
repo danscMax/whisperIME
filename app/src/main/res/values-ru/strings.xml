@@ -99,4 +99,7 @@
     <string name="catalog_wifi_only">Только Wi-Fi</string>
     <string name="catalog_err_wifi">Подключитесь к Wi-Fi для загрузки</string>
     <string name="catalog_err_download">Ошибка загрузки</string>
+    <string name="tile_label">Голосовой ввод</string>
+    <string name="widget_label">Whisper голосовой ввод</string>
+    <string name="widget_mic_description">Начать голосовой ввод</string>
 </resources>

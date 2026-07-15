@@ -15,7 +15,7 @@
 
 - minSdk 28, targetSdk 35, package `org.woheller69.whisper`, namespace `com.whispertflite`.
 - No new runtime dependencies beyond whisper.cpp submodule (F-Droid friendly; no Room, no Compose, no OkHttp — use HttpURLConnection as upstream does).
-- All strings in `values/strings.xml` (EN base) — never hardcoded; keep existing translations compiling (`lintOptions.disable 'MissingTranslation'` already set).
+- All strings in `values/strings.xml` (EN base) AND duplicated in `values-ru/strings.xml` — never hardcoded; keep existing translations compiling (`lintOptions.disable 'MissingTranslation'` already set).
 - No AI attribution anywhere (commits, code, docs).
 - Every task ends with `assembleDebug` green; UI tasks also install + screenshot on emulator-5560.
 - Build command (no gradlew scripts in repo):
@@ -148,7 +148,7 @@ Preference keys (SharedPreferences, default file): `palette`, `nightMode`,
 
 - [ ] Top bar: title, history icon (stub → Task 1.4), settings icon → SettingsActivity
 - [ ] Model+language chip card (existing spinners restyled as Material dropdowns), TFLite badge
-- [ ] States per mockup: ready hint → recording (WaveformView + mm:ss timer + 30 s LinearProgressIndicator) → processing → result card (perf chip "2,1 с · ×3,3", actions copy/TTS/share) → error state ("Ничего не расслышал" + retry) — strings in EN base
+- [ ] States per mockup: ready hint → recording (WaveformView + mm:ss timer, NO 30 s limit — see Task 1.5) → processing → result card (perf chip "2,1 с · ×3,3", actions copy/TTS/share) → error state ("Ничего не расслышал" + retry) — strings EN base + values-ru
 - [ ] Move Append/Translate checkboxes into compact toggle row per mockup
 - [ ] Build, install, dictate on emulator (mic = host loopback; if no audio, verify states via injected fake: record 2 s silence → error state), screenshot each reachable state; commit "Main screen redesign with explicit states"
 
@@ -164,6 +164,19 @@ Preference keys (SharedPreferences, default file): `palette`, `nightMode`,
 - [ ] HistoryDb with prune-to-500; insert from MainActivity transcription success (respect `historyEnabled`)
 - [ ] HistoryActivity per description; empty state illustration (emoji ok)
 - [ ] Build, install, dictate/insert twice, screenshot list; commit "Recognition history"
+
+### Task 1.5: Chunked unlimited recording (kills the 30 s limit)
+
+**Files:**
+- Modify: `app/src/main/java/com/whispertflite/asr/Recorder.java` — remove hard 30 s stop; use the existing webrtc VAD to detect speech pauses (~700 ms silence) and emit completed chunks (≤28 s hard cap per chunk: force-split mid-speech if exceeded) via new callback `onChunk(float[] pcm16k)` while recording continues
+- Modify: `app/src/main/java/com/whispertflite/asr/Whisper.java` — queue chunks, transcribe sequentially on the existing worker thread, deliver each chunk's text via existing result callback with `append=true` semantics
+- Modify: `MainActivity.java` — result card appends chunk texts live during recording ("pseudo-streaming"); recording timer keeps counting past 30 s
+
+**Interfaces:** Consumes existing Recorder/Whisper pipeline. Produces chunked behavior ALL surfaces inherit (IME, dialog use the same classes).
+
+- [ ] Implement per above; auto-stop-on-silence pref still honored (long final silence = stop, if enabled)
+- [ ] Verify on emulator: dictate >40 s (or inject audio), text arrives in ≥2 portions, no crash
+- [ ] Commit "Unlimited recording via VAD chunking"
 
 ## Wave 2 — Models (registry, downloads, catalog, onboarding)
 
@@ -222,7 +235,7 @@ Preference keys (SharedPreferences, default file): `palette`, `nightMode`,
 
 ## Wave 4 — Surfaces (IME, dialog, tile, widget, sharing)
 
-### Task 4.1: IME strip redesign — `voice_service.xml` + `WhisperInputMethodService.java`: три состояния per mockup (idle: mic FAB, hint, model chip, keys ⌫ ⏎ ⌨ ⚙; recording: stop, WaveformView, timer; processing: spinner + streaming draft), history insert (pref `historyFromIme`), commit.
+### Task 4.1: IME strip redesign — `voice_service.xml` + `WhisperInputMethodService.java`: три состояния per mockup (idle: mic FAB, hint, model chip, keys ⌫ ⏎ ⌨ ⚙; recording: stop, WaveformView, timer; processing: spinner + chunk-wise draft), history insert (pref `historyFromIme`; NEVER when target field inputType is any password variant), commit.
 ### Task 4.2: Recognition dialog redesign — `WhisperRecognizeActivity` + `activity_recognize.xml`: bottom-sheet look per mockup, pulsing mic (scale animation), live partial text area, model/lang chip, «нет модели» state → каталог; same for `WhisperRecognitionService` UI-less paths; commit.
 ### Task 4.3: Quick Settings tile — `WhisperTileService` (TileService, manifest `BIND_QUICK_SETTINGS_TILE`), icon, launches WhisperRecognizeActivity; commit.
 ### Task 4.4: Home widget — `WhisperWidgetProvider` + `layout/widget_mic.xml` + `xml/widget_info.xml`: одна кнопка-микрофон → WhisperRecognizeActivity; commit.

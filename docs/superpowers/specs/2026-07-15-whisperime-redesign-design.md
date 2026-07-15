@@ -20,7 +20,10 @@ RecognitionService) fully functional. Personal daily driver first, public releas
 | Redesign scope | All surfaces: main app, model catalog, onboarding, settings, IME strip, recognition dialog |
 | Visual language | Material 3 (Material You), expressive |
 | Palettes | All 4 shipped, user-selectable in settings: Teal (default), Terracotta, Indigo, Forest + Dynamic (Monet, Android 12+) with Teal fallback. Light/dark/system. |
-| History | Yes — new feature, local only |
+| History | Yes — new feature, local only. IME writes by default (toggle in settings); password fields never recorded |
+| Recording length | Unlimited: VAD splits speech at pauses into ≤30 s chunks, transcribed sequentially, text appended per chunk (pseudo-streaming) |
+| Localization | All new strings shipped in EN base + values-ru immediately |
+| App icon | New adaptive icon + monochrome (themed icons) |
 | Quick tile + widget | Yes — new features |
 | Extended sharing | Yes — share sheet + ACTION_PROCESS_TEXT where sensible |
 
@@ -102,7 +105,8 @@ interface AsrEngine {
 
 ## Non-goals (this iteration)
 
-- Streaming/real-time transcription during recording (whisper.cpp partials later).
+- Full live transcription (incremental re-decode every 1-2 s). Chunk-wise output at speech
+  pauses IS in scope; true live partials later.
 - Cloud/remote engines. Model benchmarking. Backup/sync of history.
 
 ## Error handling

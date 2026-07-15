@@ -17,6 +17,7 @@ import com.konovalov.vad.webrtc.config.FrameSize;
 import com.konovalov.vad.webrtc.config.Mode;
 import com.konovalov.vad.webrtc.config.SampleRate;
 import com.whispertflite.R;
+import com.whispertflite.util.AudioMath;
 
 import java.io.ByteArrayOutputStream;
 
@@ -150,22 +151,7 @@ public class Recorder {
      * so noise-only audio is not blown up.
      */
     private static void normalizePcm(byte[] pcm) {
-        int peak = 0;
-        for (int i = 0; i + 1 < pcm.length; i += 2) {
-            int s = Math.abs((pcm[i] & 0xff) | (pcm[i + 1] << 8));
-            if (s > peak) peak = s;
-        }
-        if (peak < 100) return; // silence: nothing to normalize
-        double gain = Math.min(8.0, 0.95 * 32767.0 / peak);
-        if (gain < 1.2) return; // already loud enough
-        for (int i = 0; i + 1 < pcm.length; i += 2) {
-            int s = (short) ((pcm[i] & 0xff) | (pcm[i + 1] << 8));
-            int v = (int) Math.round(s * gain);
-            if (v > 32767) v = 32767;
-            if (v < -32768) v = -32768;
-            pcm[i] = (byte) (v & 0xff);
-            pcm[i + 1] = (byte) ((v >> 8) & 0xff);
-        }
+        AudioMath.normalizeInPlace(pcm);
     }
 
     /** Start Bluetooth SCO only when a Bluetooth input device is actually connected. */

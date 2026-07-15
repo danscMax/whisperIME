@@ -47,12 +47,21 @@ public final class ModelRegistry {
         m.add(ModelInfo.of("gguf-tiny", "tiny", Engine.WHISPER_CPP,
                 GGUF_BASE + "ggml-tiny.bin", 75L * MB,
                 "gguf/ggml-tiny.bin", 99, false, 1, 1));
+        m.add(ModelInfo.of("gguf-tiny-q5", "tiny · Q5", Engine.WHISPER_CPP,
+                GGUF_BASE + "ggml-tiny-q5_1.bin", 32L * MB,
+                "gguf/ggml-tiny-q5_1.bin", 99, false, 1, 1));
         m.add(ModelInfo.of("gguf-base", "base", Engine.WHISPER_CPP,
                 GGUF_BASE + "ggml-base.bin", 142L * MB,
                 "gguf/ggml-base.bin", 99, false, 1, 2));
+        m.add(ModelInfo.of("gguf-base-q5", "base · Q5", Engine.WHISPER_CPP,
+                GGUF_BASE + "ggml-base-q5_1.bin", 57L * MB,
+                "gguf/ggml-base-q5_1.bin", 99, false, 1, 2));
         m.add(ModelInfo.of("gguf-small", "small", Engine.WHISPER_CPP,
                 GGUF_BASE + "ggml-small.bin", 466L * MB,
                 "gguf/ggml-small.bin", 99, false, 2, 2));
+        m.add(ModelInfo.of("gguf-small-q5", "small · Q5", Engine.WHISPER_CPP,
+                GGUF_BASE + "ggml-small-q5_1.bin", 190L * MB,
+                "gguf/ggml-small-q5_1.bin", 99, false, 2, 2));
         m.add(ModelInfo.of("gguf-medium-q5", "medium · Q5", Engine.WHISPER_CPP,
                 GGUF_BASE + "ggml-medium-q5_0.bin", 514L * MB,
                 "gguf/ggml-medium-q5_0.bin", 99, false, 3, 3));

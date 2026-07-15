@@ -6,4 +6,14 @@
     <color name="colorAccent">#996750A4</color>
     <color name="colorAccentDark">#ff6750A4</color>
     <color name="windowBackground">#FAFAFA</color>
+
+    <!-- Aurora premium dark surface (the redesigned main screen is dark-first; accent comes from
+         the selected palette's colorPrimary). -->
+    <color name="aurora_bg">#070A0C</color>
+    <color name="aurora_bg2">#0E1317</color>
+    <color name="aurora_ink">#ECF3F1</color>
+    <color name="aurora_ink_dim">#8A9A96</color>
+    <color name="aurora_panel">#14FFFFFF</color>
+    <color name="aurora_panel_brd">#22FFFFFF</color>
+    <color name="aurora_scrim">#66000000</color>
 </resources>

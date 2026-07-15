@@ -79,12 +79,14 @@
     <string name="onboarding_downloading">Downloading… %1$d%%</string>
     <!-- Main screen -->
     <string name="main_badge_tflite" translatable="false">TFLite</string>
-    <string name="main_hint_ready">Press the mic and speak</string>
+    <string name="main_hint_ready">Your transcript will appear here</string>
     <string name="main_error_title">Didn\'t catch that</string>
     <string name="main_error_hint">Speak closer to the mic or check that it isn\'t used by another app.</string>
     <string name="main_retry">Try again</string>
     <string name="main_perf_chip">%1$.1f s · ×%2$.1f</string>
     <string name="main_model_loading">Loading model…</string>
+    <string name="main_cd_record">Record</string>
+    <string name="main_hint_tap">Tap to speak</string>
     <string name="append_short">Append</string>
     <string name="translate_short">Translate to EN</string>
     <string name="main_cd_menu">More options</string>

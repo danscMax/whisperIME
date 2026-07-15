@@ -78,12 +78,14 @@
     <string name="onboarding_more">Больше моделей</string>
     <string name="onboarding_downloading">Загрузка… %1$d%%</string>
     <!-- Main screen -->
-    <string name="main_hint_ready">Нажмите микрофон и говорите</string>
+    <string name="main_hint_ready">Здесь появится расшифровка</string>
     <string name="main_error_title">Ничего не расслышал</string>
     <string name="main_error_hint">Говорите ближе к микрофону или проверьте, что он не занят другим приложением.</string>
     <string name="main_retry">Попробовать ещё раз</string>
     <string name="main_perf_chip">%1$.1f с · ×%2$.1f</string>
     <string name="main_model_loading">Загрузка модели…</string>
+    <string name="main_cd_record">Запись</string>
+    <string name="main_hint_tap">Коснитесь, чтобы говорить</string>
     <string name="append_short">Добавлять</string>
     <string name="translate_short">Перевод на EN</string>
     <string name="main_cd_menu">Ещё</string>

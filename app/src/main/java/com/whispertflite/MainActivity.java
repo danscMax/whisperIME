@@ -1,8 +1,6 @@
 package com.whispertflite;
 
 import android.Manifest;
-import android.animation.ObjectAnimator;
-import android.animation.PropertyValuesHolder;
 import android.annotation.SuppressLint;
 import android.content.ClipData;
 import android.content.ClipboardManager;
@@ -46,9 +44,7 @@ import androidx.transition.TransitionManager;
 
 import com.github.houbb.opencc4j.util.ZhConverterUtil;
 import com.google.android.material.button.MaterialButton;
-import com.google.android.material.chip.Chip;
 import com.google.android.material.color.MaterialColors;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.whispertflite.asr.Recorder;
 import com.whispertflite.asr.RecordBuffer;
@@ -90,13 +86,16 @@ public class MainActivity extends AppCompatActivity {
     private enum UiState { READY, RECORDING, PROCESSING, RESULT, ERROR }
 
     private EditText tvResult;
-    private FloatingActionButton btnRecord;
+    private ImageButton btnRecord;
     private ImageButton btnInfo;
     private ImageButton btnOverflow;
-    private Chip append;
-    private Chip translate;
+    private android.widget.CheckBox append;
+    private android.widget.CheckBox translate;
     private LinearProgressIndicator processingBar;
     private WaveformView waveform;
+    private com.whispertflite.ui.AuroraOrbView orb;
+    private TextView tvReadyHint;
+    private TextView tvHintTap;
     private TextView tvTimer;
     private TextView perfChip;
     private LinearLayout layoutRecording;
@@ -117,7 +116,6 @@ public class MainActivity extends AppCompatActivity {
     private TextToSpeech tts;
 
     private UiState currentState = UiState.READY;
-    private ObjectAnimator fabPulse;
     private final Handler timerHandler = new Handler(Looper.getMainLooper());
     private long recordStartMs = 0;
     // Chunked recording: recording can outlive many transcriptions; the result state is reached
@@ -137,7 +135,6 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
-        stopFabPulse();
         deinitModel();
         deinitTTS();
         super.onDestroy();
@@ -163,6 +160,11 @@ public class MainActivity extends AppCompatActivity {
 
         processingBar = findViewById(R.id.processing_bar);
         waveform = findViewById(R.id.waveform);
+        orb = findViewById(R.id.orb);
+        orb.setColors(themeColor(com.google.android.material.R.attr.colorPrimary),
+                themeColor(com.google.android.material.R.attr.colorPrimaryContainer));
+        tvReadyHint = findViewById(R.id.tvReadyHint);
+        tvHintTap = findViewById(R.id.tvHintTap);
         tvTimer = findViewById(R.id.tvTimer);
         perfChip = findViewById(R.id.perf_chip);
         layoutRecording = findViewById(R.id.layout_recording);
@@ -257,11 +259,16 @@ public class MainActivity extends AppCompatActivity {
         btnRecord.setOnTouchListener((v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
                 Log.d(TAG, "Start recording...");
-                if (!mWhisper.isInProgress()) {
+                orb.animate().scaleX(0.93f).scaleY(0.93f).setDuration(120).start(); // tactile press
+                if (mWhisper == null) {
+                    Toast.makeText(this, R.string.main_model_loading, Toast.LENGTH_SHORT).show();
+                } else if (!mWhisper.isInProgress()) {
                     if (sp.getBoolean("hapticFeedback", true)) HapticFeedback.vibrate(this);
                     startRecording();
                 } else (Toast.makeText(this,getString(R.string.please_wait),Toast.LENGTH_SHORT)).show();
-            } else if (event.getAction() == MotionEvent.ACTION_UP) {
+            } else if (event.getAction() == MotionEvent.ACTION_UP
+                    || event.getAction() == MotionEvent.ACTION_CANCEL) {
+                orb.animate().scaleX(1f).scaleY(1f).setDuration(160).start();
                 if (mRecorder != null && mRecorder.isInProgress()) {
                     Log.d(TAG, "Recording is in progress... stopping...");
                     stopRecording();
@@ -301,7 +308,7 @@ public class MainActivity extends AppCompatActivity {
         // Audio recording functionality
         mRecorder = new Recorder(this);
         mRecorder.setRmsListener(rms -> runOnUiThread(() -> {
-            if (currentState == UiState.RECORDING) waveform.push(rms);
+            if (currentState == UiState.RECORDING) { waveform.push(rms); orb.pushLevel(rms); }
         }));
         // Each VAD chunk feeds the Whisper queue for live, sequential (pseudo-streaming) transcription.
         mRecorder.setChunkListener(pcm -> mWhisper.enqueueChunk(pcm));
@@ -358,49 +365,27 @@ public class MainActivity extends AppCompatActivity {
         TransitionManager.beginDelayedTransition((ViewGroup) resultLayout.getParent(),
                 new Fade().setDuration(180));
 
-        resultLayout.setVisibility(recording || error ? View.GONE : View.VISIBLE);
+        resultLayout.setVisibility(error ? View.GONE : View.VISIBLE);
         layoutRecording.setVisibility(recording ? View.VISIBLE : View.GONE);
         layoutError.setVisibility(error ? View.VISIBLE : View.GONE);
         layoutActions.setVisibility(result ? View.VISIBLE : View.GONE);
         perfChip.setVisibility(result ? View.VISIBLE : View.GONE);
         processingBar.setVisibility(processing ? View.VISIBLE : View.INVISIBLE);
+        // Transcript-panel placeholder shows only when the panel is empty (READY, nothing typed yet).
+        boolean empty = tvResult.getText().length() == 0;
+        if (tvReadyHint != null)
+            tvReadyHint.setVisibility(state == UiState.READY && empty ? View.VISIBLE : View.GONE);
+        // The "tap to speak" caption under the orb hides while recording (the timer takes over above).
+        if (tvHintTap != null) tvHintTap.setVisibility(recording ? View.GONE : View.VISIBLE);
 
         if (recording) {
-            btnRecord.setImageResource(R.drawable.ic_stop_24dp);
-            btnRecord.setBackgroundTintList(ColorStateList.valueOf(themeColor(com.google.android.material.R.attr.colorError)));
             recordStartMs = System.currentTimeMillis();
             tvTimer.setText("0:00");
             waveform.clear();
             timerHandler.post(timerTick);
-            startFabPulse();
         } else {
-            btnRecord.setImageResource(R.drawable.ic_mic_48dp);
-            btnRecord.setBackgroundTintList(ColorStateList.valueOf(themeColor(com.google.android.material.R.attr.colorPrimary)));
+            orb.setIdle(); // orb returns to calm breathing
             timerHandler.removeCallbacks(timerTick);
-            stopFabPulse();
-        }
-    }
-
-    /** Gentle repeating pulse on the mic FAB while recording; cancelled on any other state. */
-    private void startFabPulse() {
-        stopFabPulse();
-        fabPulse = ObjectAnimator.ofPropertyValuesHolder(btnRecord,
-                PropertyValuesHolder.ofFloat(View.SCALE_X, 1f, 1.08f),
-                PropertyValuesHolder.ofFloat(View.SCALE_Y, 1f, 1.08f));
-        fabPulse.setDuration(600);
-        fabPulse.setRepeatMode(ObjectAnimator.REVERSE);
-        fabPulse.setRepeatCount(ObjectAnimator.INFINITE);
-        fabPulse.start();
-    }
-
-    private void stopFabPulse() {
-        if (fabPulse != null) {
-            fabPulse.cancel();
-            fabPulse = null;
-        }
-        if (btnRecord != null) {
-            btnRecord.setScaleX(1f);
-            btnRecord.setScaleY(1f);
         }
     }
 
@@ -450,10 +435,12 @@ public class MainActivity extends AppCompatActivity {
         File vocabFile = selectedModel.engine == ModelInfo.Engine.TFLITE
                 ? new File(sdcardDataFolder, ModelRegistry.vocabFor(selectedModel)) : null;
 
-        mWhisper = new Whisper(this);
-        mWhisper.loadModel(modelFile, vocabFile, isMultilingualModel);
+        // Build fully into a local, then publish: initModel runs on a background thread and can race
+        // with deinitModel() (activity recreate for night mode / model switch) nulling the field.
+        Whisper whisper = new Whisper(this);
+        whisper.loadModel(modelFile, vocabFile, isMultilingualModel);
         Log.d(TAG, "Initialized: " + selectedModel.id + " (" + selectedModel.engine + ")");
-        mWhisper.setListener(new Whisper.WhisperListener() {
+        whisper.setListener(new Whisper.WhisperListener() {
             @Override
             public void onUpdateReceived(String message) {
                 Log.d(TAG, "Update is received, Message: " + message);
@@ -499,6 +486,7 @@ public class MainActivity extends AppCompatActivity {
                 });
             }
         });
+        mWhisper = whisper; // publish only once fully constructed
     }
 
     private double audioDurationSeconds() {
@@ -586,7 +574,9 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public View getView(int position, View convertView, ViewGroup parent) {
                 View view = super.getView(position, convertView, parent);
-                ((TextView) view.findViewById(android.R.id.text1)).setText(modelLabel(getItem(position)));
+                TextView t = view.findViewById(android.R.id.text1);
+                t.setText(modelLabel(getItem(position)));
+                t.setTextColor(ContextCompat.getColor(MainActivity.this, R.color.aurora_ink)); // dark screen
                 return view;
             }
 
@@ -604,7 +594,10 @@ public class MainActivity extends AppCompatActivity {
     private String modelLabel(ModelInfo m) {
         String engine = m.engine == ModelInfo.Engine.WHISPER_CPP
                 ? getString(R.string.catalog_engine_whispercpp) : getString(R.string.main_badge_tflite);
-        return m.displayName + " · " + engine;
+        // Drop the noisy "· TOP_WORLD" training-set tag from the spinner; the engine badge already
+        // shows the engine so the collapsed pill stays short (e.g. "base · TFLite").
+        String name = m.displayName.replace(" · TOP_WORLD", "");
+        return name + " · " + engine;
     }
 
     private void checkPermissions() {

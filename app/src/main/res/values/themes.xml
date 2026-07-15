@@ -32,6 +32,15 @@
         <item name="android:backgroundDimEnabled">false</item>
     </style>
 
+    <!-- Force light-on-dark text inside the Aurora pills (spinners inherit android:textColorPrimary,
+         which is dark under the palette's light surface and would be invisible on the dark screen). -->
+    <style name="ThemeOverlay.Aurora.OnDark" parent="">
+        <item name="android:textColorPrimary">@color/aurora_ink</item>
+        <item name="android:textColorSecondary">@color/aurora_ink_dim</item>
+        <item name="android:textColor">@color/aurora_ink</item>
+        <item name="colorControlNormal">@color/aurora_ink</item>
+    </style>
+
     <!-- Palette overlays applied at runtime by ThemeUtils.applyPalette. -->
     <style name="ThemeOverlay.Whisper.Teal" parent="">
         <item name="colorPrimary">@color/palette_teal_primary</item>

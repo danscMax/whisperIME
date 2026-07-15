@@ -3,3 +3,5 @@
 /app/.cxx/
 /.gradle/
 .superpowers/
+.playwright-mcp/
+plans/

@@ -3,8 +3,13 @@ package com.whispertflite.asr;
 import android.content.Context;
 import android.util.Log;
 
-import com.whispertflite.engine.WhisperEngine;
-import com.whispertflite.engine.WhisperEngineJava;
+import androidx.preference.PreferenceManager;
+
+import com.whispertflite.engine.AsrEngine;
+import com.whispertflite.engine.TfliteEngine;
+import com.whispertflite.engine.WhisperCppEngine;
+import com.whispertflite.models.ModelInfo;
+import com.whispertflite.models.ModelRegistry;
 
 import java.io.File;
 import java.io.IOException;
@@ -36,7 +41,8 @@ public class Whisper {
 
     private final AtomicBoolean mInProgress = new AtomicBoolean(false);
 
-    private final WhisperEngine mWhisperEngine;
+    private final Context mContext;
+    private AsrEngine mEngine;
     private Action mAction;
     private int mLangToken = -1;
     private WhisperListener mUpdateListener;
@@ -50,7 +56,7 @@ public class Whisper {
     private volatile boolean chunkMode = false;
 
     public Whisper(Context context) {
-        this.mWhisperEngine = new WhisperEngineJava(context);
+        this.mContext = context.getApplicationContext();
 
         // Start thread for RecordBuffer transcription
         Thread threadProcessRecordBuffer = new Thread(this::processRecordBufferLoop);
@@ -62,18 +68,35 @@ public class Whisper {
         this.mUpdateListener = listener;
     }
 
+    /**
+     * Load the engine for the active model. Routes by {@code selectedModelId} pref: a WHISPER_CPP
+     * model uses {@link WhisperCppEngine} (its GGUF file under getExternalFilesDir), otherwise the
+     * TFLite path uses the modelPath/vocabPath passed by legacy call sites. {@code isMultilingual}
+     * is retained for source compatibility; the chosen engine derives it from the model/filename.
+     */
     public void loadModel(File modelPath, File vocabPath, boolean isMultilingual) {
-        loadModel(modelPath.getAbsolutePath(), vocabPath.getAbsolutePath(), isMultilingual);
-        currentModelPath = modelPath.getAbsolutePath();
-    }
-
-    public void loadModel(String modelPath, String vocabPath, boolean isMultilingual) {
+        ModelInfo selected = selectedModel();
         try {
-            mWhisperEngine.initialize(modelPath, vocabPath, isMultilingual);
+            if (selected != null && selected.engine == ModelInfo.Engine.WHISPER_CPP) {
+                File gguf = new File(mContext.getExternalFilesDir(null), selected.filename);
+                mEngine = new WhisperCppEngine();
+                mEngine.load(selected, gguf, null);
+                currentModelPath = gguf.getAbsolutePath();
+            } else {
+                mEngine = new TfliteEngine(mContext);
+                mEngine.load(selected, modelPath, vocabPath);
+                currentModelPath = modelPath.getAbsolutePath();
+            }
         } catch (IOException e) {
             Log.e(TAG, "Error initializing model...", e);
             sendUpdate("Model initialization failed");
         }
+    }
+
+    private ModelInfo selectedModel() {
+        String id = PreferenceManager.getDefaultSharedPreferences(mContext)
+                .getString("selectedModelId", null);
+        return id != null ? ModelRegistry.byId(id) : null;
     }
 
     public String getCurrentModelPath(){
@@ -81,7 +104,7 @@ public class Whisper {
     }
 
     public void unloadModel() {
-        mWhisperEngine.deinitialize();
+        if (mEngine != null) mEngine.unload();
         currentModelPath = "";
     }
 
@@ -168,13 +191,14 @@ public class Whisper {
 
     private void processRecordBuffer() {
         try {
-            if (mWhisperEngine.isInitialized() && RecordBuffer.getOutputBuffer() != null) {
+            byte[] pcm = RecordBuffer.getOutputBuffer();
+            if (mEngine != null && mEngine.isLoaded() && pcm != null) {
                 long startTime = System.currentTimeMillis();
                 sendUpdate(MSG_PROCESSING);
 
-                WhisperResult whisperResult = null;
-                synchronized (mWhisperEngine) {
-                    whisperResult = mWhisperEngine.processRecordBuffer(mAction, mLangToken);
+                WhisperResult whisperResult;
+                synchronized (mEngine) {
+                    whisperResult = mEngine.transcribe(pcm, mAction, mLangToken);
                 }
                 sendResult(whisperResult);
 

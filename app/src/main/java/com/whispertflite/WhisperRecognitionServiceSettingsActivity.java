@@ -55,6 +55,8 @@ public class WhisperRecognitionServiceSettingsActivity extends AppCompatActivity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        ThemeUtils.applyNightMode(this);
+        ThemeUtils.applyPalette(this);
         setContentView(R.layout.activity_recognition_service_settings);
         ThemeUtils.setStatusBarAppearance(this);
         ActionBar actionBar = getSupportActionBar();

@@ -20,4 +20,65 @@
         <item name="android:backgroundDimEnabled">false</item>
     </style>
 
+    <!-- Palette overlays applied at runtime by ThemeUtils.applyPalette. -->
+    <style name="ThemeOverlay.Whisper.Teal" parent="">
+        <item name="colorPrimary">@color/palette_teal_primary</item>
+        <item name="colorOnPrimary">@color/palette_teal_onPrimary</item>
+        <item name="colorPrimaryContainer">@color/palette_teal_primaryContainer</item>
+        <item name="colorOnPrimaryContainer">@color/palette_teal_onPrimaryContainer</item>
+        <item name="colorSecondaryContainer">@color/palette_teal_secondaryContainer</item>
+        <item name="colorOnSecondaryContainer">@color/palette_teal_onSecondaryContainer</item>
+        <item name="android:colorBackground">@color/palette_teal_surface</item>
+        <item name="colorSurface">@color/palette_teal_surface</item>
+        <item name="colorOnSurface">@color/palette_teal_onSurface</item>
+        <item name="colorSurfaceVariant">@color/palette_teal_surfaceVariant</item>
+        <item name="colorOnSurfaceVariant">@color/palette_teal_onSurfaceVariant</item>
+        <item name="colorOutline">@color/palette_teal_outline</item>
+    </style>
+
+    <style name="ThemeOverlay.Whisper.Terracotta" parent="">
+        <item name="colorPrimary">@color/palette_terracotta_primary</item>
+        <item name="colorOnPrimary">@color/palette_terracotta_onPrimary</item>
+        <item name="colorPrimaryContainer">@color/palette_terracotta_primaryContainer</item>
+        <item name="colorOnPrimaryContainer">@color/palette_terracotta_onPrimaryContainer</item>
+        <item name="colorSecondaryContainer">@color/palette_terracotta_secondaryContainer</item>
+        <item name="colorOnSecondaryContainer">@color/palette_terracotta_onSecondaryContainer</item>
+        <item name="android:colorBackground">@color/palette_terracotta_surface</item>
+        <item name="colorSurface">@color/palette_terracotta_surface</item>
+        <item name="colorOnSurface">@color/palette_terracotta_onSurface</item>
+        <item name="colorSurfaceVariant">@color/palette_terracotta_surfaceVariant</item>
+        <item name="colorOnSurfaceVariant">@color/palette_terracotta_onSurfaceVariant</item>
+        <item name="colorOutline">@color/palette_terracotta_outline</item>
+    </style>
+
+    <style name="ThemeOverlay.Whisper.Indigo" parent="">
+        <item name="colorPrimary">@color/palette_indigo_primary</item>
+        <item name="colorOnPrimary">@color/palette_indigo_onPrimary</item>
+        <item name="colorPrimaryContainer">@color/palette_indigo_primaryContainer</item>
+        <item name="colorOnPrimaryContainer">@color/palette_indigo_onPrimaryContainer</item>
+        <item name="colorSecondaryContainer">@color/palette_indigo_secondaryContainer</item>
+        <item name="colorOnSecondaryContainer">@color/palette_indigo_onSecondaryContainer</item>
+        <item name="android:colorBackground">@color/palette_indigo_surface</item>
+        <item name="colorSurface">@color/palette_indigo_surface</item>
+        <item name="colorOnSurface">@color/palette_indigo_onSurface</item>
+        <item name="colorSurfaceVariant">@color/palette_indigo_surfaceVariant</item>
+        <item name="colorOnSurfaceVariant">@color/palette_indigo_onSurfaceVariant</item>
+        <item name="colorOutline">@color/palette_indigo_outline</item>
+    </style>
+
+    <style name="ThemeOverlay.Whisper.Forest" parent="">
+        <item name="colorPrimary">@color/palette_forest_primary</item>
+        <item name="colorOnPrimary">@color/palette_forest_onPrimary</item>
+        <item name="colorPrimaryContainer">@color/palette_forest_primaryContainer</item>
+        <item name="colorOnPrimaryContainer">@color/palette_forest_onPrimaryContainer</item>
+        <item name="colorSecondaryContainer">@color/palette_forest_secondaryContainer</item>
+        <item name="colorOnSecondaryContainer">@color/palette_forest_onSecondaryContainer</item>
+        <item name="android:colorBackground">@color/palette_forest_surface</item>
+        <item name="colorSurface">@color/palette_forest_surface</item>
+        <item name="colorOnSurface">@color/palette_forest_onSurface</item>
+        <item name="colorSurfaceVariant">@color/palette_forest_surfaceVariant</item>
+        <item name="colorOnSurfaceVariant">@color/palette_forest_onSurfaceVariant</item>
+        <item name="colorOutline">@color/palette_forest_outline</item>
+    </style>
+
 </resources>

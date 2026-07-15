@@ -38,4 +38,13 @@
     <string name="auto_button">automatic mode</string>
     <string name="error_no_input">No voice input received</string>
     <string name="auto_lang">Detect language</string>
+    <string name="history_title">History</string>
+    <string name="history_search_hint">Search transcriptions</string>
+    <string name="history_empty_emoji">🗒</string>
+    <string name="history_empty_hint">No transcriptions yet</string>
+    <string name="history_copied">Copied to clipboard</string>
+    <string name="history_share">Share</string>
+    <string name="history_delete">Delete</string>
+    <string name="history_clear_all">Clear all</string>
+    <string name="history_clear_all_confirm">Delete all recognition history? This cannot be undone.</string>
 </resources>

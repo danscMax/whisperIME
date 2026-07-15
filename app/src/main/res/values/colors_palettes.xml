@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Material 3 tonal roles for the 4 selectable palettes (light). -->
+<resources>
+
+    <!-- Teal (seed #006A60) -->
+    <color name="palette_teal_primary">#006A60</color>
+    <color name="palette_teal_onPrimary">#FFFFFF</color>
+    <color name="palette_teal_primaryContainer">#CCE8E1</color>
+    <color name="palette_teal_onPrimaryContainer">#00201B</color>
+    <color name="palette_teal_secondaryContainer">#CCE8E1</color>
+    <color name="palette_teal_onSecondaryContainer">#051F1B</color>
+    <color name="palette_teal_surface">#F4FBF8</color>
+    <color name="palette_teal_onSurface">#161D1B</color>
+    <color name="palette_teal_surfaceVariant">#DAE5E1</color>
+    <color name="palette_teal_onSurfaceVariant">#3F4946</color>
+    <color name="palette_teal_outline">#6F7975</color>
+
+    <!-- Terracotta (seed #9C4234) -->
+    <color name="palette_terracotta_primary">#9C4234</color>
+    <color name="palette_terracotta_onPrimary">#FFFFFF</color>
+    <color name="palette_terracotta_primaryContainer">#FFDAD2</color>
+    <color name="palette_terracotta_onPrimaryContainer">#3B0A03</color>
+    <color name="palette_terracotta_secondaryContainer">#FFDBD1</color>
+    <color name="palette_terracotta_onSecondaryContainer">#2C150F</color>
+    <color name="palette_terracotta_surface">#FFF8F6</color>
+    <color name="palette_terracotta_onSurface">#231917</color>
+    <color name="palette_terracotta_surfaceVariant">#F5DDD8</color>
+    <color name="palette_terracotta_onSurfaceVariant">#53433F</color>
+    <color name="palette_terracotta_outline">#85736E</color>
+
+    <!-- Indigo (seed #3F51E0) -->
+    <color name="palette_indigo_primary">#3F51E0</color>
+    <color name="palette_indigo_onPrimary">#FFFFFF</color>
+    <color name="palette_indigo_primaryContainer">#DEE0FF</color>
+    <color name="palette_indigo_onPrimaryContainer">#00006E</color>
+    <color name="palette_indigo_secondaryContainer">#E1E0F9</color>
+    <color name="palette_indigo_onSecondaryContainer">#191A2C</color>
+    <color name="palette_indigo_surface">#FBF8FF</color>
+    <color name="palette_indigo_onSurface">#1B1B1F</color>
+    <color name="palette_indigo_surfaceVariant">#E3E1EC</color>
+    <color name="palette_indigo_onSurfaceVariant">#46464F</color>
+    <color name="palette_indigo_outline">#767680</color>
+
+    <!-- Forest (seed #3E6837) -->
+    <color name="palette_forest_primary">#3E6837</color>
+    <color name="palette_forest_onPrimary">#FFFFFF</color>
+    <color name="palette_forest_primaryContainer">#BFF0B2</color>
+    <color name="palette_forest_onPrimaryContainer">#002204</color>
+    <color name="palette_forest_secondaryContainer">#D8E8CE</color>
+    <color name="palette_forest_onSecondaryContainer">#121F0F</color>
+    <color name="palette_forest_surface">#F7FBF1</color>
+    <color name="palette_forest_onSurface">#191D16</color>
+    <color name="palette_forest_surfaceVariant">#DEE5D8</color>
+    <color name="palette_forest_onSurfaceVariant">#424940</color>
+    <color name="palette_forest_outline">#72796F</color>
+
+</resources>

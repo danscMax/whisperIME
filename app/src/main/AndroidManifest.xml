@@ -88,6 +88,11 @@
                 android:resource="@xml/whisper_recognition_service_metadata" />
         </service>
 
+        <activity
+            android:name=".history.HistoryActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity" />
+
         <activity android:name="com.whispertflite.WhisperRecognitionServiceSettingsActivity"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|uiMode"
             android:theme="@style/Theme.Whisper.ActionBar"

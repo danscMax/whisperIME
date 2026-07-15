@@ -157,7 +157,11 @@ public class MainActivity extends AppCompatActivity {
         // showing/using the old model until the app is restarted.
         if (spinnerModel == null || sp == null) return;
         List<ModelInfo> downloaded = loadDownloadedModels();
-        if (downloaded.isEmpty()) return; // onboarding will take over on next cold start
+        if (downloaded.isEmpty()) { // every model was deleted in the catalog: back to onboarding
+            startActivity(new Intent(this, DownloadActivity.class));
+            finish();
+            return;
+        }
         String prefId = sp.getString("selectedModelId", selectedModel != null ? selectedModel.id : null);
         boolean modelChanged = selectedModel == null || !selectedModel.id.equals(prefId);
         boolean listChanged = !sameModelList(downloaded);

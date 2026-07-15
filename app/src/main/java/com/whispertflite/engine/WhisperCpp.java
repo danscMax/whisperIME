@@ -19,4 +19,7 @@ public final class WhisperCpp {
     public static native String nativeTranscribe(long ctxPtr, float[] pcm16k, String lang, boolean translate);
 
     public static native void nativeRelease(long ctxPtr);
+
+    /** Ask a running nativeTranscribe to abort as soon as possible (thread-safe). */
+    public static native void nativeCancel();
 }

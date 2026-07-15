@@ -4,6 +4,11 @@ project(whisper_jni CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Always optimize the native code, even in the debug APK variant. Without this, assembleDebug
+# builds ggml/whisper at -O0 and inference is 10-30x slower (base model ~70s/chunk on-device).
+# Directory-scoped, so it must precede add_subdirectory(whisper.cpp) below.
+add_compile_options(-O3 -ffast-math -fno-finite-math-only -DNDEBUG)
+
 # whisper.cpp submodule lives at repo_root/native/whisper.cpp
 set(WHISPER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../../native/whisper.cpp)
 

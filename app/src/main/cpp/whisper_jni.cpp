@@ -3,12 +3,21 @@
 #include <string>
 #include <thread>
 #include <algorithm>
+#include <atomic>
+#include <unistd.h>
 #include <android/log.h>
 
 #include "whisper.h"
 
 #define LOG_TAG "whisper_jni"
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+
+// Set by nativeCancel(); polled by whisper_full via the abort callback to stop a slow run early.
+static std::atomic<bool> g_cancel{false};
+
+static bool abort_callback(void *) {
+    return g_cancel.load();
+}
 
 static void throw_java(JNIEnv *env, const char *msg) {
     jclass cls = env->FindClass("java/lang/RuntimeException");
@@ -79,8 +88,11 @@ Java_com_whispertflite_engine_WhisperCpp_nativeTranscribe(JNIEnv *env, jclass, j
     }
 
     whisper_full_params wparams = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
-    int hw = (int) std::thread::hardware_concurrency();
-    wparams.n_threads       = std::max(1, std::min(4, hw));
+    // hardware_concurrency() is unreliable on Android (often 0); sysconf is the online core count.
+    int cores = (int) sysconf(_SC_NPROCESSORS_ONLN);
+    if (cores <= 0) cores = (int) std::thread::hardware_concurrency();
+    if (cores <= 0) cores = 4;
+    wparams.n_threads       = std::max(2, std::min(8, cores - 1)); // leave one core for UI/audio
     wparams.translate       = translate == JNI_TRUE;
     wparams.language        = langC; // null => auto-detect
     wparams.print_progress  = false;
@@ -89,10 +101,17 @@ Java_com_whispertflite_engine_WhisperCpp_nativeTranscribe(JNIEnv *env, jclass, j
     wparams.print_timestamps = false;
     wparams.no_context      = true;
     wparams.single_segment  = false;
+    // Let Java stop a slow run (large models take minutes on mobile CPUs).
+    g_cancel.store(false);
+    wparams.abort_callback  = abort_callback;
+    wparams.abort_callback_user_data = nullptr;
 
     int rc = whisper_full(ctx, wparams, samples, (int) n_samples);
     env->ReleaseFloatArrayElements(pcm16k, samples, JNI_ABORT);
 
+    if (g_cancel.load()) {
+        return env->NewStringUTF(""); // cancelled by user: return what we have (nothing)
+    }
     if (rc != 0) {
         LOGE("whisper_full failed rc=%d", rc);
         throw_java(env, "whisper_full failed");
@@ -109,6 +128,11 @@ Java_com_whispertflite_engine_WhisperCpp_nativeTranscribe(JNIEnv *env, jclass, j
     }
 
     return env->NewStringUTF(result.c_str());
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_whispertflite_engine_WhisperCpp_nativeCancel(JNIEnv *, jclass) {
+    g_cancel.store(true);
 }
 
 extern "C" JNIEXPORT void JNICALL

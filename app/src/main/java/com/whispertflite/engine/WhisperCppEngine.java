@@ -51,6 +51,11 @@ public final class WhisperCppEngine implements AsrEngine {
     }
 
     @Override
+    public void cancel() {
+        WhisperCpp.nativeCancel();
+    }
+
+    @Override
     public WhisperResult transcribe(byte[] pcm16k, Whisper.Action action, int langToken) {
         if (ctxPtr == 0 || pcm16k == null) {
             return new WhisperResult("", "", action);

@@ -144,6 +144,54 @@ public class Recorder {
             mListener.onUpdateReceived(message);
     }
 
+    /**
+     * Peak-normalize 16-bit little-endian PCM in place. Phone mics on VOICE_RECOGNITION deliver a
+     * raw, often very quiet signal (no AGC); Whisper and the VAD both degrade on it. Gain is capped
+     * so noise-only audio is not blown up.
+     */
+    private static void normalizePcm(byte[] pcm) {
+        int peak = 0;
+        for (int i = 0; i + 1 < pcm.length; i += 2) {
+            int s = Math.abs((pcm[i] & 0xff) | (pcm[i + 1] << 8));
+            if (s > peak) peak = s;
+        }
+        if (peak < 100) return; // silence: nothing to normalize
+        double gain = Math.min(8.0, 0.95 * 32767.0 / peak);
+        if (gain < 1.2) return; // already loud enough
+        for (int i = 0; i + 1 < pcm.length; i += 2) {
+            int s = (short) ((pcm[i] & 0xff) | (pcm[i + 1] << 8));
+            int v = (int) Math.round(s * gain);
+            if (v > 32767) v = 32767;
+            if (v < -32768) v = -32768;
+            pcm[i] = (byte) (v & 0xff);
+            pcm[i + 1] = (byte) ((v >> 8) & 0xff);
+        }
+    }
+
+    /** Start Bluetooth SCO only when a Bluetooth input device is actually connected. */
+    private boolean maybeStartSco(AudioManager audioManager) {
+        try {
+            for (android.media.AudioDeviceInfo d : audioManager.getDevices(AudioManager.GET_DEVICES_INPUTS)) {
+                if (d.getType() == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO) {
+                    audioManager.startBluetoothSco();
+                    audioManager.setBluetoothScoOn(true);
+                    return true;
+                }
+            }
+        } catch (Exception ignored) { }
+        return false;
+    }
+
+    /** Attach platform AGC/noise-suppression to the record session where the device offers them. */
+    private void attachEffects(AudioRecord audioRecord) {
+        try {
+            if (android.media.audiofx.AutomaticGainControl.isAvailable())
+                android.media.audiofx.AutomaticGainControl.create(audioRecord.getAudioSessionId()).setEnabled(true);
+            if (android.media.audiofx.NoiseSuppressor.isAvailable())
+                android.media.audiofx.NoiseSuppressor.create(audioRecord.getAudioSessionId()).setEnabled(true);
+        } catch (Exception ignored) { }
+    }
+
     /** Compute normalized RMS of a 16-bit little-endian PCM frame and notify the listener. */
     private void emitRms(byte[] data, int bytes) {
         if (mRmsListener == null || bytes < 2) return;
@@ -198,14 +246,13 @@ public class Recorder {
         int sampleRateInHz = 16000;
         int channelConfig = AudioFormat.CHANNEL_IN_MONO;
         int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
-        int audioSource = MediaRecorder.AudioSource.VOICE_RECOGNITION;
+        int audioSource = MediaRecorder.AudioSource.MIC;
 
         int bufferSize = AudioRecord.getMinBufferSize(sampleRateInHz, channelConfig, audioFormat);
         if (bufferSize < VAD_FRAME_SIZE * 2) bufferSize = VAD_FRAME_SIZE * 2;
 
         AudioManager audioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
-        audioManager.startBluetoothSco();
-        audioManager.setBluetoothScoOn(true);
+        boolean scoStarted = maybeStartSco(audioManager);
 
         AudioRecord.Builder builder = new AudioRecord.Builder()
                 .setAudioSource(audioSource)
@@ -217,6 +264,7 @@ public class Recorder {
                 .setBufferSizeInBytes(bufferSize);
 
         AudioRecord audioRecord = builder.build();
+        attachEffects(audioRecord);
         audioRecord.startRecording();
 
         // Calculate maximum byte counts for 30 seconds (for saving)
@@ -277,11 +325,15 @@ public class Recorder {
         }
         audioRecord.stop();
         audioRecord.release();
-        audioManager.stopBluetoothSco();
-        audioManager.setBluetoothScoOn(false);
+        if (scoStarted) {
+            audioManager.stopBluetoothSco();
+            audioManager.setBluetoothScoOn(false);
+        }
 
         // Save recorded audio data to BufferStore (up to 30 seconds)
-        RecordBuffer.setOutputBuffer(outputBuffer.toByteArray());
+        byte[] recorded = outputBuffer.toByteArray();
+        normalizePcm(recorded);
+        RecordBuffer.setOutputBuffer(recorded);
         if (totalBytesRead > 6400){  //min 0.2s
             sendUpdate(MSG_RECORDING_DONE);
         } else {
@@ -311,14 +363,13 @@ public class Recorder {
         int channelConfig = AudioFormat.CHANNEL_IN_MONO;
         int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
         int sampleRateInHz = 16000;
-        int audioSource = MediaRecorder.AudioSource.VOICE_RECOGNITION;
+        int audioSource = MediaRecorder.AudioSource.MIC;
 
         int bufferSize = AudioRecord.getMinBufferSize(sampleRateInHz, channelConfig, audioFormat);
         if (bufferSize < VAD_FRAME_SIZE * 2) bufferSize = VAD_FRAME_SIZE * 2;
 
         AudioManager audioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
-        audioManager.startBluetoothSco();
-        audioManager.setBluetoothScoOn(true);
+        boolean scoStarted = maybeStartSco(audioManager);
 
         AudioRecord audioRecord = new AudioRecord.Builder()
                 .setAudioSource(audioSource)
@@ -329,6 +380,7 @@ public class Recorder {
                         .build())
                 .setBufferSizeInBytes(bufferSize)
                 .build();
+        attachEffects(audioRecord);
         audioRecord.startRecording();
 
         VadWebRTC chunkVad = Vad.builder()
@@ -355,7 +407,14 @@ public class Recorder {
             chunk.write(frame, 0, bytesRead);
             emitRms(frame, bytesRead);
 
-            boolean isSpeech = bytesRead == VAD_FRAME_SIZE * 2 && chunkVad.isSpeech(frame);
+            // VAD sees a normalized copy: quiet mics (raw VOICE_RECOGNITION path) otherwise never
+            // cross the speech threshold. webrtc VAD is spectral, so amplified noise stays rejected.
+            boolean isSpeech = false;
+            if (bytesRead == VAD_FRAME_SIZE * 2) {
+                byte[] vadFrame = frame.clone();
+                normalizePcm(vadFrame);
+                isSpeech = chunkVad.isSpeech(vadFrame);
+            }
             if (isSpeech) {
                 if (!announced) { announced = true; sendUpdate(MSG_RECORDING); }
                 chunkHasSpeech = true;
@@ -367,7 +426,9 @@ public class Recorder {
             boolean pauseSplit = chunkHasSpeech && silenceFrames >= CHUNK_SILENCE_FRAMES;
             boolean capSplit = chunk.size() >= CHUNK_HARD_CAP_BYTES;
             if (pauseSplit || capSplit) {
-                mChunkListener.onChunk(chunk.toByteArray());
+                byte[] out = chunk.toByteArray();
+                normalizePcm(out);
+                mChunkListener.onChunk(out);
                 chunksEmitted++;
                 chunk.reset();
                 chunkHasSpeech = false;
@@ -377,15 +438,19 @@ public class Recorder {
 
         // Flush the trailing chunk (whatever was captured since the last split).
         if (chunkHasSpeech && chunk.size() > 6400) {  // min 0.2 s
-            mChunkListener.onChunk(chunk.toByteArray());
+            byte[] out = chunk.toByteArray();
+            normalizePcm(out);
+            mChunkListener.onChunk(out);
             chunksEmitted++;
         }
 
         chunkVad.close();
         audioRecord.stop();
         audioRecord.release();
-        audioManager.stopBluetoothSco();
-        audioManager.setBluetoothScoOn(false);
+        if (scoStarted) {
+            audioManager.stopBluetoothSco();
+            audioManager.setBluetoothScoOn(false);
+        }
 
         Log.d(TAG, "Chunked recording done, chunks emitted: " + chunksEmitted);
         sendUpdate(chunksEmitted > 0 ? MSG_RECORDING_DONE : MSG_RECORDING_ERROR);

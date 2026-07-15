@@ -55,13 +55,21 @@ public class Whisper {
     private final BlockingQueue<byte[]> chunkQueue = new LinkedBlockingQueue<>();
     private volatile boolean chunkMode = false;
 
+    private final Thread mWorker;
+
     public Whisper(Context context) {
         this.mContext = context.getApplicationContext();
 
         // Start thread for RecordBuffer transcription
-        Thread threadProcessRecordBuffer = new Thread(this::processRecordBufferLoop);
-        threadProcessRecordBuffer.start();
+        mWorker = new Thread(this::processRecordBufferLoop);
+        mWorker.start();
+    }
 
+    /** Stop the worker thread and free the engine. Call when discarding this instance (model switch). */
+    public void shutdown() {
+        stop();
+        unloadModel();
+        mWorker.interrupt();
     }
 
     public void setListener(WhisperListener listener) {
@@ -133,6 +141,8 @@ public class Whisper {
     public void stop() {
         mInProgress.set(false);
         chunkQueue.clear();
+        // Abort a slow in-flight native run (large whisper.cpp models take minutes on mobile CPUs).
+        if (mEngine != null) mEngine.cancel();
     }
 
     public boolean isInProgress() {

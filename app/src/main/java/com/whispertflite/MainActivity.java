@@ -188,8 +188,9 @@ public class MainActivity extends AppCompatActivity {
         }
         selectedModel = resolveSelectedModel(downloadedModels);
 
-        // Initialize the selected model.
-        initModel();
+        // Initialize the selected model off the UI thread: a GGUF model can be ~0.5 GB and would
+        // otherwise ANR at launch. btnRecord is enabled once the model is ready.
+        new Thread(this::initModel).start();
 
         btnInfo = findViewById(R.id.btnInfo);
         btnInfo.setOnClickListener(view -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/woheller69/whisperIME#Donate"))));
@@ -236,12 +237,13 @@ public class MainActivity extends AppCompatActivity {
                 ModelInfo picked = (ModelInfo) parent.getItemAtPosition(position);
                 // Skip the initial callback fired during setup (model already loaded).
                 if (picked.id.equals(selectedModel.id) && mWhisper != null) return;
-                deinitModel();
                 selectedModel = picked;
                 sp.edit().putString("selectedModelId", selectedModel.id).apply();
-                initModel();
                 updateEngineBadge();
                 applyLanguageEnabled(languagePairAdapter);
+                // Loading a GGUF model (up to ~0.5 GB) blocks for seconds; never do it on the UI
+                // thread or the app freezes ("can't change model without restart"). Switch off-thread.
+                switchModelAsync();
             }
 
             @Override
@@ -425,6 +427,22 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // Model initialization
+    /** Swap to {@link #selectedModel} without blocking the UI thread on the (possibly large) load. */
+    private void switchModelAsync() {
+        btnRecord.setEnabled(false);
+        spinnerModel.setEnabled(false);
+        processingBar.setVisibility(View.VISIBLE);
+        new Thread(() -> {
+            deinitModel();
+            initModel();
+            runOnUiThread(() -> {
+                btnRecord.setEnabled(true);
+                spinnerModel.setEnabled(true);
+                if (currentState != UiState.RESULT) processingBar.setVisibility(View.INVISIBLE);
+            });
+        }).start();
+    }
+
     private void initModel() {
         File modelFile = new File(sdcardDataFolder, selectedModel.filename);
         boolean isMultilingualModel = !selectedModel.englishOnly;
@@ -491,7 +509,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void deinitModel() {
         if (mWhisper != null) {
-            mWhisper.unloadModel();
+            mWhisper.shutdown();
             mWhisper = null;
         }
     }
@@ -616,6 +634,10 @@ public class MainActivity extends AppCompatActivity {
     // Recording calls
     private void startRecording() {
         checkPermissions();
+        if (mWhisper == null) { // model still loading (async): ignore the tap
+            Toast.makeText(this, R.string.main_model_loading, Toast.LENGTH_SHORT).show();
+            return;
+        }
         recordingStopped = false;
         resultFinalized = false;
         lastLanguage = "";

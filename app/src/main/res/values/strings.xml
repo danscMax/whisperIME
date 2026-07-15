@@ -84,6 +84,7 @@
     <string name="main_error_hint">Speak closer to the mic or check that it isn\'t used by another app.</string>
     <string name="main_retry">Try again</string>
     <string name="main_perf_chip">%1$.1f s · ×%2$.1f</string>
+    <string name="main_model_loading">Loading model…</string>
     <string name="append_short">Append</string>
     <string name="translate_short">Translate to EN</string>
     <string name="main_cd_menu">More options</string>

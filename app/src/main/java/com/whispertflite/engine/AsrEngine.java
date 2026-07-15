@@ -27,6 +27,9 @@ public interface AsrEngine {
 
     boolean isLoaded();
 
+    /** Best-effort abort of an in-flight transcribe() (slow native runs). Safe to call from any thread; no-op if idle or unsupported. */
+    default void cancel() {}
+
     /** Transcribe one 16-bit little-endian PCM @16 kHz chunk. Returns empty text on failure, never null. */
     WhisperResult transcribe(byte[] pcm16k, Whisper.Action action, int langToken);
 }

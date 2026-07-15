@@ -36,10 +36,10 @@ public final class ModelRegistry {
         m.add(ModelInfo.of("tflite-tiny-en", "tiny · English", Engine.TFLITE,
                 TFLITE_BASE + "whisper-tiny.en.tflite", 41486616L,
                 "whisper-tiny.en.tflite", 1, true, 1, 1));
-        m.add(ModelInfo.of("tflite-base-topworld", "base · TOP_WORLD", Engine.TFLITE,
+        m.add(ModelInfo.of("tflite-base-topworld", "base", Engine.TFLITE,
                 TFLITE_BASE + "whisper-base.TOP_WORLD.tflite", 107564368L,
                 "whisper-base.TOP_WORLD.tflite", 78, false, 1, 2));
-        m.add(ModelInfo.of("tflite-small-topworld", "small · TOP_WORLD", Engine.TFLITE,
+        m.add(ModelInfo.of("tflite-small-topworld", "small", Engine.TFLITE,
                 TFLITE_BASE + "whisper-small.TOP_WORLD.tflite", 307408944L,
                 "whisper-small.TOP_WORLD.tflite", 78, false, 2, 2));
 

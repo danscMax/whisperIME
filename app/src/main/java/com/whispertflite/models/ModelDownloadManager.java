@@ -254,11 +254,15 @@ public class ModelDownloadManager {
         ConnectivityManager cm =
                 (ConnectivityManager) appContext.getSystemService(Context.CONNECTIVITY_SERVICE);
         if (cm == null) return true; // can't tell: don't block
-        Network net = cm.getActiveNetwork();
-        if (net == null) return false;
-        NetworkCapabilities caps = cm.getNetworkCapabilities(net);
-        return caps != null && (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
-                || caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET));
+        try {
+            Network net = cm.getActiveNetwork();
+            if (net == null) return false;
+            NetworkCapabilities caps = cm.getNetworkCapabilities(net);
+            return caps != null && (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+                    || caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET));
+        } catch (SecurityException e) {
+            return true; // can't tell: don't block
+        }
     }
 
     private void emitProgress(String id, long bytes, long total, long bps) {

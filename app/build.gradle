@@ -18,6 +18,12 @@ android {
         versionCode 36
         versionName "3.6"
 
+        externalNativeBuild {
+            cmake {
+                arguments "-DANDROID_STL=c++_shared"
+                cppFlags "-std=c++17"
+            }
+        }
     }
 
     buildFeatures {
@@ -26,6 +32,12 @@ android {
     }
 
     buildTypes {
+        debug {
+            ndk {
+                // Include x86_64 so the app runs on the emulator; arm for real devices.
+                abiFilters "arm64-v8a", "armeabi-v7a", "x86_64"
+            }
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
@@ -35,7 +47,12 @@ android {
         }
     }
 
-    // Removed externalNativeBuild block
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
+            version "3.22.1"
+        }
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

@@ -7,7 +7,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.inputmethodservice.InputMethodService;
 import android.os.Handler;
@@ -65,6 +64,7 @@ public class WhisperInputMethodService extends InputMethodService {
     private LinearLayout idleGroup;
     private LinearLayout layoutButtons;
     private com.whispertflite.ui.WaveformView waveform;
+    private com.whispertflite.ui.AuroraOrbView orb;
     private View rootView;
 
     private Recorder mRecorder = null;
@@ -190,6 +190,9 @@ public class WhisperInputMethodService extends InputMethodService {
         idleGroup = rootView.findViewById(R.id.idle_group);
         layoutButtons = rootView.findViewById(R.id.layout_buttons);
         waveform = rootView.findViewById(R.id.waveform);
+        orb = rootView.findViewById(R.id.orb);
+        orb.setColors(themeColor(com.google.android.material.R.attr.colorPrimary),
+                themeColor(com.google.android.material.R.attr.colorPrimaryContainer));
 
         btnTranslate.setImageResource(translate ? R.drawable.ic_english_on_36dp : R.drawable.ic_english_off_36dp);
         modeAuto = sp.getBoolean("imeModeAuto", false);
@@ -198,7 +201,10 @@ public class WhisperInputMethodService extends InputMethodService {
         checkRecordPermission();
 
         mRecorder = new Recorder(this);
-        mRecorder.setRmsListener(rms -> handler.post(() -> waveform.push(rms)));
+        mRecorder.setRmsListener(rms -> handler.post(() -> {
+            waveform.push(rms);
+            orb.pushLevel(rms);
+        }));
         mRecorder.setListener(new Recorder.RecorderListener() {
             @Override
             public void onUpdateReceived(String message) {
@@ -458,18 +464,16 @@ public class WhisperInputMethodService extends InputMethodService {
         recordRing.setVisibility(recording ? View.VISIBLE : View.GONE);
         processingSpinner.setVisibility(processing ? View.VISIBLE : View.GONE);
         btnRecord.setVisibility(processing ? View.INVISIBLE : View.VISIBLE);
+        orb.setVisibility(processing ? View.INVISIBLE : View.VISIBLE);
         tvStatus.setVisibility(View.GONE);
 
         if (recording) {
-            btnRecord.setImageResource(R.drawable.ic_stop_24dp);
-            btnRecord.setBackgroundTintList(ColorStateList.valueOf(themeColor(com.google.android.material.R.attr.colorError)));
             recordStartMs = System.currentTimeMillis();
             tvTimer.setText("0:00");
             waveform.clear();
             timerHandler.post(timerTick);
         } else {
-            btnRecord.setImageResource(R.drawable.ic_mic_48dp);
-            btnRecord.setBackgroundTintList(ColorStateList.valueOf(themeColor(com.google.android.material.R.attr.colorPrimary)));
+            orb.setIdle();  // orb returns to calm breathing
             timerHandler.removeCallbacks(timerTick);
         }
     }

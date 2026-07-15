@@ -1,19 +1,25 @@
-Whisper is an input method editor (IME) with voice recognition based on Whisper
+WhisperIME turns speech into text entirely on your phone, using OpenAI's Whisper
+models running locally. Nothing you say ever leaves the device.
 
-It can work as standalone app and also offers an IME which can e.g. be activated
-via the microphone button in <a href="https://f-droid.org/packages/helium314.keyboard/">HeliBoard</a>.
+It works three ways: as a standalone app, as a system-wide keyboard (IME) which can
+e.g. be activated via the microphone button in HeliBoard, and as your device's voice
+input service.
 
-At first start it needs to download the Whisper models from Hugging Face.
-This is the only use of the internet permission.
+Features:
+<ul>
+<li>Fully offline — the internet permission is only used to download the model you choose</li>
+<li>Two engines: TensorFlow Lite and whisper.cpp (GGUF), picked automatically by the model</li>
+<li>Model catalog with per-model download, resume, cancel, delete and a Wi-Fi-only option</li>
+<li>Unlimited dictation — no 30-second cap, speech is split at pauses and transcribed as you go</li>
+<li>Recognition history with search; password fields are never recorded</li>
+<li>Material You design: four palettes plus dynamic color, light/dark/system</li>
+<li>Quick Settings tile, home-screen widget, and a Dictate action in the text-selection menu</li>
+<li>As a standalone app it can also translate any supported language to English</li>
+</ul>
 
-Voice recognition works completely offline.
-
-As standalone app Whisper can also translate any supported language to English.
-
-To get the most out of Whisper:
+To get the most out of WhisperIME:
 <ul>
 <li>Press and hold the button while speaking</li>
 <li>Pause briefly before starting to speak</li>
 <li>Speak clearly, loudly, and at a moderate pace</li>
-<li>Please note that there is a limit of 30s for each recording</li>
 </ul>

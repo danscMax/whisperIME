@@ -1,88 +1,96 @@
- ```
-Google has announced that, starting in 2026/2027, all apps on certified Android devices
-will require the developer to submit personal identity details directly to Google.
-Since the developers of this app do not agree to this requirement, this app will no longer 
-work on certified Android devices after that time.
+# WhisperIME
+
+**Beautiful offline voice-to-text for Android — Whisper on-device, two engines, zero cloud.**
+
+WhisperIME turns speech into text entirely on your phone. It works as a standalone app,
+as a system-wide keyboard (IME), and as your device's voice input service — all backed by
+OpenAI's Whisper models running locally. Nothing you say ever leaves the device.
+
+This is a redesigned fork of [woheller69/whisperIME](https://github.com/woheller69/whisperIME)
+with a Material You interface, a second inference engine (whisper.cpp), a model catalog,
+unlimited dictation, and recognition history.
+
+<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/01.png" width="150"/> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/02.png" width="150"/> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/03.png" width="150"/> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/04.png" width="150"/> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/05.png" width="150"/> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/06.png" width="150"/>
+
+## Features
+
+- **Fully offline.** Recognition runs on-device. The only time the internet permission is
+  used is to download the model you choose.
+- **Two engines, one abstraction.** TensorFlow Lite (the original models) and whisper.cpp
+  (GGUF models) behind a common interface — the model you pick decides the engine.
+- **Model catalog.** Eight models with per-model download, resume, cancel and delete,
+  progress and speed, an optional Wi-Fi-only guard, and a storage summary.
+- **Unlimited dictation.** No 30-second cap: voice activity detection splits speech at
+  pauses into chunks, transcribed sequentially and appended as you go (pseudo-streaming).
+- **Recognition history** with search, copy, share and delete. Privacy-first: password
+  fields are never recorded, and keyboard logging is a toggle you control.
+- **Material You.** Four hand-tuned palettes (Teal, Terracotta, Indigo, Forest) plus
+  dynamic color (Monet) on Android 12+, with light / dark / system themes.
+- **Three surfaces.** Standalone app, input method editor (e.g. via the microphone button
+  in [HeliBoard](https://github.com/Helium314/HeliBoard)), and system voice input
+  (`RecognitionService`) — plus a redesigned recognition bottom-sheet.
+- **Quick access.** A Quick Settings tile, a home-screen widget, and a "Dictate" action in
+  the text-selection menu (`ACTION_PROCESS_TEXT`).
+- **Onboarding** for first run, a redesigned IME strip, and a translate-to-English mode in
+  the standalone app.
+- **Localized** in English and Russian.
+
+## Models
+
+| Model | Engine | Size | Languages |
+|---|---|---|---|
+| tiny · English | TFLite | 41 MB | English only |
+| base · TOP_WORLD | TFLite | 108 MB | 78 |
+| small · TOP_WORLD | TFLite | 307 MB | 78 |
+| tiny | whisper.cpp | 75 MB | 99 |
+| base | whisper.cpp | 142 MB | 99 |
+| small | whisper.cpp | 466 MB | 99 |
+| medium · Q5 | whisper.cpp | 514 MB | 99 |
+| large-v3-turbo · Q5 | whisper.cpp | 547 MB | 99 |
+
+TFLite models come from [DocWolle/whisper_tflite_models](https://huggingface.co/DocWolle/whisper_tflite_models);
+GGUF models from [ggerganov/whisper.cpp](https://huggingface.co/ggerganov/whisper.cpp). Both
+are hosted on Hugging Face and downloaded on demand.
+
+## Tips
+
+- Press and hold the button while speaking, or use auto mode where available.
+- Pause briefly before you start speaking.
+- Speak clearly, loudly, and at a moderate pace.
+
+## Build
+
+Requirements:
+
+- **JDK 17+** — easiest via the JBR bundled with Android Studio.
+- **Android SDK**, plus the **NDK** and **CMake** (needed to compile the whisper.cpp engine).
+- The **whisper.cpp** submodule.
+
+```sh
+git clone https://github.com/danscMax/whisperIME.git
+cd whisperIME
+git submodule update --init --recursive
+./gradlew assembleDebug
 ```
 
-## Donate
-<pre>Send a coffee to 
-woheller69@t-online.de 
-<a href= "https://www.paypal.com/signin"><img  align="left" src="https://www.paypalobjects.com/webstatic/de_DE/i/de-pp-logo-150px.png"></a>
+The APK lands in `app/build/outputs/apk/debug/`.
 
-  
-Or via this link (with fees)
-<a href="https://www.paypal.com/donate?hosted_button_id=XVXQ54LBLZ4AA"><img  align="left" src="https://img.shields.io/badge/Donate%20with%20Debit%20or%20Credit%20Card-002991?style=plastic"></a></pre>
-# Voice recognition based on Whisper
+## Credits & licenses
 
-<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/01.png" width="150"/> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/02.png" width="150"/>
+This work is licensed under the **MIT license**. It is a fork of
+[woheller69/whisperIME](https://github.com/woheller69/whisperIME) (© woheller69), which is
+based on the [Whisper-Android project](https://github.com/vilassn/whisper_android).
 
-Whisper is an input method editor (IME) that leverages voice recognition technology based on the Whisper engine. 
-It offers a seamless user experience, functioning both as a standalone application and an integrated IME that can be activated, e.g. via the microphone button in HeliBoard.
-As a standalone app Whisper can also translate any supported language to English.
-
-Besides providing an IME, whisper can also be selected as system-wide voice input (RecognitionService) and it supports calls via intent (RecognizerIntent.ACTION_RECOGNIZE_SPEECH).
-
-## Initial Setup
-
-Upon launching Whisper for the first time, the app will download the necessary Whisper models (~435 MB) from Hugging Face. 
-Please note that this is the only instance where internet permission is required. 
-Once the models are downloaded, voice recognition works entirely offline, ensuring your privacy and convenience.
-
-Please note that for use as voice input (not as IME) there is a separate settings activity which can be accessed from Android settings 
-(System > Languages > Speech > Voice Input). There you can activate the app as voice input and then click the settings button.
-In settings you can then select the model for voice input.
-
-If after installation you do not find Whisper as voice input or only see a limited list (hard-coded ones like Google/Samsung)
-- enable USB debugging
-- type adb shell settings put secure voice_recognition_service org.woheller69.whisper/com.whispertflite.WhisperRecognitionService
-
-## Model Selection
-
-Whisper offers two models to choose from: a compact English-only model that prioritizes speed and a more comprehensive multi-lingual model that, while much slower, 
-supports a broader range of languages. Select your preferred model within the app, and it will be applied consistently across all uses, including when used as an IME.
-
-## Using Whisper
-
-To get the most out of Whisper, follow these simple tips:
-
-- Press and hold the button while speaking or use automatic mode where available
-- Pause briefly before starting to speak
-- Speak clearly, loudly, and at a moderate pace
-- Please note that there is a limit of 30s for each recording
-
-By following these guidelines, you'll be able to enjoy accurate and efficient voice recognition with Whisper.
-
-[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" height="75">](https://f-droid.org/de/packages/org.woheller69.whisper/) [<img src="https://www.openapk.net/images/openapk-badge.png" height="75">]( https://www.openapk.net/whisper/org.woheller69.whisper/)
-
+- [OpenAI Whisper](https://github.com/openai/whisper) — MIT license. Details on Whisper are
+  in the [paper](https://arxiv.org/abs/2212.04356).
+- [whisper.cpp](https://github.com/ggml-org/whisper.cpp) by ggml-org — MIT license.
+- [Android VAD](https://github.com/gkonovalov/android-vad) — MIT license.
+- [Opencc4j](https://github.com/houbb/opencc4j) for Chinese conversions — Apache-2.0 license.
+- TFLite models from [DocWolle/whisper_tflite_models](https://huggingface.co/DocWolle/whisper_tflite_models) — MIT license.
+- GGUF models from [ggerganov/whisper.cpp](https://huggingface.co/ggerganov/whisper.cpp) on Hugging Face.
 
 ## Contribute
 
-For translations use https://toolate.othing.xyz/projects/whisperime/
-
-# License
-This work is licensed under MIT license, © woheller69
-
-- This app is based on the [Whisper-Android project](https://github.com/vilassn/whisper_android), published under MIT license
-- It uses [OpenAI Whisper](https://github.com/openai/whisper) published under MIT license. Details on Whisper are found [here](https://arxiv.org/abs/2212.04356).
-- It uses [Android VAD](https://github.com/gkonovalov/android-vad), which is published under MIT license
-- It uses [Opencc4j](https://github.com/houbb/opencc4j), for Chinese conversions, published under Apache-2.0 license
-- At first start it downloads the Whisper TFLite models from [Hugging Face](https://huggingface.co/DocWolle/whisper_tflite_models), which is published under MIT license
-
-# OTHER APPS
-
-| **RadarWeather** | **Gas Prices** | **Smart Eggtimer** |
-|:---:|:---:|:--:|
-| [<img src="https://github.com/woheller69/weather/blob/main/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.weather/) | [<img src="https://github.com/woheller69/spritpreise/blob/main/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.spritpreise/) | [<img src="https://github.com/woheller69/eggtimer/blob/main/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.eggtimer/) |
-| **Bubble** | **hEARtest** | **GPS Cockpit** |
-| [<img src="https://github.com/woheller69/Level/blob/master/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.level/) | [<img src="https://github.com/woheller69/audiometry/blob/new/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.audiometry/) | [<img src="https://github.com/woheller69/gpscockpit/blob/master/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.gpscockpit/) |
-| **Audio Analyzer** | **LavSeeker** | **TimeLapseCam** |
-| [<img src="https://github.com/woheller69/audio-analyzer-for-android/blob/master/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.audio_analyzer_for_android/) |[<img src="https://github.com/woheller69/lavatories/blob/master/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.lavatories/) | [<img src="https://github.com/woheller69/TimeLapseCamera/blob/master/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.TimeLapseCam/) |
-| **Arity** | **Cirrus** | **solXpect** |
-| [<img src="https://github.com/woheller69/arity/blob/master/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.arity/) | [<img src="https://github.com/woheller69/omweather/blob/master/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.omweather/) | [<img src="https://github.com/woheller69/solXpect/blob/main/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.solxpect/) |
-| **gptAssist** | **dumpSeeker** | **huggingAssist** |
-| [<img src="https://github.com/woheller69/gptassist/blob/master/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.gptassist/) | [<img src="https://github.com/woheller69/dumpseeker/blob/main/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.dumpseeker/) | [<img src="https://github.com/woheller69/huggingassist/blob/master/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.hugassist/) |
-| **FREE Browser** | **whoBIRD** | **PeakOrama** |
-| [<img src="https://github.com/woheller69/browser/blob/newmaster/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.browser/) | [<img src="https://github.com/woheller69/whoBIRD/blob/master/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.whobird/) | [<img src="https://github.com/woheller69/PeakOrama/blob/master/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.PeakOrama/) |
-| **Whisper** | **Seamless** | **SherpaTTS** |
-| [<img src="https://github.com/woheller69/whisperIME/blob/master/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.whisper/) | [<img src="https://github.com/woheller69/seamless/blob/master/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.seemless/) | [<img src="https://github.com/woheller69/ttsengine/blob/master/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.ttsengine/) |
+For translations, use https://toolate.othing.xyz/projects/whisperime/
+</content>
+</invoke>

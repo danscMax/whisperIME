@@ -1,6 +1,8 @@
 package com.whispertflite;
 
 import android.Manifest;
+import android.animation.ObjectAnimator;
+import android.animation.PropertyValuesHolder;
 import android.annotation.SuppressLint;
 import android.content.ClipData;
 import android.content.ClipboardManager;
@@ -39,6 +41,8 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import androidx.transition.Fade;
+import androidx.transition.TransitionManager;
 
 import com.github.houbb.opencc4j.util.ZhConverterUtil;
 import com.google.android.material.button.MaterialButton;
@@ -113,6 +117,7 @@ public class MainActivity extends AppCompatActivity {
     private TextToSpeech tts;
 
     private UiState currentState = UiState.READY;
+    private ObjectAnimator fabPulse;
     private final Handler timerHandler = new Handler(Looper.getMainLooper());
     private long recordStartMs = 0;
     // Chunked recording: recording can outlive many transcriptions; the result state is reached
@@ -132,6 +137,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        stopFabPulse();
         deinitModel();
         deinitTTS();
         super.onDestroy();
@@ -345,7 +351,12 @@ public class MainActivity extends AppCompatActivity {
         boolean result = state == UiState.RESULT;
         boolean processing = state == UiState.PROCESSING;
 
-        findViewById(R.id.layout_result).setVisibility(recording || error ? View.GONE : View.VISIBLE);
+        // Crossfade the swapping views inside the result card (state -> state, perf chip appearing).
+        View resultLayout = findViewById(R.id.layout_result);
+        TransitionManager.beginDelayedTransition((ViewGroup) resultLayout.getParent(),
+                new Fade().setDuration(180));
+
+        resultLayout.setVisibility(recording || error ? View.GONE : View.VISIBLE);
         layoutRecording.setVisibility(recording ? View.VISIBLE : View.GONE);
         layoutError.setVisibility(error ? View.VISIBLE : View.GONE);
         layoutActions.setVisibility(result ? View.VISIBLE : View.GONE);
@@ -359,10 +370,35 @@ public class MainActivity extends AppCompatActivity {
             tvTimer.setText("0:00");
             waveform.clear();
             timerHandler.post(timerTick);
+            startFabPulse();
         } else {
             btnRecord.setImageResource(R.drawable.ic_mic_48dp);
             btnRecord.setBackgroundTintList(ColorStateList.valueOf(themeColor(com.google.android.material.R.attr.colorPrimary)));
             timerHandler.removeCallbacks(timerTick);
+            stopFabPulse();
+        }
+    }
+
+    /** Gentle repeating pulse on the mic FAB while recording; cancelled on any other state. */
+    private void startFabPulse() {
+        stopFabPulse();
+        fabPulse = ObjectAnimator.ofPropertyValuesHolder(btnRecord,
+                PropertyValuesHolder.ofFloat(View.SCALE_X, 1f, 1.08f),
+                PropertyValuesHolder.ofFloat(View.SCALE_Y, 1f, 1.08f));
+        fabPulse.setDuration(600);
+        fabPulse.setRepeatMode(ObjectAnimator.REVERSE);
+        fabPulse.setRepeatCount(ObjectAnimator.INFINITE);
+        fabPulse.start();
+    }
+
+    private void stopFabPulse() {
+        if (fabPulse != null) {
+            fabPulse.cancel();
+            fabPulse = null;
+        }
+        if (btnRecord != null) {
+            btnRecord.setScaleX(1f);
+            btnRecord.setScaleY(1f);
         }
     }
 
@@ -602,7 +638,7 @@ public class MainActivity extends AppCompatActivity {
         }
         applyState(UiState.RESULT);
         if (sp.getBoolean("historyEnabled", true)) {
-            HistoryDb.get(mContext).insert(text, lastLanguage, selectedModel.displayName, recordDurationMs);
+            HistoryDb.get(mContext).insert(text, lastLanguage, selectedModel.id, recordDurationMs);
         }
         if (sp.getBoolean("speakResult", false)) speak(text);
     }

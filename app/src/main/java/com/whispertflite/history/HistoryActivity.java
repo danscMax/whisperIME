@@ -25,6 +25,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.textfield.TextInputEditText;
 import com.whispertflite.R;
+import com.whispertflite.models.ModelInfo;
+import com.whispertflite.models.ModelRegistry;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -112,11 +114,20 @@ public class HistoryActivity extends AppCompatActivity {
 
     private String meta(HistoryDb.Entry e) {
         List<String> parts = new ArrayList<>();
-        if (!TextUtils.isEmpty(e.modelId)) parts.add(e.modelId);
+        if (!TextUtils.isEmpty(e.modelId)) parts.add(modelLabel(e.modelId));
         if (!TextUtils.isEmpty(e.lang)) parts.add(e.lang);
         parts.add(DateUtils.getRelativeTimeSpanString(
                 e.createdAt, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS).toString());
         return TextUtils.join(" · ", parts);
+    }
+
+    /** Map a stored model id to "displayName · engine"; fall back to the raw string (legacy rows). */
+    private String modelLabel(String stored) {
+        ModelInfo m = ModelRegistry.byId(stored);
+        if (m == null) return stored;
+        String engine = getString(m.engine == ModelInfo.Engine.WHISPER_CPP
+                ? R.string.catalog_engine_whispercpp : R.string.main_badge_tflite);
+        return m.displayName + " · " + engine;
     }
 
     private class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.VH> {

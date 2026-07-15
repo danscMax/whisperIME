@@ -427,7 +427,7 @@ public class WhisperInputMethodService extends InputMethodService {
                 && sp.getBoolean("historyFromIme", true)
                 && !isPasswordField(currentInputType)) {
             HistoryDb.get(mContext).insert(text, lastLanguage,
-                    selectedModel != null ? selectedModel.displayName : "", recordDurationMs);
+                    selectedModel != null ? selectedModel.id : "", recordDurationMs);
         }
         applyState(UiState.IDLE);
     }

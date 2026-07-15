@@ -94,6 +94,16 @@
     <string name="ime_hint">Tap and speak</string>
     <string name="ime_cd_settings">Settings</string>
 
+    <!-- Recognition dialog -->
+    <string name="dialog_hold_to_speak">Hold to talk</string>
+    <string name="dialog_listening">Listening…</string>
+    <string name="dialog_processing">Processing…</string>
+    <string name="dialog_no_model_title">Model not downloaded yet</string>
+    <string name="dialog_no_model_desc">Voice input needs a recognition model.</string>
+    <string name="dialog_open_catalog">Open catalog</string>
+    <string name="dialog_dictate">Dictate</string>
+    <string name="dialog_copied">Copied</string>
+
     <string name="catalog_title">Models</string>
     <string name="catalog_filter_all">All</string>
     <string name="catalog_filter_tflite" translatable="false">TFLite</string>

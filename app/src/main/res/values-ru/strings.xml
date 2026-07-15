@@ -93,6 +93,16 @@
     <string name="ime_hint">Нажми и говори</string>
     <string name="ime_cd_settings">Настройки</string>
 
+    <!-- Recognition dialog -->
+    <string name="dialog_hold_to_speak">Удерживайте, чтобы говорить</string>
+    <string name="dialog_listening">Слушаю…</string>
+    <string name="dialog_processing">Обрабатываю…</string>
+    <string name="dialog_no_model_title">Модель ещё не скачана</string>
+    <string name="dialog_no_model_desc">Для голосового ввода нужна модель распознавания.</string>
+    <string name="dialog_open_catalog">Открыть каталог</string>
+    <string name="dialog_dictate">Надиктовать</string>
+    <string name="dialog_copied">Скопировано</string>
+
     <string name="catalog_title">Модели</string>
     <string name="catalog_filter_all">Все</string>
     <string name="catalog_active">Активна</string>

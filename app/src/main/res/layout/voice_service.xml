@@ -10,7 +10,7 @@
     android:orientation="horizontal"
     android:gravity="center_vertical"
     android:fitsSystemWindows="true"
-    android:background="?attr/colorSurface"
+    android:background="@color/aurora_bg2"
     android:minHeight="64dp"
     android:paddingHorizontal="10dp"
     android:paddingVertical="8dp">
@@ -28,17 +28,19 @@
             android:background="@drawable/ime_mic_ring"
             android:visibility="gone" />
 
+        <!-- The living orb is the mic affordance; a transparent button over it handles touch. -->
+        <com.whispertflite.ui.AuroraOrbView
+            android:id="@+id/orb"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_gravity="center" />
+
         <ImageButton
             android:id="@+id/btnRecord"
             android:layout_width="44dp"
             android:layout_height="44dp"
             android:layout_gravity="center"
-            android:background="@drawable/ime_mic_bg"
-            android:backgroundTint="?attr/colorPrimary"
-            android:scaleType="centerInside"
-            android:padding="8dp"
-            android:src="@drawable/ic_mic_48dp"
-            android:tint="?attr/colorOnPrimary"
+            android:background="@android:color/transparent"
             android:contentDescription="@string/record_button" />
 
         <com.google.android.material.progressindicator.CircularProgressIndicator
@@ -72,14 +74,14 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/ime_hint"
-                android:textColor="?attr/colorOnSurface"
+                android:textColor="@color/aurora_ink_dim"
                 android:textSize="13sp" />
 
             <TextView
                 android:id="@+id/tv_model_chip"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textColor="@color/aurora_ink"
                 android:textSize="10sp"
                 tools:ignore="SmallSp" />
 
@@ -128,7 +130,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:padding="4dp"
             android:scaleType="fitCenter"
-            android:tint="?attr/colorOnSurfaceVariant"
+            android:tint="@color/aurora_ink"
             android:src="@drawable/ic_english_off_36dp"
             android:contentDescription="@string/translate" />
 
@@ -139,7 +141,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:padding="4dp"
             android:scaleType="fitCenter"
-            android:tint="?attr/colorOnSurfaceVariant"
+            android:tint="@color/aurora_ink"
             android:src="@drawable/ic_auto_off_36dp"
             android:contentDescription="@string/auto_button" />
 
@@ -150,7 +152,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:padding="4dp"
             android:scaleType="fitCenter"
-            android:tint="?attr/colorOnSurfaceVariant"
+            android:tint="@color/aurora_ink"
             android:src="@drawable/ic_keyboard_del_48dp"
             android:contentDescription="@string/delete_button" />
 
@@ -161,7 +163,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:padding="4dp"
             android:scaleType="fitCenter"
-            android:tint="?attr/colorOnSurfaceVariant"
+            android:tint="@color/aurora_ink"
             android:src="@drawable/ic_keyboard_return_48dp"
             android:contentDescription="@string/return_button" />
 
@@ -172,7 +174,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:padding="4dp"
             android:scaleType="fitCenter"
-            android:tint="?attr/colorOnSurfaceVariant"
+            android:tint="@color/aurora_ink"
             android:src="@drawable/ic_keyboard_36dp"
             android:contentDescription="@string/exit_button" />
 
@@ -183,7 +185,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:padding="7dp"
             android:scaleType="fitCenter"
-            android:tint="?attr/colorOnSurfaceVariant"
+            android:tint="@color/aurora_ink"
             android:src="@drawable/ic_settings_24dp"
             android:contentDescription="@string/ime_cd_settings" />
 

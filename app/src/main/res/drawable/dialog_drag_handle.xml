@@ -1,4 +1,4 @@
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="?attr/colorOnSurfaceVariant" />
+    <solid android:color="@color/aurora_ink_dim" />
     <corners android:radius="2dp" />
 </shape>

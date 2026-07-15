@@ -31,7 +31,7 @@
             android:layout_alignParentStart="true"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_cancel_36dp"
-            android:tint="?attr/colorOnSurfaceVariant"
+            android:tint="@color/aurora_ink"
             android:contentDescription="@string/exit_button" />
 
         <ImageButton
@@ -41,7 +41,7 @@
             android:layout_alignParentEnd="true"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_auto_off_36dp"
-            android:tint="?attr/colorOnSurfaceVariant"
+            android:tint="@color/aurora_ink"
             android:contentDescription="@string/auto_button" />
 
     </RelativeLayout>
@@ -68,14 +68,23 @@
         android:paddingEnd="16dp"
         android:paddingTop="4dp">
 
-        <ImageButton
-            android:id="@+id/btnRecord"
-            android:layout_width="72dp"
-            android:layout_height="72dp"
-            android:background="@drawable/dialog_mic_circle"
-            android:src="@drawable/ic_mic_48dp"
-            android:tint="?attr/colorOnPrimaryContainer"
-            android:contentDescription="@string/record_button" />
+        <!-- The living orb is the record affordance; a transparent button over it handles touch. -->
+        <FrameLayout
+            android:layout_width="84dp"
+            android:layout_height="84dp">
+
+            <com.whispertflite.ui.AuroraOrbView
+                android:id="@+id/orb"
+                android:layout_width="84dp"
+                android:layout_height="84dp" />
+
+            <ImageButton
+                android:id="@+id/btnRecord"
+                android:layout_width="84dp"
+                android:layout_height="84dp"
+                android:background="@android:color/transparent"
+                android:contentDescription="@string/record_button" />
+        </FrameLayout>
 
         <TextView
             android:id="@+id/dialog_status"
@@ -83,7 +92,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
             android:textAppearance="?attr/textAppearanceBodyMedium"
-            android:textColor="?attr/colorOnSurface"
+            android:textColor="@color/aurora_ink"
             android:text="@string/dialog_hold_to_speak" />
 
         <TextView
@@ -96,7 +105,7 @@
             android:maxLines="2"
             android:ellipsize="end"
             android:textAppearance="?attr/textAppearanceBodySmall"
-            android:textColor="?attr/colorOnSurfaceVariant" />
+            android:textColor="@color/aurora_ink_dim" />
 
         <TextView
             android:id="@+id/dialog_chip"
@@ -107,9 +116,9 @@
             android:paddingEnd="12dp"
             android:paddingTop="5dp"
             android:paddingBottom="5dp"
-            android:background="@drawable/chip_background"
+            android:background="@drawable/aurora_pill_bg"
             android:textAppearance="?attr/textAppearanceLabelSmall"
-            android:textColor="?attr/colorOnPrimaryContainer" />
+            android:textColor="@color/aurora_ink" />
 
     </LinearLayout>
 
@@ -136,7 +145,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
             android:textAppearance="?attr/textAppearanceBodyMedium"
-            android:textColor="?attr/colorOnSurface"
+            android:textColor="@color/aurora_ink"
             android:text="@string/dialog_no_model_title" />
 
         <TextView
@@ -145,7 +154,7 @@
             android:layout_marginTop="4dp"
             android:gravity="center"
             android:textAppearance="?attr/textAppearanceBodySmall"
-            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textColor="@color/aurora_ink_dim"
             android:text="@string/dialog_no_model_desc" />
 
         <com.google.android.material.button.MaterialButton

@@ -5,7 +5,6 @@ import static com.whispertflite.MainActivity.ENGLISH_ONLY_VOCAB_FILE;
 import static com.whispertflite.MainActivity.MULTILINGUAL_VOCAB_FILE;
 import static com.whispertflite.MainActivity.MULTI_LINGUAL_TOP_WORLD_SLOW;
 
-import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.ClipData;
 import android.content.ClipboardManager;
@@ -13,6 +12,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.speech.RecognizerIntent;
@@ -31,6 +31,7 @@ import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 
 import com.github.houbb.opencc4j.util.ZhConverterUtil;
+import com.google.android.material.color.MaterialColors;
 import com.whispertflite.asr.Recorder;
 import com.whispertflite.asr.Whisper;
 import com.whispertflite.asr.WhisperResult;
@@ -49,6 +50,7 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     private ImageButton btnRecord;
     private ImageButton btnCancel;
     private ImageButton btnModeAuto;
+    private com.whispertflite.ui.AuroraOrbView orb;
     private ProgressBar processingBar = null;
     private TextView statusText;
     private TextView partialText;
@@ -59,7 +61,6 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     private SharedPreferences sp = null;
     private Context mContext;
     private CountDownTimer countDownTimer;
-    private ValueAnimator micPulse;
     private boolean modeAuto = false;
     private String langCode = "auto";
 
@@ -95,6 +96,9 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
         btnCancel = findViewById(R.id.btnCancel);
         btnRecord = findViewById(R.id.btnRecord);
         btnModeAuto = findViewById(R.id.btnModeAuto);
+        orb = findViewById(R.id.orb);
+        orb.setColors(themeColor(com.google.android.material.R.attr.colorPrimary),
+                themeColor(com.google.android.material.R.attr.colorPrimaryContainer));
         processingBar = findViewById(R.id.processing_bar);
         statusText = findViewById(R.id.dialog_status);
         partialText = findViewById(R.id.dialog_partial);
@@ -126,6 +130,7 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
         btnModeAuto.setImageResource(modeAuto ? R.drawable.ic_auto_on_36dp : R.drawable.ic_auto_off_36dp);
 
         mRecorder = new Recorder(this);
+        mRecorder.setRmsListener(rms -> runOnUiThread(() -> orb.pushLevel(rms)));
         mRecorder.setListener(message -> {
             if (message.equals(Recorder.MSG_RECORDING)) {
                 runOnUiThread(() -> {
@@ -232,27 +237,17 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
         chip.setText(modelLabel + " · " + lang);
     }
 
+    // The orb reacts to live RMS while recording; here we only flip idle/active.
     private void startMicPulse() {
-        if (micPulse != null) return;
-        micPulse = ValueAnimator.ofFloat(1f, 1.12f);
-        micPulse.setDuration(600);
-        micPulse.setRepeatCount(ValueAnimator.INFINITE);
-        micPulse.setRepeatMode(ValueAnimator.REVERSE);
-        micPulse.addUpdateListener(a -> {
-            float s = (float) a.getAnimatedValue();
-            btnRecord.setScaleX(s);
-            btnRecord.setScaleY(s);
-        });
-        micPulse.start();
+        // orb swells from the RMS feed; nothing else to do.
     }
 
     private void stopMicPulse() {
-        if (micPulse != null) {
-            micPulse.cancel();
-            micPulse = null;
-        }
-        btnRecord.setScaleX(1f);
-        btnRecord.setScaleY(1f);
+        if (orb != null) orb.setIdle();
+    }
+
+    private int themeColor(int attr) {
+        return MaterialColors.getColor(orb, attr, Color.GRAY);
     }
 
     private void startRecording() {

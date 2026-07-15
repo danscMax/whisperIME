@@ -10,6 +10,14 @@ android {
     lintOptions{
         disable 'MissingTranslation'
     }
+
+    // whisper.cpp's CMake also builds libparakeet.so, which this app never loads. Drop it from
+    // the APK (saves ~400 KB across ABIs).
+    packagingOptions {
+        jniLibs {
+            excludes += ['**/libparakeet.so']
+        }
+    }
     
     defaultConfig {
         applicationId "org.woheller69.whisper"

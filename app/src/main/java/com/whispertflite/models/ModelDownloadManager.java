@@ -164,6 +164,8 @@ public class ModelDownloadManager {
 
         InputStream in = null;
         OutputStream out = null;
+        long total = model.sizeBytes; // approximate until the server reports an exact size
+        boolean exactTotal = false;   // true once total is the server's content length
         try {
             conn.connect();
             int code = conn.getResponseCode();
@@ -176,8 +178,7 @@ public class ModelDownloadManager {
             }
 
             long remaining = conn.getContentLengthLong(); // may be -1
-            long total = model.sizeBytes;
-            if (remaining > 0) total = existing + remaining;
+            if (remaining > 0) { total = existing + remaining; exactTotal = true; }
 
             in = conn.getInputStream();
             out = new FileOutputStream(part, existing > 0); // append when resuming
@@ -210,6 +211,14 @@ public class ModelDownloadManager {
             closeQuietly(in);
             closeQuietly(out);
             conn.disconnect();
+        }
+
+        // Guard against a truncated download (clean early EOF, e.g. dropped connection): the stream
+        // ending is not proof of completeness. Verify against the expected total; keep .part so a
+        // retry resumes via HTTP Range instead of silently promoting a corrupt model.
+        if (exactTotal && part.length() < total) {
+            emitError(model.id, "incomplete");
+            return;
         }
 
         // completed without cancel: promote .part -> final name

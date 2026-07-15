@@ -8,10 +8,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.CountDownTimer;
+import android.os.Handler;
+import android.os.Looper;
 import androidx.preference.PreferenceManager;
 import android.provider.Settings;
 import android.speech.tts.TextToSpeech;
@@ -24,10 +27,9 @@ import android.view.inputmethod.InputMethodInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.CheckBox;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
+import android.widget.PopupMenu;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.EditText;
@@ -39,10 +41,17 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
 import com.github.houbb.opencc4j.util.ZhConverterUtil;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.chip.Chip;
+import com.google.android.material.color.MaterialColors;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.whispertflite.asr.Recorder;
+import com.whispertflite.asr.RecordBuffer;
 import com.whispertflite.asr.Whisper;
 import com.whispertflite.asr.WhisperResult;
+import com.whispertflite.history.HistoryDb;
+import com.whispertflite.ui.WaveformView;
 import com.whispertflite.utils.HapticFeedback;
 import com.whispertflite.utils.InputLang;
 import com.whispertflite.utils.LanguagePairAdapter;
@@ -71,19 +80,21 @@ public class MainActivity extends AppCompatActivity {
     public static final String ENGLISH_ONLY_VOCAB_FILE = "filters_vocab_en.bin";
     public static final String MULTILINGUAL_VOCAB_FILE = "filters_vocab_multilingual.bin";
 
+    private enum UiState { READY, RECORDING, PROCESSING, RESULT, ERROR }
 
-    private TextView tvStatus;
     private EditText tvResult;
-    private FloatingActionButton fabCopy;
-    private ImageButton btnRecord;
-    private LinearLayout layoutModeChinese;
-    private LinearLayout layoutTTS;
-    private CheckBox append;
-    private CheckBox translate;
-    private CheckBox modeSimpleChinese;
-    private CheckBox modeTTS;
-    private ProgressBar processingBar;
+    private FloatingActionButton btnRecord;
     private ImageButton btnInfo;
+    private ImageButton btnOverflow;
+    private Chip append;
+    private Chip translate;
+    private LinearProgressIndicator processingBar;
+    private WaveformView waveform;
+    private TextView tvTimer;
+    private TextView perfChip;
+    private LinearLayout layoutRecording;
+    private LinearLayout layoutError;
+    private LinearLayout layoutActions;
 
     private Recorder mRecorder = null;
     private Whisper mWhisper = null;
@@ -92,11 +103,22 @@ public class MainActivity extends AppCompatActivity {
     private File selectedTfliteFile = null;
     private SharedPreferences sp = null;
     private Spinner spinnerTflite;
-    private CountDownTimer countDownTimer;
     private Spinner spinnerLanguage;
     private int langToken = -1;
     private long startTime = 0;
     private TextToSpeech tts;
+
+    private UiState currentState = UiState.READY;
+    private final Handler timerHandler = new Handler(Looper.getMainLooper());
+    private long recordStartMs = 0;
+    private final Runnable timerTick = new Runnable() {
+        @Override
+        public void run() {
+            long el = (System.currentTimeMillis() - recordStartMs) / 1000;
+            tvTimer.setText(String.format(Locale.US, "%d:%02d", el / 60, el % 60));
+            timerHandler.postDelayed(this, 1000);
+        }
+    };
 
     @Override
     protected void onDestroy() {
@@ -121,38 +143,18 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         ThemeUtils.setStatusBarAppearance(this);
         checkInputMethodEnabled();
-        processingBar = findViewById(R.id.processing_bar);
         sp = PreferenceManager.getDefaultSharedPreferences(this);
+
+        processingBar = findViewById(R.id.processing_bar);
+        waveform = findViewById(R.id.waveform);
+        tvTimer = findViewById(R.id.tvTimer);
+        perfChip = findViewById(R.id.perf_chip);
+        layoutRecording = findViewById(R.id.layout_recording);
+        layoutError = findViewById(R.id.layout_error);
+        layoutActions = findViewById(R.id.layout_actions);
+
         append = findViewById(R.id.mode_append);
-
-        layoutTTS = findViewById(R.id.layout_tts);
-        modeTTS = findViewById(R.id.mode_tts);
-        modeTTS.setOnCheckedChangeListener((compoundButton, isChecked) -> {
-            if (isChecked) {
-                tts = new TextToSpeech(mContext, status -> {
-                    if (status == TextToSpeech.SUCCESS) {
-                        int result = tts.setLanguage(Locale.US);
-                        if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                            runOnUiThread(() -> {
-                                Toast.makeText(mContext, mContext.getString(R.string.tts_language_not_supported),Toast.LENGTH_SHORT).show();
-                                modeTTS.setChecked(false);
-                            });
-
-                        }
-                    } else {
-                        runOnUiThread(() -> Toast.makeText(mContext, mContext.getString(R.string.tts_initialization_failed),Toast.LENGTH_SHORT).show());
-                    }
-                });
-            } else {
-                deinitTTS();
-            }
-        });
-
         translate = findViewById(R.id.mode_translate);
-        translate.setOnCheckedChangeListener((compoundButton, isChecked) -> {
-            layoutTTS.setVisibility(isChecked ? View.VISIBLE:View.GONE);
-            if (layoutTTS.getVisibility() == View.GONE) modeTTS.setChecked(false);
-        });
 
         // Call the method to copy specific file types from assets to data folder
         sdcardDataFolder = this.getExternalFilesDir(null);
@@ -164,6 +166,15 @@ public class MainActivity extends AppCompatActivity {
 
         btnInfo = findViewById(R.id.btnInfo);
         btnInfo.setOnClickListener(view -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/woheller69/whisperIME#Donate"))));
+
+        findViewById(R.id.btnHistory).setOnClickListener(
+                v -> startActivity(new Intent(this, com.whispertflite.history.HistoryActivity.class)));
+        findViewById(R.id.btnSettings).setOnClickListener(
+                v -> startActivity(new Intent(this, SettingsActivity.class)));
+
+        // Simplified-Chinese toggle lives in the overflow menu (rarely used).
+        btnOverflow = findViewById(R.id.btnOverflow);
+        btnOverflow.setOnClickListener(this::showOverflowMenu);
 
         spinnerLanguage = findViewById(R.id.spnrLanguage);
         List<Pair<String, String>> languagePairs = LanguagePairAdapter.getLanguagePairs(this);
@@ -225,33 +236,16 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-
-        // Implementation of record button functionality
+        // Record button: preserve upstream press-and-hold behavior.
         btnRecord = findViewById(R.id.btnRecord);
-
         btnRecord.setOnTouchListener((v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                // Pressed
-                runOnUiThread(() -> btnRecord.setBackgroundResource(R.drawable.rounded_button_background_pressed));
                 Log.d(TAG, "Start recording...");
                 if (!mWhisper.isInProgress()) {
-                    HapticFeedback.vibrate(this);
+                    if (sp.getBoolean("hapticFeedback", true)) HapticFeedback.vibrate(this);
                     startRecording();
-                    runOnUiThread(() -> processingBar.setProgress(100));
-                    countDownTimer = new CountDownTimer(30000, 1000) {
-                        @Override
-                        public void onTick(long l) {
-                            runOnUiThread(() -> processingBar.setProgress((int) (l / 300)));
-                        }
-                        @Override
-                        public void onFinish() {}
-                    };
-                    countDownTimer.start();
                 } else (Toast.makeText(this,getString(R.string.please_wait),Toast.LENGTH_SHORT)).show();
-
             } else if (event.getAction() == MotionEvent.ACTION_UP) {
-                // Released
-                runOnUiThread(() -> btnRecord.setBackgroundResource(R.drawable.rounded_button_background));
                 if (mRecorder != null && mRecorder.isInProgress()) {
                     Log.d(TAG, "Recording is in progress... stopping...");
                     stopRecording();
@@ -260,17 +254,6 @@ public class MainActivity extends AppCompatActivity {
             return true;
         });
 
-        layoutModeChinese = findViewById(R.id.layout_mode_chinese);
-        modeSimpleChinese = findViewById(R.id.mode_simple_chinese);
-        modeSimpleChinese.setChecked(sp.getBoolean("simpleChinese",false));  //default to traditional Chinese
-        modeSimpleChinese.setOnCheckedChangeListener((compoundButton, isChecked) -> {
-            SharedPreferences.Editor editor = sp.edit();
-            editor.putBoolean("simpleChinese", isChecked);
-            editor.apply();
-            tvResult.setText("");
-        });
-
-        tvStatus = findViewById(R.id.tvStatus);
         tvResult = findViewById(R.id.tvResult);
         tvResult.setOnClickListener(view -> tvResult.setCursorVisible(true));
         getOnBackPressedDispatcher().addCallback(new OnBackPressedCallback(true) {
@@ -280,50 +263,98 @@ public class MainActivity extends AppCompatActivity {
                 else finish();
             }
         });
-        fabCopy = findViewById(R.id.fabCopy);
-        fabCopy.setOnClickListener(v -> {
-            // Get the text from tvResult
-            String textToCopy = tvResult.getText().toString().trim();
 
-            // Copy the text to the clipboard
+        findViewById(R.id.fabCopy).setOnClickListener(v -> {
+            String textToCopy = tvResult.getText().toString().trim();
             ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
             ClipData clip = ClipData.newPlainText(getString(R.string.model_output), textToCopy);
             clipboard.setPrimaryClip(clip);
         });
+        findViewById(R.id.btnSpeak).setOnClickListener(v -> speak(tvResult.getText().toString()));
+        findViewById(R.id.btnShare).setOnClickListener(v -> {
+            Intent i = new Intent(Intent.ACTION_SEND);
+            i.setType("text/plain");
+            i.putExtra(Intent.EXTRA_TEXT, tvResult.getText().toString());
+            startActivity(Intent.createChooser(i, getString(R.string.main_cd_share)));
+        });
+        ((MaterialButton) findViewById(R.id.btnRetry)).setOnClickListener(v -> {
+            tvResult.setText("");
+            applyState(UiState.READY);
+        });
 
         // Audio recording functionality
         mRecorder = new Recorder(this);
+        mRecorder.setRmsListener(rms -> runOnUiThread(() -> {
+            if (currentState == UiState.RECORDING) waveform.push(rms);
+        }));
         mRecorder.setListener(new Recorder.RecorderListener() {
             @Override
             public void onUpdateReceived(String message) {
                 Log.d(TAG, "Update is received, Message: " + message);
                 if (message.equals(Recorder.MSG_RECORDING)) {
-                    runOnUiThread(() -> tvStatus.setText(getString(R.string.record_button) +"…"));
                     if (!append.isChecked()) runOnUiThread(() -> tvResult.setText(""));
-                    runOnUiThread(() -> btnRecord.setBackgroundResource(R.drawable.rounded_button_background_pressed));
                 } else if (message.equals(Recorder.MSG_RECORDING_DONE)) {
-                    HapticFeedback.vibrate(mContext);
-                    runOnUiThread(() -> btnRecord.setBackgroundResource(R.drawable.rounded_button_background));
-
+                    if (sp.getBoolean("hapticFeedback", true)) HapticFeedback.vibrate(mContext);
                     if (translate.isChecked()) startProcessing(Whisper.ACTION_TRANSLATE);
                     else startProcessing(Whisper.ACTION_TRANSCRIBE);
                 } else if (message.equals(Recorder.MSG_RECORDING_ERROR)) {
-                    HapticFeedback.vibrate(mContext);
-                    if (countDownTimer!=null) { countDownTimer.cancel();}
-                    runOnUiThread(() -> {
-                        btnRecord.setBackgroundResource(R.drawable.rounded_button_background);
-                        processingBar.setProgress(0);
-                        tvStatus.setText(getString(R.string.error_no_input));
-                    });
+                    if (sp.getBoolean("hapticFeedback", true)) HapticFeedback.vibrate(mContext);
+                    runOnUiThread(() -> applyState(UiState.ERROR));
                 }
             }
-
         });
+
+        applyState(UiState.READY);
+
         FreeDroidWarn.showWarningOnUpgrade(this, BuildConfig.VERSION_CODE);
         if (GithubStar.shouldShowStarDialog(this)) GithubStar.starDialog(this, "https://github.com/woheller69/whisperIME");
         // Assume this Activity is the current activity, check record permission
         checkPermissions();
+    }
 
+    private void showOverflowMenu(View anchor) {
+        PopupMenu menu = new PopupMenu(this, anchor);
+        android.view.MenuItem item = menu.getMenu().add(0, 1, 0, R.string.settings_simple_chinese);
+        item.setCheckable(true);
+        item.setChecked(sp.getBoolean("simpleChinese", false));
+        menu.setOnMenuItemClickListener(mi -> {
+            sp.edit().putBoolean("simpleChinese", !mi.isChecked()).apply();
+            return true;
+        });
+        menu.show();
+    }
+
+    /** Single source of truth for view visibility across the five UI states. */
+    private void applyState(UiState state) {
+        currentState = state;
+        boolean recording = state == UiState.RECORDING;
+        boolean error = state == UiState.ERROR;
+        boolean result = state == UiState.RESULT;
+        boolean processing = state == UiState.PROCESSING;
+
+        findViewById(R.id.layout_result).setVisibility(recording || error ? View.GONE : View.VISIBLE);
+        layoutRecording.setVisibility(recording ? View.VISIBLE : View.GONE);
+        layoutError.setVisibility(error ? View.VISIBLE : View.GONE);
+        layoutActions.setVisibility(result ? View.VISIBLE : View.GONE);
+        perfChip.setVisibility(result ? View.VISIBLE : View.GONE);
+        processingBar.setVisibility(processing ? View.VISIBLE : View.INVISIBLE);
+
+        if (recording) {
+            btnRecord.setImageResource(R.drawable.ic_stop_24dp);
+            btnRecord.setBackgroundTintList(ColorStateList.valueOf(themeColor(com.google.android.material.R.attr.colorError)));
+            recordStartMs = System.currentTimeMillis();
+            tvTimer.setText("0:00");
+            waveform.clear();
+            timerHandler.post(timerTick);
+        } else {
+            btnRecord.setImageResource(R.drawable.ic_mic_48dp);
+            btnRecord.setBackgroundTintList(ColorStateList.valueOf(themeColor(com.google.android.material.R.attr.colorPrimary)));
+            timerHandler.removeCallbacks(timerTick);
+        }
+    }
+
+    private int themeColor(int attr) {
+        return MaterialColors.getColor(this, attr, Color.GRAY);
     }
 
     private void checkInputMethodEnabled() {
@@ -358,41 +389,87 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onUpdateReceived(String message) {
                 Log.d(TAG, "Update is received, Message: " + message);
-
                 if (message.equals(Whisper.MSG_PROCESSING)) {
-                    runOnUiThread(() -> tvStatus.setText(getString(R.string.processing)));
                     startTime = System.currentTimeMillis();
-                    runOnUiThread(() -> spinnerTflite.setEnabled(false));
+                    runOnUiThread(() -> {
+                        applyState(UiState.PROCESSING);
+                        spinnerTflite.setEnabled(false);
+                    });
                 }
             }
 
             @Override
             public void onResultReceived(WhisperResult whisperResult) {
                 long timeTaken = System.currentTimeMillis() - startTime;
-                runOnUiThread(() -> tvStatus.setText(getString(R.string.processing_done) + timeTaken + "\u2009ms" + "\n"+ getString(R.string.language) + " " + new Locale(whisperResult.getLanguage()).getDisplayLanguage() + " " + (whisperResult.getTask() == Whisper.Action.TRANSCRIBE ? getString(R.string.mode_transcription) : getString(R.string.mode_translation))));
-                runOnUiThread(() -> processingBar.setIndeterminate(false));
                 Log.d(TAG, "Result: " + whisperResult.getResult() + " " + whisperResult.getLanguage() + " " + (whisperResult.getTask() == Whisper.Action.TRANSCRIBE ? "transcribing" : "translating"));
-                if ((whisperResult.getLanguage().equals("zh")) && (whisperResult.getTask() == Whisper.Action.TRANSCRIBE)){
-                    runOnUiThread(() -> layoutModeChinese.setVisibility(View.VISIBLE));
-                    boolean simpleChinese = sp.getBoolean("simpleChinese",false);  //convert to desired Chinese mode
-                    String result = simpleChinese ? ZhConverterUtil.toSimple(whisperResult.getResult()) : ZhConverterUtil.toTraditional(whisperResult.getResult());
-                    runOnUiThread(() -> tvResult.append(result));
+
+                String raw = whisperResult.getResult();
+                if (raw == null || raw.trim().isEmpty()) {
+                    runOnUiThread(() -> {
+                        spinnerTflite.setEnabled(true);
+                        applyState(UiState.ERROR);
+                    });
+                    return;
+                }
+
+                final String out;
+                if (whisperResult.getLanguage().equals("zh") && whisperResult.getTask() == Whisper.Action.TRANSCRIBE) {
+                    boolean simpleChinese = sp.getBoolean("simpleChinese", false);
+                    out = simpleChinese ? ZhConverterUtil.toSimple(raw) : ZhConverterUtil.toTraditional(raw);
                 } else {
-                    runOnUiThread(() -> layoutModeChinese.setVisibility(View.GONE));
-                    runOnUiThread(() -> tvResult.append(whisperResult.getResult()));
+                    out = raw;
                 }
-                runOnUiThread(() -> spinnerTflite.setEnabled(true));
-                if (modeTTS.isChecked()){
-                    tts.speak(whisperResult.getResult(), TextToSpeech.QUEUE_FLUSH, null, null);
+
+                double procSec = timeTaken / 1000.0;
+                double audioSec = audioDurationSeconds();
+                double realtime = procSec > 0 ? audioSec / procSec : 0;
+
+                runOnUiThread(() -> {
+                    tvResult.append(out);
+                    perfChip.setText(getString(R.string.main_perf_chip, procSec, realtime));
+                    spinnerTflite.setEnabled(true);
+                    applyState(UiState.RESULT);
+                });
+
+                if (sp.getBoolean("historyEnabled", true)) {
+                    HistoryDb.get(mContext).insert(out.trim(), whisperResult.getLanguage(),
+                            selectedTfliteFile.getName(), timeTaken);
                 }
+                if (sp.getBoolean("speakResult", false)) speak(out);
             }
         });
+    }
+
+    private double audioDurationSeconds() {
+        byte[] buf = RecordBuffer.getOutputBuffer();
+        if (buf == null) return 0;
+        return buf.length / 2.0 / 16000.0; // 16-bit mono @ 16 kHz
     }
 
     private void deinitModel() {
         if (mWhisper != null) {
             mWhisper.unloadModel();
             mWhisper = null;
+        }
+    }
+
+    private void speak(final String text) {
+        if (text == null || text.trim().isEmpty()) return;
+        if (tts == null) {
+            tts = new TextToSpeech(mContext, status -> {
+                if (status == TextToSpeech.SUCCESS) {
+                    int result = tts.setLanguage(Locale.US);
+                    if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                        runOnUiThread(() -> Toast.makeText(mContext, mContext.getString(R.string.tts_language_not_supported), Toast.LENGTH_SHORT).show());
+                    } else {
+                        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, null);
+                    }
+                } else {
+                    runOnUiThread(() -> Toast.makeText(mContext, mContext.getString(R.string.tts_initialization_failed), Toast.LENGTH_SHORT).show());
+                }
+            });
+        } else {
+            tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, null);
         }
     }
 
@@ -409,21 +486,7 @@ public class MainActivity extends AppCompatActivity {
             public View getView(int position, View convertView, ViewGroup parent) {
                 View view = super.getView(position, convertView, parent);
                 TextView textView = view.findViewById(android.R.id.text1);
-                if ((getItem(position).getName()).equals(MULTI_LINGUAL_MODEL_SLOW))
-                    textView.setText(R.string.multi_lingual_slow);
-                else if ((getItem(position).getName()).equals(MULTI_LINGUAL_TOP_WORLD_SLOW))
-                    textView.setText(R.string.multi_lingual_slow);
-                else if ((getItem(position).getName()).equals(ENGLISH_ONLY_MODEL))
-                    textView.setText(R.string.english_only_fast);
-                else if ((getItem(position).getName()).equals(MULTI_LINGUAL_MODEL_FAST))
-                    textView.setText(R.string.multi_lingual_fast);
-                else if ((getItem(position).getName()).equals(MULTI_LINGUAL_EU_MODEL_FAST))
-                    textView.setText(R.string.multi_lingual_fast);
-                else if ((getItem(position).getName()).equals(MULTI_LINGUAL_TOP_WORLD_FAST))
-                    textView.setText(R.string.multi_lingual_fast);
-                else
-                    textView.setText(getItem(position).getName().substring(0, getItem(position).getName().length() - ".tflite".length()));
-
+                setModelLabel(textView, getItem(position));
                 return view;
             }
 
@@ -431,26 +494,24 @@ public class MainActivity extends AppCompatActivity {
             public View getDropDownView(int position, View convertView, ViewGroup parent) {
                 View view = super.getDropDownView(position, convertView, parent);
                 TextView textView = view.findViewById(android.R.id.text1);
-                if ((getItem(position).getName()).equals(MULTI_LINGUAL_MODEL_SLOW))
-                    textView.setText(R.string.multi_lingual_slow);
-                else if ((getItem(position).getName()).equals(MULTI_LINGUAL_TOP_WORLD_SLOW))
-                    textView.setText(R.string.multi_lingual_slow);
-                else if ((getItem(position).getName()).equals(ENGLISH_ONLY_MODEL))
-                    textView.setText(R.string.english_only_fast);
-                else if ((getItem(position).getName()).equals(MULTI_LINGUAL_MODEL_FAST))
-                    textView.setText(R.string.multi_lingual_fast);
-                else if ((getItem(position).getName()).equals(MULTI_LINGUAL_EU_MODEL_FAST))
-                    textView.setText(R.string.multi_lingual_fast);
-                else if ((getItem(position).getName()).equals(MULTI_LINGUAL_TOP_WORLD_FAST))
-                    textView.setText(R.string.multi_lingual_fast);
-                else
-                    textView.setText(getItem(position).getName().substring(0, getItem(position).getName().length() - ".tflite".length()));
-
+                setModelLabel(textView, getItem(position));
                 return view;
             }
         };
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         return adapter;
+    }
+
+    private void setModelLabel(TextView textView, File file) {
+        String name = file.getName();
+        if (name.equals(MULTI_LINGUAL_MODEL_SLOW) || name.equals(MULTI_LINGUAL_TOP_WORLD_SLOW))
+            textView.setText(R.string.multi_lingual_slow);
+        else if (name.equals(ENGLISH_ONLY_MODEL))
+            textView.setText(R.string.english_only_fast);
+        else if (name.equals(MULTI_LINGUAL_MODEL_FAST) || name.equals(MULTI_LINGUAL_EU_MODEL_FAST) || name.equals(MULTI_LINGUAL_TOP_WORLD_FAST))
+            textView.setText(R.string.multi_lingual_fast);
+        else
+            textView.setText(name.substring(0, name.length() - ".tflite".length()));
     }
 
     private void checkPermissions() {
@@ -480,6 +541,7 @@ public class MainActivity extends AppCompatActivity {
     // Recording calls
     private void startRecording() {
         checkPermissions();
+        applyState(UiState.RECORDING);
         mRecorder.start();
     }
 
@@ -489,18 +551,13 @@ public class MainActivity extends AppCompatActivity {
 
     // Transcription calls
     private void startProcessing(Whisper.Action action) {
-        if (countDownTimer!=null) { countDownTimer.cancel();}
-        runOnUiThread(() -> {
-            processingBar.setProgress(0);
-            processingBar.setIndeterminate(true);
-        });
+        runOnUiThread(() -> applyState(UiState.PROCESSING));
         mWhisper.setAction(action);
         mWhisper.setLanguage(langToken);
         mWhisper.start();
     }
 
     private void stopProcessing() {
-        processingBar.setIndeterminate(false);
         if (mWhisper != null && mWhisper.isInProgress()) mWhisper.stop();
     }
 

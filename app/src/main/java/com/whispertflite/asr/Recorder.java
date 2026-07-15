@@ -31,6 +31,11 @@ public class Recorder {
         void onUpdateReceived(String message);
     }
 
+    /** Lightweight live-audio level callback for the waveform (~30/sec, on the worker thread). */
+    public interface RmsListener {
+        void onRms(float rms);
+    }
+
     private static final String TAG = "Recorder";
     public static final String ACTION_STOP = "Stop";
     public static final String ACTION_RECORD = "Record";
@@ -42,6 +47,7 @@ public class Recorder {
     private final AtomicBoolean mInProgress = new AtomicBoolean(false);
 
     private RecorderListener mListener;
+    private RmsListener mRmsListener;
     private final Lock lock = new ReentrantLock();
     private final Condition hasTask = lock.newCondition();
     private final Object fileSavedLock = new Object(); // Lock object for wait/notify
@@ -63,6 +69,10 @@ public class Recorder {
 
     public void setListener(RecorderListener listener) {
         this.mListener = listener;
+    }
+
+    public void setRmsListener(RmsListener listener) {
+        this.mRmsListener = listener;
     }
 
 
@@ -115,6 +125,19 @@ public class Recorder {
     private void sendUpdate(String message) {
         if (mListener != null)
             mListener.onUpdateReceived(message);
+    }
+
+    /** Compute normalized RMS of a 16-bit little-endian PCM frame and notify the listener. */
+    private void emitRms(byte[] data, int bytes) {
+        if (mRmsListener == null || bytes < 2) return;
+        long sumSq = 0;
+        int n = bytes / 2;
+        for (int i = 0; i + 1 < bytes; i += 2) {
+            int sample = (data[i] & 0xff) | (data[i + 1] << 8);
+            sumSq += (long) sample * sample;
+        }
+        double rms = Math.sqrt((double) sumSq / n) / 32768.0;
+        mRmsListener.onRms((float) Math.min(1.0, rms * 4.0)); // scale up so quiet speech is visible
     }
 
 
@@ -195,6 +218,7 @@ public class Recorder {
             if (bytesRead > 0) {
                 outputBuffer.write(audioData, 0, bytesRead);  // Save all bytes read up to 30 seconds
                 totalBytesRead += bytesRead;
+                emitRms(audioData, bytesRead);
             } else {
                 Log.d(TAG, "AudioRecord error, bytes read: " + bytesRead);
                 break;

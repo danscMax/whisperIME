@@ -57,4 +57,15 @@
     <string name="settings_enable_keyboard">Включить клавиатуру</string>
     <string name="settings_voice_input">Настройки голосового ввода</string>
     <string name="settings_github">Проект на GitHub</string>
+    <!-- Main screen -->
+    <string name="main_hint_ready">Нажмите микрофон и говорите</string>
+    <string name="main_error_title">Ничего не расслышал</string>
+    <string name="main_error_hint">Говорите ближе к микрофону или проверьте, что он не занят другим приложением.</string>
+    <string name="main_retry">Попробовать ещё раз</string>
+    <string name="main_perf_chip">%1$.1f с · ×%2$.1f</string>
+    <string name="append_short">Добавлять</string>
+    <string name="translate_short">Перевод на EN</string>
+    <string name="main_cd_menu">Ещё</string>
+    <string name="main_cd_speak">Озвучить результат</string>
+    <string name="main_cd_share">Поделиться</string>
 </resources>

@@ -66,4 +66,16 @@
     <string name="settings_enable_keyboard">Enable keyboard</string>
     <string name="settings_voice_input">Voice input settings</string>
     <string name="settings_github">Project on GitHub</string>
+    <!-- Main screen -->
+    <string name="main_badge_tflite" translatable="false">TFLite</string>
+    <string name="main_hint_ready">Press the mic and speak</string>
+    <string name="main_error_title">Didn\'t catch that</string>
+    <string name="main_error_hint">Speak closer to the mic or check that it isn\'t used by another app.</string>
+    <string name="main_retry">Try again</string>
+    <string name="main_perf_chip">%1$.1f s · ×%2$.1f</string>
+    <string name="append_short">Append</string>
+    <string name="translate_short">Translate to EN</string>
+    <string name="main_cd_menu">More options</string>
+    <string name="main_cd_speak">Speak result</string>
+    <string name="main_cd_share">Share</string>
 </resources>

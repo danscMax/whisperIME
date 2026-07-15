@@ -13,39 +13,41 @@ import android.view.animation.LinearInterpolator;
 
 /**
  * The signature element, in the ChatGPT-voice / Siri idiom: a soft, fluid light bloom rather than a
- * hard sphere. Nothing is drawn with a crisp edge — every layer is a radial gradient that fades to
- * transparent inside the view, so the bloom feathers into the dark. A few offset lobes drift on
- * different sine phases so the shape breathes and morphs organically; the whole thing swells and
- * brightens with the voice level while recording.
+ * hard sphere. Nothing has a crisp edge — every layer is a radial gradient that fades to transparent
+ * inside the view, so the bloom feathers into the dark. Several lobes on different sine phases drift
+ * around a slowly-rotating frame, so the shape breathes and morphs organically; a cool rim shadow and
+ * a warm inner shift give it depth. The whole thing swells and brightens with the voice level.
  *
  * Feed live audio with {@link #pushLevel(float)} (0..1 RMS); call {@link #setIdle()} to return to
- * calm breathing. Draw on a SOFTWARE layer (set in XML or by the parent) so the soft blends are smooth.
+ * calm breathing. Rendered on a SOFTWARE layer so the additive gradient blends stay smooth.
  */
 public class AuroraOrbView extends View {
 
-    private int accent = 0xFF2FB8A4;
-    private int accentDeep = 0xFF0A6E62;
+    private int accent = 0xFF2FB8A4;      // primary hue
+    private int accentSoft = 0xFF9DF2E3;  // lighter tint (primaryContainer) for the bloom rim
+    private int cool = 0xFF16324F;        // cool shadow that gives volume
 
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
     private float phase = 0f;
-    private float level = 0f;       // smoothed voice level
+    private float level = 0f;
     private float targetLevel = 0f;
     private boolean recording = false;
 
     private ValueAnimator anim;
 
-    // three drifting lobes, each on its own angular speed and phase offset
-    private static final float[] LOBE_SPEED = { 1.0f, 0.63f, 0.41f };
-    private static final float[] LOBE_PHASE = { 0f, 2.1f, 4.2f };
+    // four drifting lobes, each on its own angular speed and phase offset
+    private static final float[] LOBE_SPEED = { 1.00f, 0.63f, 0.41f, 0.27f };
+    private static final float[] LOBE_PHASE = { 0f, 1.7f, 3.3f, 5.0f };
+    private static final int[]   LOBE_HUE   = { 0, 1, 0, 1 }; // 0 = accent, 1 = accentSoft
 
     public AuroraOrbView(Context c) { super(c); init(); }
     public AuroraOrbView(Context c, AttributeSet a) { super(c, a); init(); }
 
     private void init() {
-        setLayerType(LAYER_TYPE_SOFTWARE, null); // soft additive blends
+        setLayerType(LAYER_TYPE_SOFTWARE, null);
         anim = ValueAnimator.ofFloat(0f, (float) (2 * Math.PI));
-        anim.setDuration(7000);
+        anim.setDuration(9000);
         anim.setRepeatCount(ValueAnimator.INFINITE);
         anim.setInterpolator(new LinearInterpolator());
         anim.addUpdateListener(a -> {
@@ -57,9 +59,12 @@ public class AuroraOrbView extends View {
         });
     }
 
-    public void setColors(int brightAccent, int deepAccent) {
-        this.accent = brightAccent;
-        this.accentDeep = deepAccent;
+    /** @param bright primary hue (colorPrimary); @param soft lighter tint (colorPrimaryContainer). */
+    public void setColors(int bright, int soft) {
+        this.accent = bright;
+        this.accentSoft = soft;
+        // Palette-coherent cool shadow: the accent pulled deep toward a blue-black for volume.
+        this.cool = mix(mix(bright, 0xFF0A1830, 0.6f), Color.BLACK, 0.25f);
         invalidate();
     }
 
@@ -86,42 +91,57 @@ public class AuroraOrbView extends View {
     @Override protected void onDraw(Canvas canvas) {
         float cx = getWidth() / 2f;
         float cy = getHeight() / 2f;
-        float base = Math.min(cx, cy);
+        float baseR = Math.min(cx, cy);
 
         float breathe = 0.5f + 0.5f * (float) Math.sin(phase);
-        float swell = 0.72f + 0.06f * breathe + 0.24f * level;
+        float swell = 0.70f + 0.06f * breathe + 0.24f * level;
 
-        // 1) Wide soft halo that feathers fully to transparent (the "glow" in the dark).
-        float haloR = base * (1.02f + 0.30f * level);
+        // 1) Wide halo that feathers fully to transparent — the glow in the dark.
+        float haloR = baseR * (1.00f + 0.32f * level);
         paint.setShader(new RadialGradient(cx, cy, haloR,
-                new int[]{ withAlpha(accent, (int) (70 + 110 * level)),
-                           withAlpha(accentDeep, 34), Color.TRANSPARENT },
+                new int[]{ withAlpha(accent, (int) (66 + 120 * level)),
+                           withAlpha(cool, 30), Color.TRANSPARENT },
                 new float[]{ 0f, 0.5f, 1f }, Shader.TileMode.CLAMP));
         canvas.drawCircle(cx, cy, haloR, paint);
 
-        // 2) Drifting colour lobes give the bloom an organic, morphing silhouette.
-        float lobeR = base * swell * 0.86f;
-        float drift = base * (0.12f + 0.05f * level);
+        // 2) Cool shadow lobe, offset low/right, gives the bloom volume (a lit-from-upper-left feel).
+        float shadowR = baseR * swell * 0.9f;
+        paint.setShader(new RadialGradient(cx + baseR * 0.14f, cy + baseR * 0.16f, shadowR,
+                new int[]{ withAlpha(cool, 150), withAlpha(cool, 40), Color.TRANSPARENT },
+                new float[]{ 0f, 0.6f, 1f }, Shader.TileMode.CLAMP));
+        canvas.drawCircle(cx + baseR * 0.14f, cy + baseR * 0.16f, shadowR, paint);
+
+        // 3) Drifting colour lobes — the organic, morphing silhouette.
+        float lobeR = baseR * swell * 0.82f;
+        float drift = baseR * (0.13f + 0.05f * level);
         for (int i = 0; i < LOBE_SPEED.length; i++) {
             float ang = phase * LOBE_SPEED[i] + LOBE_PHASE[i];
             float lx = cx + (float) Math.cos(ang) * drift;
-            float ly = cy + (float) Math.sin(ang * 1.3f) * drift;
+            float ly = cy + (float) Math.sin(ang * 1.28f) * drift;
+            int hue = LOBE_HUE[i] == 0 ? accent : accentSoft;
             paint.setShader(new RadialGradient(lx, ly, lobeR,
-                    new int[]{ withAlpha(accent, 150), withAlpha(accentDeep, 70), Color.TRANSPARENT },
+                    new int[]{ withAlpha(hue, 135), withAlpha(hue, 55), Color.TRANSPARENT },
                     new float[]{ 0f, 0.55f, 1f }, Shader.TileMode.CLAMP));
             canvas.drawCircle(lx, ly, lobeR, paint);
         }
 
-        // 3) Soft white core, offset gently by the loudest lobe so the highlight lives inside the bloom.
-        float coreR = base * swell * (0.42f + 0.10f * level);
-        float coreAng = phase * LOBE_SPEED[0];
-        float coreX = cx + (float) Math.cos(coreAng) * drift * 0.5f;
-        float coreY = cy + (float) Math.sin(coreAng * 1.3f) * drift * 0.5f;
+        // 4) Soft white-hot core, offset toward the upper-left light.
+        float coreR = baseR * swell * (0.40f + 0.10f * level);
+        float coreX = cx - baseR * 0.10f;
+        float coreY = cy - baseR * 0.12f;
         paint.setShader(new RadialGradient(coreX, coreY, coreR,
-                new int[]{ withAlpha(Color.WHITE, (int) (200 + 55 * level)),
-                           withAlpha(mix(Color.WHITE, accent, 0.5f), 120), Color.TRANSPARENT },
+                new int[]{ withAlpha(Color.WHITE, (int) (205 + 50 * level)),
+                           withAlpha(mix(Color.WHITE, accentSoft, 0.55f), 130), Color.TRANSPARENT },
                 new float[]{ 0f, 0.5f, 1f }, Shader.TileMode.CLAMP));
         canvas.drawCircle(coreX, coreY, coreR, paint);
+
+        // 5) Thin bright rim on the lit edge for a crisp, jewel-like highlight.
+        float rimR = baseR * swell * 0.9f;
+        paint.setShader(new RadialGradient(cx - baseR * 0.16f, cy - baseR * 0.18f, rimR,
+                new int[]{ Color.TRANSPARENT, Color.TRANSPARENT,
+                           withAlpha(accentSoft, (int) (70 + 60 * level)), Color.TRANSPARENT },
+                new float[]{ 0f, 0.78f, 0.9f, 1f }, Shader.TileMode.CLAMP));
+        canvas.drawCircle(cx - baseR * 0.16f, cy - baseR * 0.18f, rimR, paint);
     }
 
     private static int withAlpha(int color, int a) {

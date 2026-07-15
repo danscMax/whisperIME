@@ -110,6 +110,9 @@ public class MainActivity extends AppCompatActivity {
     private SharedPreferences sp = null;
     private Spinner spinnerModel;
     private Spinner spinnerLanguage;
+    private LanguagePairAdapter languagePairAdapter;
+    private List<ModelInfo> currentDownloadedModels;
+    private AdapterView.OnItemSelectedListener modelSelectedListener;
     private TextView badgeEngine;
     private int langToken = -1;
     private long startTime = 0;
@@ -146,6 +149,39 @@ public class MainActivity extends AppCompatActivity {
         super.onPause();
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // The catalog can add/remove/select models while we're backgrounded. Re-sync the spinner
+        // and, if the active model changed, reload the engine — without this the main screen keeps
+        // showing/using the old model until the app is restarted.
+        if (spinnerModel == null || sp == null) return;
+        List<ModelInfo> downloaded = loadDownloadedModels();
+        if (downloaded.isEmpty()) return; // onboarding will take over on next cold start
+        String prefId = sp.getString("selectedModelId", selectedModel != null ? selectedModel.id : null);
+        boolean modelChanged = selectedModel == null || !selectedModel.id.equals(prefId);
+        boolean listChanged = !sameModelList(downloaded);
+        if (!modelChanged && !listChanged) return;
+
+        selectedModel = resolveSelectedModel(downloaded);
+        currentDownloadedModels = downloaded;
+        spinnerModel.setOnItemSelectedListener(null); // avoid a spurious switch during rebuild
+        spinnerModel.setAdapter(getModelArrayAdapter(downloaded));
+        spinnerModel.setSelection(Math.max(0, downloaded.indexOf(selectedModel)), false);
+        spinnerModel.setOnItemSelectedListener(modelSelectedListener);
+        updateEngineBadge();
+        applyLanguageEnabled(languagePairAdapter);
+        if (modelChanged) switchModelAsync();
+    }
+
+    private boolean sameModelList(List<ModelInfo> models) {
+        if (currentDownloadedModels == null || currentDownloadedModels.size() != models.size()) return false;
+        for (int i = 0; i < models.size(); i++) {
+            if (!currentDownloadedModels.get(i).id.equals(models.get(i).id)) return false;
+        }
+        return true;
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -155,8 +191,8 @@ public class MainActivity extends AppCompatActivity {
         ThemeUtils.applyPalette(this);
         setContentView(R.layout.activity_main);
         ThemeUtils.setStatusBarAppearance(this);
-        checkInputMethodEnabled();
         sp = PreferenceManager.getDefaultSharedPreferences(this);
+        checkInputMethodEnabled();
 
         processingBar = findViewById(R.id.processing_bar);
         waveform = findViewById(R.id.waveform);
@@ -208,7 +244,7 @@ public class MainActivity extends AppCompatActivity {
 
         spinnerLanguage = findViewById(R.id.spnrLanguage);
         List<Pair<String, String>> languagePairs = LanguagePairAdapter.getLanguagePairs(this);
-        LanguagePairAdapter languagePairAdapter = new LanguagePairAdapter(this, android.R.layout.simple_spinner_item, languagePairs);
+        languagePairAdapter = new LanguagePairAdapter(this, android.R.layout.simple_spinner_item, languagePairs);
         languagePairAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerLanguage.setAdapter(languagePairAdapter);
 
@@ -229,11 +265,12 @@ public class MainActivity extends AppCompatActivity {
 
         badgeEngine = findViewById(R.id.badge_engine);
         spinnerModel = findViewById(R.id.spnrTfliteFiles);
+        currentDownloadedModels = downloadedModels;
         spinnerModel.setAdapter(getModelArrayAdapter(downloadedModels));
         spinnerModel.setSelection(Math.max(0, downloadedModels.indexOf(selectedModel)), false);
         updateEngineBadge();
         applyLanguageEnabled(languagePairAdapter);
-        spinnerModel.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+        modelSelectedListener = new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 ModelInfo picked = (ModelInfo) parent.getItemAtPosition(position);
@@ -252,7 +289,8 @@ public class MainActivity extends AppCompatActivity {
             public void onNothingSelected(AdapterView<?> parent) {
                 // Handle case when nothing is selected, if needed
             }
-        });
+        };
+        spinnerModel.setOnItemSelectedListener(modelSelectedListener);
 
         // Record button: preserve upstream press-and-hold behavior.
         btnRecord = findViewById(R.id.btnRecord);
@@ -405,9 +443,11 @@ public class MainActivity extends AppCompatActivity {
                 break;
             }
         }
-        if (!inputMethodEnabled) {
-            Intent intent = new Intent(Settings.ACTION_INPUT_METHOD_SETTINGS);
-            startActivity(intent);
+        // Offer to enable the keyboard only ONCE (upstream forced this on every launch, which yanks
+        // the user into system settings each time). After the first offer it's opt-in via Settings.
+        if (!inputMethodEnabled && !sp.getBoolean("imeOfferShown", false)) {
+            sp.edit().putBoolean("imeOfferShown", true).apply();
+            startActivity(new Intent(Settings.ACTION_INPUT_METHOD_SETTINGS));
         }
     }
 

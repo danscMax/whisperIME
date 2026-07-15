@@ -69,31 +69,40 @@ public class WaveformView extends View {
         invalidate();
     }
 
+    private Shader mGradient;
+    private int mGradientH = -1;
+
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         if (mBars.isEmpty()) return;
+        int h = getHeight();
         float step = mBarWidth + mGap;
         int maxVisible = Math.max(1, (int) (getWidth() / step));
-        Float[] arr = mBars.toArray(new Float[0]);
-        int count = Math.min(arr.length, maxVisible);
-        float cy = getHeight() / 2f;
+        int count = Math.min(mBars.size(), maxVisible);
+        float cy = h / 2f;
         float minH = mBarWidth;                 // a dot when silent
-        float maxH = getHeight() * 0.92f;
-        // Vertical gradient: bright at the crest, deep toward the centre line.
-        mPaint.setShader(new LinearGradient(0, 0, 0, getHeight(),
-                new int[]{ mAccent, withAlpha(mAccent, 200), mAccent },
-                new float[]{ 0f, 0.5f, 1f }, Shader.TileMode.CLAMP));
-        // Right-align the newest `count` bars; fade the oldest for a trailing look.
+        float maxH = h * 0.92f;
+        // Vertical gradient depends only on height + accent: build once, reuse across frames.
+        if (mGradient == null || mGradientH != h) {
+            mGradient = new LinearGradient(0, 0, 0, h,
+                    new int[]{ mAccent, withAlpha(mAccent, 200), mAccent },
+                    new float[]{ 0f, 0.5f, 1f }, Shader.TileMode.CLAMP);
+            mGradientH = h;
+        }
+        mPaint.setShader(mGradient);
+        // Draw only the newest `count` bars (skip older ones), right-aligned, oldest fainter.
+        int skip = Math.max(0, mBars.size() - count);
         float x = getWidth() - count * step + mGap / 2f;
         int drawn = 0;
-        for (int i = arr.length - count; i < arr.length; i++, drawn++) {
-            float h = minH + arr[i] * (maxH - minH);
-            int alpha = (int) (255 * (0.35f + 0.65f * drawn / (float) count)); // older = fainter
-            mPaint.setAlpha(alpha);
-            mRect.set(x, cy - h / 2f, x + mBarWidth, cy + h / 2f);
+        for (Float v : mBars) {
+            if (skip-- > 0) continue;
+            float barH = minH + v * (maxH - minH);
+            mPaint.setAlpha((int) (255 * (0.35f + 0.65f * drawn / (float) count))); // older = fainter
+            mRect.set(x, cy - barH / 2f, x + mBarWidth, cy + barH / 2f);
             canvas.drawRoundRect(mRect, mBarWidth / 2f, mBarWidth / 2f, mPaint);
             x += step;
+            drawn++;
         }
         mPaint.setShader(null);
         mPaint.setAlpha(255);

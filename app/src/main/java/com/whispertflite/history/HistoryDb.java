@@ -58,20 +58,29 @@ public class HistoryDb extends SQLiteOpenHelper {
         // v1 only; nothing to migrate yet.
     }
 
-    /** Insert a transcription and prune to the newest {@link #MAX_ROWS}. Returns the new row id. */
-    public long insert(String text, String lang, String modelId, long durationMs) {
-        SQLiteDatabase db = getWritableDatabase();
-        ContentValues cv = new ContentValues();
-        cv.put("text", text);
-        cv.put("lang", lang);
-        cv.put("model_id", modelId);
-        cv.put("duration_ms", durationMs);
-        cv.put("created_at", System.currentTimeMillis());
-        long id = db.insert(TABLE, null, cv);
-        // Prune: keep the newest MAX_ROWS rows (by id, which is monotonic).
-        db.execSQL("DELETE FROM " + TABLE + " WHERE id NOT IN ("
-                + "SELECT id FROM " + TABLE + " ORDER BY id DESC LIMIT " + MAX_ROWS + ")");
-        return id;
+    // Serialize writes off the caller's thread — insert() is called from the UI/IME/dialog threads
+    // right after a transcription, and SQLite writes there would jank the UI.
+    private static final java.util.concurrent.ExecutorService WRITER =
+            java.util.concurrent.Executors.newSingleThreadExecutor();
+
+    /** Insert a transcription and prune to the newest {@link #MAX_ROWS}. Runs off the caller thread. */
+    public void insert(String text, String lang, String modelId, long durationMs) {
+        long createdAt = System.currentTimeMillis();
+        WRITER.execute(() -> {
+            try {
+                SQLiteDatabase db = getWritableDatabase();
+                ContentValues cv = new ContentValues();
+                cv.put("text", text);
+                cv.put("lang", lang);
+                cv.put("model_id", modelId);
+                cv.put("duration_ms", durationMs);
+                cv.put("created_at", createdAt);
+                db.insert(TABLE, null, cv);
+                // Prune: keep the newest MAX_ROWS rows (by id, which is monotonic).
+                db.execSQL("DELETE FROM " + TABLE + " WHERE id NOT IN ("
+                        + "SELECT id FROM " + TABLE + " ORDER BY id DESC LIMIT " + MAX_ROWS + ")");
+            } catch (Exception ignored) { }
+        });
     }
 
     /** Newest first. {@code query} null/empty -> all rows; otherwise LIKE %query% on text. */

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Aurora adaptive icon foreground: the living light bloom (same identity as the in-app orb) —
-     a soft teal glow with a hot white core, feathering out. Kept inside the 66dp safe zone. -->
+<!-- Aurora adaptive icon foreground: the living light bloom (same identity as the in-app orb) — a
+     soft teal body lit from the upper-left, a white-hot offset core, a bright rim highlight and a
+     cool deep edge for volume. Kept inside the 66dp safe zone of the 108dp canvas. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
@@ -9,44 +10,38 @@
     android:viewportHeight="108">
 
     <!-- outer glow halo, fades to transparent -->
-    <path android:pathData="M54,54 m-42,0 a42,42 0 1,0 84,0 a42,42 0 1,0 -84,0 z">
+    <path android:pathData="M54,54 m-40,0 a40,40 0 1,0 80,0 a40,40 0 1,0 -80,0 z">
         <aapt:attr name="android:fillColor">
-            <gradient
-                android:type="radial"
-                android:centerX="54"
-                android:centerY="52"
-                android:gradientRadius="42"
-                android:startColor="#7A53DBC9"
-                android:centerColor="#3353DBC9"
-                android:endColor="#0053DBC9" />
+            <gradient android:type="radial" android:centerX="54" android:centerY="52" android:gradientRadius="40"
+                android:startColor="#6653DBC9" android:centerColor="#2253DBC9" android:endColor="#0053DBC9" />
         </aapt:attr>
     </path>
 
-    <!-- bloom body: bright teal core out to a soft edge -->
-    <path android:pathData="M54,52 m-30,0 a30,30 0 1,0 60,0 a30,30 0 1,0 -60,0 z">
+    <!-- cool shadow lobe (lower-right) for volume -->
+    <path android:pathData="M60,60 m-28,0 a28,28 0 1,0 56,0 a28,28 0 1,0 -56,0 z">
         <aapt:attr name="android:fillColor">
-            <gradient
-                android:type="radial"
-                android:centerX="47"
-                android:centerY="45"
-                android:gradientRadius="34"
-                android:startColor="#FFFFFFFF"
-                android:centerColor="#FF53DBC9"
-                android:endColor="#00119E8C" />
+            <gradient android:type="radial" android:centerX="60" android:centerY="60" android:gradientRadius="30"
+                android:startColor="#99123152" android:centerColor="#44123152" android:endColor="#00123152" />
         </aapt:attr>
     </path>
 
-    <!-- hot white core -->
-    <path android:pathData="M47,45 m-15,0 a15,15 0 1,0 30,0 a15,15 0 1,0 -30,0 z">
+    <!-- bloom body: bright teal, feathered edge -->
+    <path android:pathData="M54,53 m-30,0 a30,30 0 1,0 60,0 a30,30 0 1,0 -60,0 z">
         <aapt:attr name="android:fillColor">
-            <gradient
-                android:type="radial"
-                android:centerX="47"
-                android:centerY="45"
-                android:gradientRadius="16"
-                android:startColor="#FFFFFFFF"
-                android:centerColor="#CCFFFFFF"
-                android:endColor="#00FFFFFF" />
+            <gradient android:type="radial" android:centerX="46" android:centerY="44" android:gradientRadius="36"
+                android:startColor="#FF53DBC9" android:centerColor="#FF119E8C" android:endColor="#00006A60" />
         </aapt:attr>
     </path>
+
+    <!-- white-hot core, offset toward the light (upper-left) -->
+    <path android:pathData="M46,44 m-16,0 a16,16 0 1,0 32,0 a16,16 0 1,0 -32,0 z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="radial" android:centerX="46" android:centerY="44" android:gradientRadius="17"
+                android:startColor="#FFFFFFFF" android:centerColor="#DDD8FFF6" android:endColor="#00FFFFFF" />
+        </aapt:attr>
+    </path>
+
+    <!-- bright rim highlight on the lit edge -->
+    <path android:pathData="M50,49 m-31,0 a31,31 0 1,0 62,0 a31,31 0 1,0 -62,0 z"
+        android:fillColor="#00000000" android:strokeWidth="1.6" android:strokeAlpha="0.55" android:strokeColor="#BFF6EC" />
 </vector>

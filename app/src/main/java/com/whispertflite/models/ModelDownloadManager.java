@@ -144,7 +144,9 @@ public class ModelDownloadManager {
 
     /** Cancel an in-flight download; the .part file is kept for resume. */
     public void cancel(String modelId) {
-        if (active.containsKey(modelId)) active.put(modelId, Boolean.TRUE);
+        // Atomic: only flip the flag if the entry is still present. containsKey-then-put could re-insert
+        // a phantom active entry after the worker's finally removed it, wedging future downloads.
+        active.replace(modelId, Boolean.TRUE);
     }
 
     // --- internals ---
@@ -213,10 +215,13 @@ public class ModelDownloadManager {
             conn.disconnect();
         }
 
-        // Guard against a truncated download (clean early EOF, e.g. dropped connection): the stream
-        // ending is not proof of completeness. Verify against the expected total; keep .part so a
+        // Guard against a truncated download (clean early EOF, e.g. dropped connection / half-closed
+        // proxy socket): the stream ending is not proof of completeness. When the server gave an exact
+        // Content-Length, require the full byte count; otherwise fall back to a floor of the registry's
+        // approximate size (gross truncation only) so we never promote a short file. Keep .part so a
         // retry resumes via HTTP Range instead of silently promoting a corrupt model.
-        if (exactTotal && part.length() < total) {
+        long floor = exactTotal ? total : (long) (model.sizeBytes * 0.85);
+        if (part.length() < floor) {
             emitError(model.id, "incomplete");
             return;
         }

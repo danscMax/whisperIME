@@ -38,4 +38,23 @@
     <string name="voice_input">Источник голоса для Whisper</string>
     <string name="instructions">Нажмите и удерживайте микрофон пока говорите.</string>
     <string name="auto_lang">Определить язык</string>
+    <string name="settings_title">Настройки</string>
+    <string name="settings_appearance">Внешний вид</string>
+    <string name="settings_palette">Цветовая палитра</string>
+    <string name="settings_theme">Тема</string>
+    <string name="settings_theme_system">Система</string>
+    <string name="settings_theme_light">Светлая</string>
+    <string name="settings_theme_dark">Тёмная</string>
+    <string name="settings_recognition">Распознавание</string>
+    <string name="settings_haptic">Тактильная отдача</string>
+    <string name="settings_tts">Озвучивать результат</string>
+    <string name="settings_simple_chinese">Упрощённый китайский</string>
+    <string name="settings_history">История</string>
+    <string name="settings_history_save">Сохранять историю</string>
+    <string name="settings_history_from_ime">История с клавиатуры</string>
+    <string name="settings_history_open">Открыть историю</string>
+    <string name="settings_system">Система</string>
+    <string name="settings_enable_keyboard">Включить клавиатуру</string>
+    <string name="settings_voice_input">Настройки голосового ввода</string>
+    <string name="settings_github">Проект на GitHub</string>
 </resources>

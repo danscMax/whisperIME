@@ -93,6 +93,13 @@
             android:exported="false"
             android:parentActivityName=".MainActivity" />
 
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false"
+            android:label="@string/settings_title"
+            android:theme="@style/Theme.Whisper.ActionBar"
+            android:parentActivityName=".MainActivity" />
+
         <activity android:name="com.whispertflite.WhisperRecognitionServiceSettingsActivity"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|uiMode"
             android:theme="@style/Theme.Whisper.ActionBar"

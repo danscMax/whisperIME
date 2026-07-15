@@ -1,41 +1,52 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Adaptive icon foreground: mic capsule + sound-wave arcs, white on transparent.
-     Glyph kept inside the 66dp safe zone of the 108dp canvas. -->
+<!-- Aurora adaptive icon foreground: the living light bloom (same identity as the in-app orb) —
+     a soft teal glow with a hot white core, feathering out. Kept inside the 66dp safe zone. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Mic capsule (rounded pill), centered -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M43,45 A11,11 0 0 1 65,45 L65,63 A11,11 0 0 1 43,63 Z" />
-    <!-- Left inner arc -->
-    <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="5"
-        android:strokeLineCap="round"
-        android:fillColor="#00000000"
-        android:pathData="M38,44 Q31,54 38,64" />
-    <!-- Left outer arc (taller) -->
-    <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="5"
-        android:strokeLineCap="round"
-        android:fillColor="#00000000"
-        android:pathData="M30,37 Q21,54 30,71" />
-    <!-- Right inner arc -->
-    <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="5"
-        android:strokeLineCap="round"
-        android:fillColor="#00000000"
-        android:pathData="M70,44 Q77,54 70,64" />
-    <!-- Right outer arc (taller) -->
-    <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="5"
-        android:strokeLineCap="round"
-        android:fillColor="#00000000"
-        android:pathData="M78,37 Q87,54 78,71" />
+
+    <!-- outer glow halo, fades to transparent -->
+    <path android:pathData="M54,54 m-42,0 a42,42 0 1,0 84,0 a42,42 0 1,0 -84,0 z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="54"
+                android:centerY="52"
+                android:gradientRadius="42"
+                android:startColor="#7A53DBC9"
+                android:centerColor="#3353DBC9"
+                android:endColor="#0053DBC9" />
+        </aapt:attr>
+    </path>
+
+    <!-- bloom body: bright teal core out to a soft edge -->
+    <path android:pathData="M54,52 m-30,0 a30,30 0 1,0 60,0 a30,30 0 1,0 -60,0 z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="47"
+                android:centerY="45"
+                android:gradientRadius="34"
+                android:startColor="#FFFFFFFF"
+                android:centerColor="#FF53DBC9"
+                android:endColor="#00119E8C" />
+        </aapt:attr>
+    </path>
+
+    <!-- hot white core -->
+    <path android:pathData="M47,45 m-15,0 a15,15 0 1,0 30,0 a15,15 0 1,0 -30,0 z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="47"
+                android:centerY="45"
+                android:gradientRadius="16"
+                android:startColor="#FFFFFFFF"
+                android:centerColor="#CCFFFFFF"
+                android:endColor="#00FFFFFF" />
+        </aapt:attr>
+    </path>
 </vector>

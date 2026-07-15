@@ -1,11 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Adaptive icon background: solid teal (default palette seed). -->
+<!-- Aurora adaptive icon background: deep radial so the foreground bloom reads as light in the dark. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path
-        android:fillColor="#006A60"
-        android:pathData="M0,0 H108 V108 H0 Z" />
+    <path android:pathData="M0,0 h108 v108 h-108 z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="54"
+                android:centerY="48"
+                android:gradientRadius="80"
+                android:startColor="#0C1A18"
+                android:centerColor="#08110F"
+                android:endColor="#04090B" />
+        </aapt:attr>
+    </path>
 </vector>

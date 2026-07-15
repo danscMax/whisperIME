@@ -12,6 +12,7 @@ import android.text.format.DateUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -23,15 +24,14 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.appbar.MaterialToolbar;
-import com.google.android.material.textfield.TextInputEditText;
 import com.whispertflite.R;
 import com.whispertflite.models.ModelInfo;
 import com.whispertflite.models.ModelRegistry;
+import com.whispertflite.utils.ThemeUtils;
 
 import java.util.ArrayList;
 import java.util.List;
 
-// TODO: once ThemeUtils.applyPalette exists (added by palette task), call it here before setContentView.
 public class HistoryActivity extends AppCompatActivity {
 
     private HistoryDb db;
@@ -42,7 +42,10 @@ public class HistoryActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        ThemeUtils.applyNightMode(this);
+        ThemeUtils.applyPalette(this);
         setContentView(R.layout.activity_history);
+        ThemeUtils.setStatusBarAppearance(this);
         db = HistoryDb.get(this);
 
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
@@ -62,7 +65,7 @@ public class HistoryActivity extends AppCompatActivity {
         adapter = new HistoryAdapter();
         recycler.setAdapter(adapter);
 
-        TextInputEditText search = findViewById(R.id.searchField);
+        EditText search = findViewById(R.id.searchField);
         search.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
             @Override public void onTextChanged(CharSequence s, int a, int b, int c) {}

@@ -4,7 +4,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
-    android:fillViewport="true">
+    android:fillViewport="true"
+    android:background="@drawable/aurora_bg_radial">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -12,27 +13,25 @@
         android:orientation="vertical"
         android:padding="20dp">
 
-        <!-- Hero -->
-        <TextView
-            android:layout_width="64dp"
-            android:layout_height="64dp"
+        <!-- Hero: the living light orb as the brand mark (colors wired in onCreate). -->
+        <com.whispertflite.ui.AuroraOrbView
+            android:id="@+id/onboardingOrb"
+            android:layout_width="120dp"
+            android:layout_height="120dp"
             android:layout_gravity="center_horizontal"
-            android:layout_marginTop="24dp"
-            android:background="@drawable/onboarding_hero_background"
-            android:gravity="center"
-            android:text="🎙"
-            android:textColor="?attr/colorOnPrimary"
-            android:textSize="28sp" />
+            android:layout_marginTop="20dp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
-            android:layout_marginTop="14dp"
+            android:layout_marginTop="10dp"
+            android:fontFamily="@font/space_grotesk"
+            android:textFontWeight="700"
+            android:letterSpacing="-0.02"
             android:text="@string/onboarding_title"
-            android:textColor="?attr/colorOnSurface"
-            android:textSize="20sp"
-            android:textStyle="bold" />
+            android:textColor="@color/aurora_ink"
+            android:textSize="22sp" />
 
         <TextView
             android:layout_width="match_parent"
@@ -40,7 +39,7 @@
             android:layout_marginTop="4dp"
             android:gravity="center"
             android:text="@string/onboarding_subtitle"
-            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textColor="@color/aurora_ink_dim"
             android:textSize="13sp" />
 
         <!-- Recommended: base -->
@@ -50,7 +49,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="22dp"
             android:checkable="true"
-            app:cardBackgroundColor="?attr/colorSurfaceVariant"
+            app:cardBackgroundColor="@color/aurora_panel" app:strokeColor="@color/aurora_panel_brd"
             app:cardCornerRadius="18dp"
             app:cardElevation="0dp">
 
@@ -71,15 +70,16 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/onboarding_base_title"
-                        android:textColor="?attr/colorOnSurface"
-                        android:textSize="15sp"
-                        android:textStyle="bold" />
+                        android:fontFamily="@font/space_grotesk"
+                        android:textFontWeight="600"
+                        android:textColor="@color/aurora_ink"
+                        android:textSize="15sp" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/onboarding_base_desc"
-                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textColor="@color/aurora_ink_dim"
                         android:textSize="12sp" />
                 </LinearLayout>
 
@@ -87,10 +87,11 @@
                     android:id="@+id/base_size"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:background="@drawable/chip_background"
+                    android:background="@drawable/badge_background"
+                    android:fontFamily="@font/space_mono_regular"
                     android:paddingHorizontal="10dp"
                     android:paddingVertical="4dp"
-                    android:textColor="?attr/colorOnPrimaryContainer"
+                    android:textColor="@color/aurora_ink"
                     android:textSize="11sp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -102,7 +103,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
             android:checkable="true"
-            app:cardBackgroundColor="?attr/colorSurfaceVariant"
+            app:cardBackgroundColor="@color/aurora_panel" app:strokeColor="@color/aurora_panel_brd"
             app:cardCornerRadius="18dp"
             app:cardElevation="0dp">
 
@@ -118,18 +119,20 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="@string/onboarding_small_title"
-                    android:textColor="?attr/colorOnSurface"
-                    android:textSize="15sp"
-                    android:textStyle="bold" />
+                    android:fontFamily="@font/space_grotesk"
+                    android:textFontWeight="600"
+                    android:textColor="@color/aurora_ink"
+                    android:textSize="15sp" />
 
                 <TextView
                     android:id="@+id/small_size"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:background="@drawable/chip_background"
+                    android:background="@drawable/badge_background"
+                    android:fontFamily="@font/space_mono_regular"
                     android:paddingHorizontal="10dp"
                     android:paddingVertical="4dp"
-                    android:textColor="?attr/colorOnPrimaryContainer"
+                    android:textColor="@color/aurora_ink"
                     android:textSize="11sp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -141,7 +144,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
             android:checkable="true"
-            app:cardBackgroundColor="?attr/colorSurfaceVariant"
+            app:cardBackgroundColor="@color/aurora_panel" app:strokeColor="@color/aurora_panel_brd"
             app:cardCornerRadius="18dp"
             app:cardElevation="0dp">
 
@@ -157,18 +160,20 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="@string/onboarding_tiny_title"
-                    android:textColor="?attr/colorOnSurface"
-                    android:textSize="15sp"
-                    android:textStyle="bold" />
+                    android:fontFamily="@font/space_grotesk"
+                    android:textFontWeight="600"
+                    android:textColor="@color/aurora_ink"
+                    android:textSize="15sp" />
 
                 <TextView
                     android:id="@+id/tiny_size"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:background="@drawable/chip_background"
+                    android:background="@drawable/badge_background"
+                    android:fontFamily="@font/space_mono_regular"
                     android:paddingHorizontal="10dp"
                     android:paddingVertical="4dp"
-                    android:textColor="?attr/colorOnPrimaryContainer"
+                    android:textColor="@color/aurora_ink"
                     android:textSize="11sp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -179,7 +184,8 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
             android:gravity="center"
-            android:textColor="?attr/colorOnSurfaceVariant"
+            android:fontFamily="@font/space_mono_regular"
+            android:textColor="@color/aurora_ink_dim"
             android:textSize="12sp"
             android:visibility="gone" />
 
@@ -206,6 +212,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
             android:layout_marginTop="4dp"
+            android:textColor="@color/aurora_ink_dim"
             android:text="@string/onboarding_more" />
     </LinearLayout>
 </ScrollView>

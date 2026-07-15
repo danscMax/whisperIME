@@ -1,38 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Aurora: dark radial bg, frosted rows, pill search. Ids preserved for HistoryActivity. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:fitsSystemWindows="true"
-    android:background="?attr/colorSurface">
+    android:background="@drawable/aurora_bg_radial">
 
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="?attr/colorSurface"
+        android:theme="@style/ThemeOverlay.Aurora.OnDark"
+        android:background="@android:color/transparent"
         app:navigationIcon="@drawable/ic_arrow_back_24dp"
+        app:navigationIconTint="@color/aurora_ink"
+        app:titleTextAppearance="@style/TextAppearance.Aurora.Toolbar"
+        app:titleTextColor="@color/aurora_ink"
         app:title="@string/history_title" />
 
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/searchLayout"
-        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+    <!-- search pill -->
+    <EditText
+        android:id="@+id/searchField"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="16dp"
         android:layout_marginBottom="8dp"
-        app:startIconDrawable="@drawable/ic_search_24dp"
-        android:hint="@string/history_search_hint">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/searchField"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="text"
-            android:imeOptions="actionSearch"
-            android:maxLines="1" />
-    </com.google.android.material.textfield.TextInputLayout>
+        android:background="@drawable/aurora_pill_bg"
+        android:drawableStart="@drawable/ic_search_24dp"
+        android:drawableTint="@color/aurora_ink_dim"
+        android:drawablePadding="10dp"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="12dp"
+        android:hint="@string/history_search_hint"
+        android:textColor="@color/aurora_ink"
+        android:textColorHint="@color/aurora_ink_dim"
+        android:inputType="text"
+        android:imeOptions="actionSearch"
+        android:maxLines="1" />
 
     <FrameLayout
         android:layout_width="match_parent"
@@ -67,7 +73,7 @@
                 android:layout_marginTop="12dp"
                 android:text="@string/history_empty_hint"
                 android:textAppearance="?attr/textAppearanceBodyMedium"
-                android:textColor="?attr/colorOnSurfaceVariant" />
+                android:textColor="@color/aurora_ink_dim" />
         </LinearLayout>
     </FrameLayout>
 </LinearLayout>

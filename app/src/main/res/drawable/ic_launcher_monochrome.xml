@@ -1,35 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Monochrome layer for themed icons: same glyph, single color (system applies its tint). -->
+<!-- Monochrome layer for themed icons: the bloom reduced to a solid orb + one halo ring
+     (the system applies its own tint). Kept inside the 66dp safe zone. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- solid orb -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M43,45 A11,11 0 0 1 65,45 L65,63 A11,11 0 0 1 43,63 Z" />
+        android:pathData="M54,54 m-20,0 a20,20 0 1,0 40,0 a20,20 0 1,0 -40,0 z" />
+    <!-- halo ring -->
     <path
         android:strokeColor="#FFFFFF"
-        android:strokeWidth="5"
-        android:strokeLineCap="round"
+        android:strokeWidth="4"
         android:fillColor="#00000000"
-        android:pathData="M38,44 Q31,54 38,64" />
-    <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="5"
-        android:strokeLineCap="round"
-        android:fillColor="#00000000"
-        android:pathData="M30,37 Q21,54 30,71" />
-    <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="5"
-        android:strokeLineCap="round"
-        android:fillColor="#00000000"
-        android:pathData="M70,44 Q77,54 70,64" />
-    <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="5"
-        android:strokeLineCap="round"
-        android:fillColor="#00000000"
-        android:pathData="M78,37 Q87,54 78,71" />
+        android:pathData="M54,54 m-30,0 a30,30 0 1,0 60,0 a30,30 0 1,0 -60,0 z" />
 </vector>

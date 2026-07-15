@@ -41,6 +41,53 @@
         <item name="colorControlNormal">@color/aurora_ink</item>
     </style>
 
+    <!-- Aurora toolbar title: Space Grotesk 700 in aurora ink (used by catalog + other dark chrome). -->
+    <style name="TextAppearance.Aurora.Toolbar" parent="TextAppearance.Material3.TitleLarge">
+        <item name="android:fontFamily">@font/space_grotesk</item>
+        <item name="android:textFontWeight">700</item>
+        <item name="android:textColor">@color/aurora_ink</item>
+        <item name="android:letterSpacing">-0.02</item>
+    </style>
+
+    <!-- Aurora filter chip: translucent panel on dark, palette-accent fill when selected. -->
+    <style name="Widget.Aurora.Chip.Filter" parent="Widget.Material3.Chip.Filter">
+        <item name="android:textColor">@color/aurora_chip_text</item>
+        <item name="chipBackgroundColor">@color/aurora_chip_bg</item>
+        <item name="chipStrokeColor">@color/aurora_chip_stroke</item>
+        <item name="chipStrokeWidth">1dp</item>
+        <item name="checkedIconVisible">false</item>
+        <item name="chipSurfaceColor">@android:color/transparent</item>
+    </style>
+
+    <!-- Aurora engine badge: solid accent pill, mono aurora-ink label (matches the main-screen badge). -->
+    <style name="Widget.Aurora.Chip.Badge" parent="Widget.Material3.Chip.Suggestion">
+        <item name="android:fontFamily">@font/space_mono_regular</item>
+        <item name="android:textColor">@color/aurora_ink</item>
+        <item name="android:textSize">10sp</item>
+        <item name="chipBackgroundColor">?attr/colorPrimary</item>
+        <item name="chipStrokeWidth">0dp</item>
+        <item name="chipMinHeight">24dp</item>
+        <item name="chipStartPadding">8dp</item>
+        <item name="chipEndPadding">8dp</item>
+        <item name="ensureMinTouchTargetSize">false</item>
+        <item name="chipSurfaceColor">@android:color/transparent</item>
+    </style>
+
+    <!-- Aurora status chip (Active / engine soon): faint panel, aurora ink. -->
+    <style name="Widget.Aurora.Chip.Status" parent="Widget.Material3.Chip.Suggestion">
+        <item name="android:fontFamily">@font/space_mono_regular</item>
+        <item name="android:textColor">@color/aurora_ink</item>
+        <item name="android:textSize">10sp</item>
+        <item name="chipBackgroundColor">@color/aurora_panel</item>
+        <item name="chipStrokeColor">@color/aurora_panel_brd</item>
+        <item name="chipStrokeWidth">1dp</item>
+        <item name="chipMinHeight">24dp</item>
+        <item name="chipStartPadding">8dp</item>
+        <item name="chipEndPadding">8dp</item>
+        <item name="ensureMinTouchTargetSize">false</item>
+        <item name="chipSurfaceColor">@android:color/transparent</item>
+    </style>
+
     <!-- Palette overlays applied at runtime by ThemeUtils.applyPalette. -->
     <style name="ThemeOverlay.Whisper.Teal" parent="">
         <item name="colorPrimary">@color/palette_teal_primary</item>

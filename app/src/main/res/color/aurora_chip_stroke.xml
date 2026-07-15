@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Aurora filter chip hairline: hidden when selected (accent fill carries it), faint panel edge otherwise. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_checked="true" android:color="@android:color/transparent" />
+    <item android:color="@color/aurora_panel_brd" />
+</selector>

@@ -38,6 +38,12 @@ class DownloadActivity : AppCompatActivity(), ModelDownloadManager.Listener {
 
         manager = ModelDownloadManager.get(this)
 
+        // Aurora hero orb: tint from the selected palette (bright accent + deep container).
+        b.onboardingOrb.setColors(
+            MaterialColors.getColor(b.onboardingOrb, com.google.android.material.R.attr.colorPrimary),
+            MaterialColors.getColor(b.onboardingOrb, com.google.android.material.R.attr.colorPrimaryContainer)
+        )
+
         b.baseSize.text = Formatter.formatShortFileSize(this, base.sizeBytes)
         b.smallSize.text = Formatter.formatShortFileSize(this, small.sizeBytes)
         b.tinySize.text = Formatter.formatShortFileSize(this, tiny.sizeBytes)

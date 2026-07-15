@@ -5,14 +5,17 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:fitsSystemWindows="true"
-    android:background="?attr/colorSurface">
+    android:background="@drawable/aurora_bg_radial">
 
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="?attr/colorSurface"
+        android:background="@android:color/transparent"
         app:navigationIcon="@drawable/ic_arrow_back_24dp"
+        app:navigationIconTint="@color/aurora_ink"
+        app:titleTextAppearance="@style/TextAppearance.Aurora.Toolbar"
+        app:titleTextColor="@color/aurora_ink"
         app:title="@string/catalog_title" />
 
     <com.google.android.material.chip.ChipGroup
@@ -27,7 +30,7 @@
 
         <com.google.android.material.chip.Chip
             android:id="@+id/filterAll"
-            style="@style/Widget.Material3.Chip.Filter"
+            style="@style/Widget.Aurora.Chip.Filter"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:checked="true"
@@ -35,14 +38,14 @@
 
         <com.google.android.material.chip.Chip
             android:id="@+id/filterTflite"
-            style="@style/Widget.Material3.Chip.Filter"
+            style="@style/Widget.Aurora.Chip.Filter"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/catalog_filter_tflite" />
 
         <com.google.android.material.chip.Chip
             android:id="@+id/filterWhisperCpp"
-            style="@style/Widget.Material3.Chip.Filter"
+            style="@style/Widget.Aurora.Chip.Filter"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/catalog_filter_whispercpp" />

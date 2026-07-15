@@ -221,10 +221,15 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
                     ? R.string.catalog_engine_tflite : R.string.catalog_engine_whispercpp);
             h.meta.setText(meta(m));
 
+            // Aurora: cards stay on the translucent panel; the active one is marked with a palette
+            // accent hairline instead of a light fill (which would break the dark surface).
             boolean active = state == ModelState.ACTIVE;
-            h.card.setCardBackgroundColor(getColorAttr(active
-                    ? com.google.android.material.R.attr.colorPrimaryContainer
-                    : com.google.android.material.R.attr.colorSurfaceVariant));
+            float density = getResources().getDisplayMetrics().density;
+            h.card.setStrokeWidth((int) ((active ? 1.5f : 1f) * density));
+            h.card.setStrokeColor(active
+                    ? getColorAttr(com.google.android.material.R.attr.colorPrimary)
+                    : androidx.core.content.ContextCompat.getColor(
+                            ModelCatalogActivity.this, R.color.aurora_panel_brd));
 
             // status chip: Active, or "engine soon" for not-yet-wired gguf
             boolean soon = m.engine == Engine.WHISPER_CPP && !ModelRegistry.WHISPER_CPP_READY;

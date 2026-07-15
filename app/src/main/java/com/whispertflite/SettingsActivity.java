@@ -2,7 +2,6 @@ package com.whispertflite;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
@@ -11,12 +10,11 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.LinearLayout;
 
-import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 
 import com.google.android.material.button.MaterialButtonToggleGroup;
-import com.google.android.material.color.MaterialColors;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.whispertflite.history.HistoryActivity;
 import com.whispertflite.utils.ThemeUtils;
@@ -37,8 +35,7 @@ public class SettingsActivity extends AppCompatActivity {
         setContentView(R.layout.activity_settings);
         ThemeUtils.setStatusBarAppearance(this);
 
-        ActionBar actionBar = getSupportActionBar();
-        if (actionBar != null) actionBar.setDisplayHomeAsUpEnabled(true);
+        findViewById(R.id.btnBack).setOnClickListener(v -> finish());
 
         sp = PreferenceManager.getDefaultSharedPreferences(this);
 
@@ -98,9 +95,8 @@ public class SettingsActivity extends AppCompatActivity {
             g.setColor(PALETTE_COLORS[index]);
         }
         if (selected) {
-            int ring = MaterialColors.getColor(this,
-                    com.google.android.material.R.attr.colorOnSurface, Color.GRAY);
-            g.setStroke(dp(3), ring);
+            // Aurora dark panel: light ink ring reads clearly against the swatch.
+            g.setStroke(dp(3), ContextCompat.getColor(this, R.color.aurora_ink));
         }
         return g;
     }

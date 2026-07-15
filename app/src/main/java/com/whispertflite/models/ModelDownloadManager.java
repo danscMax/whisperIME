@@ -75,6 +75,38 @@ public class ModelDownloadManager {
         return active.containsKey(modelId);
     }
 
+    /** True if at least one registry model file is present on disk (usable by an engine). */
+    public boolean hasAnyModel() {
+        for (ModelInfo m : ModelRegistry.all()) {
+            if (targetFile(m).exists()) return true;
+        }
+        return false;
+    }
+
+    // Obsolete model files shipped by older app versions; deleted once on app start.
+    private static final String[] OBSOLETE_FILES = {
+            "whisper-base.tflite", "whisper-base.EUROPEAN_UNION.tflite", "whisper-small.tflite"
+    };
+
+    /** Copy bundled TFLite vocab files from assets if missing (needed by pre-seeded models). */
+    public void ensureVocabAssets() {
+        try {
+            ensureVocab(ModelRegistry.ENGLISH_VOCAB);
+            ensureVocab(ModelRegistry.MULTILINGUAL_VOCAB);
+        } catch (IOException e) {
+            Log.w(TAG, "vocab asset copy failed", e);
+        }
+    }
+
+    /** One-time cleanup of pre-redesign model files. Idempotent: safe to call every start. */
+    public void cleanupObsoleteModels() {
+        for (String name : OBSOLETE_FILES) {
+            File f = new File(filesDir, name);
+            //noinspection ResultOfMethodCallIgnored
+            if (f.exists()) f.delete();
+        }
+    }
+
     /** ACTIVE if selected and present; DOWNLOADED if present; DOWNLOADING if in flight; else AVAILABLE. */
     public ModelState stateOf(ModelInfo model) {
         if (targetFile(model).exists()) {

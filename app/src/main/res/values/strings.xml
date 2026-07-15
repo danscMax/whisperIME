@@ -65,7 +65,18 @@
     <string name="settings_system">System</string>
     <string name="settings_enable_keyboard">Enable keyboard</string>
     <string name="settings_voice_input">Voice input settings</string>
+    <string name="settings_models">Models &amp; engines</string>
     <string name="settings_github">Project on GitHub</string>
+    <!-- Onboarding -->
+    <string name="onboarding_title">Choose your model</string>
+    <string name="onboarding_subtitle">One to start, the rest later. Everything offline.</string>
+    <string name="onboarding_base_title">Recommended · base</string>
+    <string name="onboarding_base_desc">Russian + 77 languages, fast</string>
+    <string name="onboarding_small_title">More accurate · small</string>
+    <string name="onboarding_tiny_title">English · tiny.en</string>
+    <string name="onboarding_cta">Download and start</string>
+    <string name="onboarding_more">More models</string>
+    <string name="onboarding_downloading">Downloading… %1$d%%</string>
     <!-- Main screen -->
     <string name="main_badge_tflite" translatable="false">TFLite</string>
     <string name="main_hint_ready">Press the mic and speak</string>

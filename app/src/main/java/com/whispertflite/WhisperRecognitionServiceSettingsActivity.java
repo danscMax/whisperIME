@@ -25,7 +25,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 
-import com.whispertflite.utils.Downloader;
+import com.whispertflite.models.ModelDownloadManager;
 import com.whispertflite.utils.LanguagePairAdapter;
 import com.whispertflite.utils.ThemeUtils;
 
@@ -62,7 +62,8 @@ public class WhisperRecognitionServiceSettingsActivity extends AppCompatActivity
         ActionBar actionBar = getSupportActionBar();
         actionBar.setDisplayHomeAsUpEnabled(true);
 
-        if (!Downloader.checkModels(this)){
+        ModelDownloadManager.get(this).ensureVocabAssets();
+        if (!ModelDownloadManager.get(this).hasAnyModel()){
             Intent intent = new Intent(this, DownloadActivity.class);
             startActivity(intent);
             finish();

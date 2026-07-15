@@ -11,8 +11,8 @@ public final class ModelRegistry {
 
     private ModelRegistry() {}
 
-    /** whisper.cpp engine is not wired yet (Task 3.3 flips this to true). */
-    public static final boolean WHISPER_CPP_READY = false;
+    /** whisper.cpp engine is wired (Task 3.3): GGUF models are selectable and usable. */
+    public static final boolean WHISPER_CPP_READY = true;
 
     // Base URLs.
     private static final String TFLITE_BASE =

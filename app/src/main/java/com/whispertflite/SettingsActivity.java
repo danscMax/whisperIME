@@ -55,6 +55,8 @@ public class SettingsActivity extends AppCompatActivity {
 
         findViewById(R.id.row_history_open).setOnClickListener(
                 v -> startActivity(new Intent(this, HistoryActivity.class)));
+        findViewById(R.id.row_models).setOnClickListener(
+                v -> startActivity(new Intent(this, com.whispertflite.models.ModelCatalogActivity.class)));
         findViewById(R.id.row_enable_keyboard).setOnClickListener(
                 v -> startActivity(new Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)));
         findViewById(R.id.row_voice_input).setOnClickListener(

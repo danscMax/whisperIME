@@ -65,7 +65,18 @@
     <string name="settings_system">Система</string>
     <string name="settings_enable_keyboard">Включить клавиатуру</string>
     <string name="settings_voice_input">Настройки голосового ввода</string>
+    <string name="settings_models">Модели и движки</string>
     <string name="settings_github">Проект на GitHub</string>
+    <!-- Onboarding -->
+    <string name="onboarding_title">Выберите модель</string>
+    <string name="onboarding_subtitle">Одну для старта, остальные — потом. Всё офлайн.</string>
+    <string name="onboarding_base_title">Рекомендуем · base</string>
+    <string name="onboarding_base_desc">Русский + 77 языков, быстрая</string>
+    <string name="onboarding_small_title">Точнее · small</string>
+    <string name="onboarding_tiny_title">Английский · tiny.en</string>
+    <string name="onboarding_cta">Скачать и начать</string>
+    <string name="onboarding_more">Больше моделей</string>
+    <string name="onboarding_downloading">Загрузка… %1$d%%</string>
     <!-- Main screen -->
     <string name="main_hint_ready">Нажмите микрофон и говорите</string>
     <string name="main_error_title">Ничего не расслышал</string>

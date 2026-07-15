@@ -38,6 +38,15 @@
     <string name="voice_input">Источник голоса для Whisper</string>
     <string name="instructions">Нажмите и удерживайте микрофон пока говорите.</string>
     <string name="auto_lang">Определить язык</string>
+    <string name="history_title">История</string>
+    <string name="history_search_hint">Поиск по истории</string>
+    <string name="history_empty_emoji">🗒</string>
+    <string name="history_empty_hint">Пока нет расшифровок</string>
+    <string name="history_copied">Скопировано в буфер обмена</string>
+    <string name="history_share">Поделиться</string>
+    <string name="history_delete">Удалить</string>
+    <string name="history_clear_all">Очистить всё</string>
+    <string name="history_clear_all_confirm">Удалить всю историю распознавания? Это действие необратимо.</string>
     <string name="settings_title">Настройки</string>
     <string name="settings_appearance">Внешний вид</string>
     <string name="settings_palette">Цветовая палитра</string>

@@ -90,6 +90,10 @@
     <string name="main_cd_speak">Speak result</string>
     <string name="main_cd_share">Share</string>
 
+    <!-- IME strip -->
+    <string name="ime_hint">Tap and speak</string>
+    <string name="ime_cd_settings">Settings</string>
+
     <string name="catalog_title">Models</string>
     <string name="catalog_filter_all">All</string>
     <string name="catalog_filter_tflite" translatable="false">TFLite</string>

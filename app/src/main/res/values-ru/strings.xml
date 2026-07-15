@@ -89,6 +89,10 @@
     <string name="main_cd_speak">Озвучить результат</string>
     <string name="main_cd_share">Поделиться</string>
 
+    <!-- IME strip -->
+    <string name="ime_hint">Нажми и говори</string>
+    <string name="ime_cd_settings">Настройки</string>
+
     <string name="catalog_title">Модели</string>
     <string name="catalog_filter_all">Все</string>
     <string name="catalog_active">Активна</string>

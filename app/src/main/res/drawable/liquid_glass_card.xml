@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- iOS-style liquid glass card: frosted white base + soft iridescent pastel sheen + light rim. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#D6FFFFFF" />
+            <corners android:radius="26dp" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="35"
+                android:startColor="#2E6FA8FF"
+                android:centerColor="#2270E0B0"
+                android:endColor="#2CFF9AD0" />
+            <corners android:radius="26dp" />
+        </shape>
+    </item>
+    <!-- diagonal light beam -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="300"
+                android:startColor="#00FFFFFF"
+                android:centerColor="#3DFFFFFF"
+                android:endColor="#00FFFFFF"
+                android:centerX="0.35" />
+            <corners android:radius="26dp" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <stroke android:width="1dp" android:color="#80FFFFFF" />
+            <corners android:radius="26dp" />
+        </shape>
+    </item>
+</layer-list>

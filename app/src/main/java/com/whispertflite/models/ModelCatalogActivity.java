@@ -1,6 +1,7 @@
 package com.whispertflite.models;
 
 import android.content.SharedPreferences;
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.format.Formatter;
 import android.view.LayoutInflater;
@@ -38,14 +39,19 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
     private SharedPreferences prefs;
     private Adapter adapter;
     private TextView storageUsed;
+    /** Extra flag: render the iOS liquid-glass variant of this screen (style comparison). */
+    static final String EXTRA_GLASS = "glass";
+    private boolean glass;
     private Engine filter; // null = all
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        ThemeUtils.applyNightMode(this);
+        glass = getIntent().getBooleanExtra(EXTRA_GLASS, false);
+        if (glass) getDelegate().setLocalNightMode(androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO);
+        else ThemeUtils.applyNightMode(this);
         super.onCreate(savedInstanceState);
         ThemeUtils.applyPalette(this);
-        setContentView(R.layout.activity_model_catalog);
+        setContentView(glass ? R.layout.activity_model_catalog_glass : R.layout.activity_model_catalog);
         ThemeUtils.setStatusBarAppearance(this);
 
         manager = ModelDownloadManager.get(this);
@@ -53,6 +59,13 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
 
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
         toolbar.setNavigationOnClickListener(v -> finish());
+        if (!glass) {
+            toolbar.inflateMenu(R.menu.menu_catalog);
+            toolbar.setOnMenuItemClickListener(item -> {
+                startActivity(new Intent(this, ModelCatalogActivity.class).putExtra(EXTRA_GLASS, true));
+                return true;
+            });
+        }
 
         RecyclerView recycler = findViewById(R.id.recycler);
         recycler.setLayoutManager(new LinearLayoutManager(this));
@@ -60,24 +73,26 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
         adapter.setHasStableIds(true);
         recycler.setAdapter(adapter);
 
-        // Frosted top bar + footer: the cards scroll under them, blurred (API 31+) / translucent glass.
-        com.whispertflite.ui.FrostedBlurView blurBar = findViewById(R.id.blurBar);
-        com.whispertflite.ui.FrostedBlurView footerBar = findViewById(R.id.footerBar);
-        int glass = androidx.core.graphics.ColorUtils.setAlphaComponent(
-                androidx.core.content.ContextCompat.getColor(this, R.color.aurora_bg), 0xBE);
-        int line = androidx.core.content.ContextCompat.getColor(this, R.color.aurora_panel_brd);
-        blurBar.attach(recycler);
-        blurBar.setGlass(glass, line);
-        footerBar.attach(recycler);
-        footerBar.setGlass(glass, line);
-        recycler.addOnScrollListener(new RecyclerView.OnScrollListener() {
-            @Override public void onScrolled(RecyclerView rv, int dx, int dy) {
-                blurBar.markDirty();
-                footerBar.markDirty();
-            }
-        });
-        blurBar.post(() -> recycler.setPadding(recycler.getPaddingLeft(), blurBar.getHeight(),
-                recycler.getPaddingRight(), footerBar.getHeight()));
+        // Frosted top bar + footer (default style only): cards scroll under them, blurred (API 31+).
+        if (!glass) {
+            com.whispertflite.ui.FrostedBlurView blurBar = findViewById(R.id.blurBar);
+            com.whispertflite.ui.FrostedBlurView footerBar = findViewById(R.id.footerBar);
+            int glassTint = androidx.core.graphics.ColorUtils.setAlphaComponent(
+                    androidx.core.content.ContextCompat.getColor(this, R.color.aurora_bg), 0xBE);
+            int line = androidx.core.content.ContextCompat.getColor(this, R.color.aurora_panel_brd);
+            blurBar.attach(recycler);
+            blurBar.setGlass(glassTint, line);
+            footerBar.attach(recycler);
+            footerBar.setGlass(glassTint, line);
+            recycler.addOnScrollListener(new RecyclerView.OnScrollListener() {
+                @Override public void onScrolled(RecyclerView rv, int dx, int dy) {
+                    blurBar.markDirty();
+                    footerBar.markDirty();
+                }
+            });
+            blurBar.post(() -> recycler.setPadding(recycler.getPaddingLeft(), blurBar.getHeight(),
+                    recycler.getPaddingRight(), footerBar.getHeight()));
+        }
 
         ChipGroup filterGroup = findViewById(R.id.filterGroup);
         filterGroup.setOnCheckedStateChangeListener((group, ids) -> {
@@ -227,7 +242,7 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
         @Override
         public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             View v = LayoutInflater.from(parent.getContext())
-                    .inflate(R.layout.item_model, parent, false);
+                    .inflate(glass ? R.layout.item_model_glass : R.layout.item_model, parent, false);
             return new VH(v);
         }
 
@@ -235,6 +250,13 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
         public void onBindViewHolder(@NonNull VH h, int position) {
             ModelInfo m = items.get(position);
             ModelState state = manager.stateOf(m);
+
+            // Glass variant: tint the leading icon tile by engine.
+            View icon = h.itemView.findViewById(R.id.icon);
+            if (icon != null) {
+                int c = m.engine == Engine.WHISPER_CPP ? 0xFF7A66E8 : 0xFF4C7DF6;
+                icon.setBackgroundTintList(android.content.res.ColorStateList.valueOf(c));
+            }
 
             h.name.setText(m.displayName);
             h.engineChip.setText(m.engine == Engine.TFLITE

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Soft pearl backdrop with a warm-to-cool wash + a corner light bloom for the glass screen. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="115"
+                android:startColor="#F3ECE6"
+                android:centerColor="#EAEAF2"
+                android:endColor="#DCE6F2" />
+        </shape>
+    </item>
+    <item android:gravity="top|left" android:width="520dp" android:height="520dp">
+        <shape android:shape="oval">
+            <gradient
+                android:type="radial"
+                android:centerX="0.3"
+                android:centerY="0.25"
+                android:gradientRadius="260dp"
+                android:startColor="#66FFFFFF"
+                android:endColor="#00FFFFFF" />
+        </shape>
+    </item>
+    <item android:gravity="bottom|right" android:width="480dp" android:height="480dp">
+        <shape android:shape="oval">
+            <gradient
+                android:type="radial"
+                android:centerX="0.7"
+                android:centerY="0.75"
+                android:gradientRadius="240dp"
+                android:startColor="#33A9C6FF"
+                android:endColor="#00A9C6FF" />
+        </shape>
+    </item>
+</layer-list>

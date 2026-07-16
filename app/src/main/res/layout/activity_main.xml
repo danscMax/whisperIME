@@ -15,7 +15,12 @@
         android:orientation="vertical"
         android:paddingHorizontal="20dp"
         android:paddingTop="14dp"
-        android:paddingBottom="20dp">
+        android:paddingBottom="20dp"
+        android:focusable="true"
+        android:focusableInTouchMode="true">
+
+        <!-- Root holds initial focus so the transcript EditText doesn't auto-open the keyboard on
+             launch; the field focuses only when the user taps it to edit the result. -->
 
         <!-- top bar -->
         <LinearLayout
@@ -93,7 +98,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:popupBackground="@color/aurora_bg2" />
+                android:popupBackground="@drawable/aurora_dropdown_bg" />
 
             <TextView
                 android:id="@+id/badge_engine"
@@ -125,7 +130,7 @@
                 android:id="@+id/spnrLanguage"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:popupBackground="@color/aurora_bg2" />
+                android:popupBackground="@drawable/aurora_dropdown_bg" />
         </LinearLayout>
 
         <!-- CONTENT HERO: transcript panel fills the centre -->
@@ -267,32 +272,30 @@
         </FrameLayout>
 
         <!-- toggles -->
-        <LinearLayout
+        <com.google.android.material.chip.ChipGroup
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
             android:layout_marginTop="10dp"
-            android:orientation="horizontal">
+            app:chipSpacingHorizontal="10dp"
+            app:singleLine="true"
+            app:selectionRequired="false"
+            app:singleSelection="false">
 
-            <CheckBox
+            <com.google.android.material.chip.Chip
                 android:id="@+id/mode_append"
+                style="@style/Widget.Aurora.Chip.Toggle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="14dp"
-                android:buttonTint="@color/aurora_ink_dim"
-                android:text="@string/append"
-                android:textColor="@color/aurora_ink_dim"
-                android:textSize="13sp" />
+                android:text="@string/append_short" />
 
-            <CheckBox
+            <com.google.android.material.chip.Chip
                 android:id="@+id/mode_translate"
+                style="@style/Widget.Aurora.Chip.Toggle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:buttonTint="@color/aurora_ink_dim"
-                android:text="@string/translate"
-                android:textColor="@color/aurora_ink_dim"
-                android:textSize="13sp" />
-        </LinearLayout>
+                android:text="@string/translate_short" />
+        </com.google.android.material.chip.ChipGroup>
 
         <!-- recording readout (waveform + timer) shows above the orb only while recording -->
         <LinearLayout

@@ -98,6 +98,7 @@
 
     <!-- Recognition dialog -->
     <string name="dialog_hold_to_speak">Удерживайте, чтобы говорить</string>
+    <string name="dialog_tap_to_talk">Коснитесь, чтобы говорить</string>
     <string name="dialog_listening">Слушаю…</string>
     <string name="dialog_processing">Обрабатываю…</string>
     <string name="dialog_no_model_title">Модель ещё не скачана</string>

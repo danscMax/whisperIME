@@ -36,18 +36,13 @@ public class AuroraOrbView extends View {
 
     private ValueAnimator anim;
 
-    // four drifting lobes, each on its own angular speed and phase offset
-    private static final float[] LOBE_SPEED = { 1.00f, 0.63f, 0.41f, 0.27f };
-    private static final float[] LOBE_PHASE = { 0f, 1.7f, 3.3f, 5.0f };
-    private static final int[]   LOBE_HUE   = { 0, 1, 0, 1 }; // 0 = accent, 1 = accentSoft
-
     public AuroraOrbView(Context c) { super(c); init(); }
     public AuroraOrbView(Context c, AttributeSet a) { super(c, a); init(); }
 
     private void init() {
         setLayerType(LAYER_TYPE_SOFTWARE, null);
         anim = ValueAnimator.ofFloat(0f, (float) (2 * Math.PI));
-        anim.setDuration(9000);
+        anim.setDuration(4200);
         anim.setRepeatCount(ValueAnimator.INFINITE);
         anim.setInterpolator(new LinearInterpolator());
         anim.addUpdateListener(a -> {
@@ -93,55 +88,31 @@ public class AuroraOrbView extends View {
         float cy = getHeight() / 2f;
         float baseR = Math.min(cx, cy);
 
+        // Symmetric: everything centred. Only two motions — a slow breathe and the voice swell.
         float breathe = 0.5f + 0.5f * (float) Math.sin(phase);
-        float swell = 0.70f + 0.06f * breathe + 0.24f * level;
+        float swell = 0.74f + 0.06f * breathe + 0.22f * level;
 
         // 1) Wide halo that feathers fully to transparent — the glow in the dark.
-        float haloR = baseR * (1.00f + 0.32f * level);
+        float haloR = baseR * (1.00f + 0.30f * level);
         paint.setShader(new RadialGradient(cx, cy, haloR,
-                new int[]{ withAlpha(accent, (int) (66 + 120 * level)),
-                           withAlpha(cool, 30), Color.TRANSPARENT },
+                new int[]{ withAlpha(accent, (int) (70 + 120 * level)),
+                           withAlpha(cool, 34), Color.TRANSPARENT },
                 new float[]{ 0f, 0.5f, 1f }, Shader.TileMode.CLAMP));
         canvas.drawCircle(cx, cy, haloR, paint);
 
-        // 2) Cool shadow lobe, offset low/right, gives the bloom volume (a lit-from-upper-left feel).
-        float shadowR = baseR * swell * 0.9f;
-        paint.setShader(new RadialGradient(cx + baseR * 0.14f, cy + baseR * 0.16f, shadowR,
-                new int[]{ withAlpha(cool, 150), withAlpha(cool, 40), Color.TRANSPARENT },
-                new float[]{ 0f, 0.6f, 1f }, Shader.TileMode.CLAMP));
-        canvas.drawCircle(cx + baseR * 0.14f, cy + baseR * 0.16f, shadowR, paint);
+        // 2) Bloom body: white-hot centre out to a soft, feathered accent edge.
+        float bodyR = baseR * swell;
+        paint.setShader(new RadialGradient(cx, cy, bodyR,
+                new int[]{ Color.WHITE, accentSoft, accent, Color.TRANSPARENT },
+                new float[]{ 0f, 0.34f, 0.7f, 1f }, Shader.TileMode.CLAMP));
+        canvas.drawCircle(cx, cy, bodyR, paint);
 
-        // 3) Drifting colour lobes — the organic, morphing silhouette.
-        float lobeR = baseR * swell * 0.82f;
-        float drift = baseR * (0.13f + 0.05f * level);
-        for (int i = 0; i < LOBE_SPEED.length; i++) {
-            float ang = phase * LOBE_SPEED[i] + LOBE_PHASE[i];
-            float lx = cx + (float) Math.cos(ang) * drift;
-            float ly = cy + (float) Math.sin(ang * 1.28f) * drift;
-            int hue = LOBE_HUE[i] == 0 ? accent : accentSoft;
-            paint.setShader(new RadialGradient(lx, ly, lobeR,
-                    new int[]{ withAlpha(hue, 135), withAlpha(hue, 55), Color.TRANSPARENT },
-                    new float[]{ 0f, 0.55f, 1f }, Shader.TileMode.CLAMP));
-            canvas.drawCircle(lx, ly, lobeR, paint);
-        }
-
-        // 4) Soft white-hot core, offset toward the upper-left light.
-        float coreR = baseR * swell * (0.40f + 0.10f * level);
-        float coreX = cx - baseR * 0.10f;
-        float coreY = cy - baseR * 0.12f;
-        paint.setShader(new RadialGradient(coreX, coreY, coreR,
-                new int[]{ withAlpha(Color.WHITE, (int) (205 + 50 * level)),
-                           withAlpha(mix(Color.WHITE, accentSoft, 0.55f), 130), Color.TRANSPARENT },
-                new float[]{ 0f, 0.5f, 1f }, Shader.TileMode.CLAMP));
-        canvas.drawCircle(coreX, coreY, coreR, paint);
-
-        // 5) Thin bright rim on the lit edge for a crisp, jewel-like highlight.
-        float rimR = baseR * swell * 0.9f;
-        paint.setShader(new RadialGradient(cx - baseR * 0.16f, cy - baseR * 0.18f, rimR,
-                new int[]{ Color.TRANSPARENT, Color.TRANSPARENT,
-                           withAlpha(accentSoft, (int) (70 + 60 * level)), Color.TRANSPARENT },
-                new float[]{ 0f, 0.78f, 0.9f, 1f }, Shader.TileMode.CLAMP));
-        canvas.drawCircle(cx - baseR * 0.16f, cy - baseR * 0.18f, rimR, paint);
+        // 3) Concentrated white core that brightens with the voice.
+        float coreR = bodyR * (0.42f + 0.08f * level);
+        paint.setShader(new RadialGradient(cx, cy, coreR,
+                new int[]{ withAlpha(Color.WHITE, (int) (215 + 40 * level)), Color.TRANSPARENT },
+                new float[]{ 0f, 1f }, Shader.TileMode.CLAMP));
+        canvas.drawCircle(cx, cy, coreR, paint);
     }
 
     private static int withAlpha(int color, int a) {

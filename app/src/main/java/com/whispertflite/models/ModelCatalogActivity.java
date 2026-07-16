@@ -1,7 +1,6 @@
 package com.whispertflite.models;
 
 import android.content.SharedPreferences;
-import android.content.Intent;
 import android.os.Bundle;
 import android.text.format.Formatter;
 import android.view.LayoutInflater;
@@ -39,19 +38,15 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
     private SharedPreferences prefs;
     private Adapter adapter;
     private TextView storageUsed;
-    /** Extra flag: render the iOS liquid-glass variant of this screen (style comparison). */
-    static final String EXTRA_GLASS = "glass";
-    private boolean glass;
     private Engine filter; // null = all
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        glass = getIntent().getBooleanExtra(EXTRA_GLASS, false);
-        if (glass) getDelegate().setLocalNightMode(androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO);
-        else ThemeUtils.applyNightMode(this);
+        // Warm liquid-glass catalog is a light surface regardless of the app's night mode.
+        getDelegate().setLocalNightMode(androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO);
         super.onCreate(savedInstanceState);
         ThemeUtils.applyPalette(this);
-        setContentView(glass ? R.layout.activity_model_catalog_glass : R.layout.activity_model_catalog);
+        setContentView(R.layout.activity_model_catalog);
         ThemeUtils.setStatusBarAppearance(this);
 
         manager = ModelDownloadManager.get(this);
@@ -59,40 +54,12 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
 
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
         toolbar.setNavigationOnClickListener(v -> finish());
-        if (!glass) {
-            toolbar.inflateMenu(R.menu.menu_catalog);
-            toolbar.setOnMenuItemClickListener(item -> {
-                startActivity(new Intent(this, ModelCatalogActivity.class).putExtra(EXTRA_GLASS, true));
-                return true;
-            });
-        }
 
         RecyclerView recycler = findViewById(R.id.recycler);
         recycler.setLayoutManager(new LinearLayoutManager(this));
         adapter = new Adapter();
         adapter.setHasStableIds(true);
         recycler.setAdapter(adapter);
-
-        // Frosted top bar + footer (default style only): cards scroll under them, blurred (API 31+).
-        if (!glass) {
-            com.whispertflite.ui.FrostedBlurView blurBar = findViewById(R.id.blurBar);
-            com.whispertflite.ui.FrostedBlurView footerBar = findViewById(R.id.footerBar);
-            int glassTint = androidx.core.graphics.ColorUtils.setAlphaComponent(
-                    androidx.core.content.ContextCompat.getColor(this, R.color.aurora_bg), 0xEE);
-            int line = androidx.core.content.ContextCompat.getColor(this, R.color.aurora_panel_brd);
-            blurBar.attach(recycler);
-            blurBar.setGlass(glassTint, line);
-            footerBar.attach(recycler);
-            footerBar.setGlass(glassTint, line);
-            recycler.addOnScrollListener(new RecyclerView.OnScrollListener() {
-                @Override public void onScrolled(RecyclerView rv, int dx, int dy) {
-                    blurBar.markDirty();
-                    footerBar.markDirty();
-                }
-            });
-            blurBar.post(() -> recycler.setPadding(recycler.getPaddingLeft(), blurBar.getHeight(),
-                    recycler.getPaddingRight(), footerBar.getHeight()));
-        }
 
         ChipGroup filterGroup = findViewById(R.id.filterGroup);
         filterGroup.setOnCheckedStateChangeListener((group, ids) -> {
@@ -242,7 +209,7 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
         @Override
         public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             View v = LayoutInflater.from(parent.getContext())
-                    .inflate(glass ? R.layout.item_model_glass : R.layout.item_model, parent, false);
+                    .inflate(R.layout.item_model, parent, false);
             return new VH(v);
         }
 
@@ -251,27 +218,28 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
             ModelInfo m = items.get(position);
             ModelState state = manager.stateOf(m);
 
-            // Leading engine icon tile: gradient blue (TFLite) / violet (whisper.cpp).
-            View icon = h.itemView.findViewById(R.id.icon);
-            if (icon != null) {
-                icon.setBackgroundResource(m.engine == Engine.WHISPER_CPP
-                        ? R.drawable.icon_tile_whispercpp : R.drawable.icon_tile_tflite);
-            }
-
             h.name.setText(m.displayName);
             h.engineChip.setText(m.engine == Engine.TFLITE
                     ? R.string.catalog_engine_tflite : R.string.catalog_engine_whispercpp);
             h.meta.setText(meta(m));
 
-            // Aurora: cards stay on the translucent panel; the active one is marked with a palette
-            // accent hairline instead of a light fill (which would break the dark surface).
+            // Warm liquid glass: the active model glows warm (dark icon tile + warm sheen + warm shadow),
+            // the rest are light frosted cards with a dark-on-light icon.
             boolean active = state == ModelState.ACTIVE;
+            android.widget.ImageView icon = h.itemView.findViewById(R.id.icon);
+            if (icon != null) {
+                icon.setBackgroundResource(active ? R.drawable.icon_circle_dark : R.drawable.icon_circle_light);
+                icon.setImageTintList(android.content.res.ColorStateList.valueOf(active ? 0xFFFFFFFF : 0xFF2A2F3C));
+            }
+            View sheen = h.itemView.findViewById(R.id.cardSheen);
+            if (sheen != null) sheen.setBackgroundResource(active ? R.drawable.card_sheen_warm : R.drawable.card_sheen_glass);
+            h.card.setCardBackgroundColor(active ? 0xC8FFEAD3 : 0xC6FFFFFF);
             float density = getResources().getDisplayMetrics().density;
-            h.card.setStrokeWidth((int) ((active ? 1.5f : 1f) * density));
-            h.card.setStrokeColor(active
-                    ? getColorAttr(androidx.appcompat.R.attr.colorPrimary)
-                    : androidx.core.content.ContextCompat.getColor(
-                            ModelCatalogActivity.this, R.color.aurora_panel_brd));
+            h.card.setStrokeWidth((int) (density));
+            h.card.setStrokeColor(active ? 0xC0FFD3A6 : 0x66FFFFFF);
+            if (android.os.Build.VERSION.SDK_INT >= 28) {
+                h.card.setOutlineSpotShadowColor(active ? 0xFFF5924A : 0xFF6E86AA);
+            }
 
             // status chip: Active, or "engine soon" for not-yet-wired gguf
             boolean soon = m.engine == Engine.WHISPER_CPP && !ModelRegistry.WHISPER_CPP_READY;

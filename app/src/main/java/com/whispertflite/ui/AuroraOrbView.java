@@ -92,23 +92,15 @@ public class AuroraOrbView extends View {
         float breathe = 0.5f + 0.5f * (float) Math.sin(phase);
         float swell = 0.74f + 0.06f * breathe + 0.22f * level;
 
-        // 1) Wide halo that feathers fully to transparent — the glow in the dark.
-        float haloR = baseR * (1.00f + 0.30f * level);
-        paint.setShader(new RadialGradient(cx, cy, haloR,
-                new int[]{ withAlpha(accent, (int) (66 + 120 * level)),
-                           withAlpha(cool, 30), Color.TRANSPARENT },
-                new float[]{ 0f, 0.5f, 1f }, Shader.TileMode.CLAMP));
-        canvas.drawCircle(cx, cy, haloR, paint);
-
-        // 2) The orb — a full, soft, Siri-like glowing sphere. A long white core that eases through a
-        //    light tint into the accent and feathers out, so it reads as a lit sphere, not a ring.
-        float bodyR = baseR * swell;
-        paint.setShader(new RadialGradient(cx, cy, bodyR,
-                new int[]{ Color.WHITE,
-                           withAlpha(mix(Color.WHITE, accentSoft, 0.4f), 255),
-                           accentSoft, accent, withAlpha(accent, 0) },
-                new float[]{ 0f, 0.28f, 0.52f, 0.84f, 1f }, Shader.TileMode.CLAMP));
-        canvas.drawCircle(cx, cy, bodyR, paint);
+        // One single sphere (Siri idiom): a single continuous radial gradient with a MONOTONE falloff
+        // — a soft light centre eases through the light tint into the deep accent and feathers out.
+        // No pure-white dot and no alpha dip mid-way, so there is no visible ring: just one glowing orb.
+        float r = baseR * (0.98f + 0.30f * level); // fills the view; the outer band is the glow
+        int centre = mix(accentSoft, Color.WHITE, 0.55f + 0.35f * level); // light, brighter with voice
+        paint.setShader(new RadialGradient(cx, cy, r,
+                new int[]{ centre, accentSoft, accent, withAlpha(accent, 0) },
+                new float[]{ 0f, 0.42f, 0.78f, 1f }, Shader.TileMode.CLAMP));
+        canvas.drawCircle(cx, cy, r, paint);
     }
 
     private static int withAlpha(int color, int a) {

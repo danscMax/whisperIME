@@ -17,32 +17,22 @@
         android:background="@drawable/dialog_drag_handle"
         android:alpha="0.4" />
 
-    <!-- Top action row: cancel (left), auto-mode (right) -->
+    <!-- Top action row: a clear, always-visible close on the right. -->
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp">
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp">
 
         <ImageButton
             android:id="@+id/btnCancel"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:layout_alignParentStart="true"
-            android:background="?attr/selectableItemBackgroundBorderless"
+            android:layout_alignParentEnd="true"
+            android:background="@drawable/aurora_circle_btn"
             android:src="@drawable/ic_cancel_36dp"
             android:tint="@color/aurora_ink"
             android:contentDescription="@string/exit_button" />
-
-        <ImageButton
-            android:id="@+id/btnModeAuto"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_alignParentEnd="true"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_auto_off_36dp"
-            android:tint="@color/aurora_ink"
-            android:contentDescription="@string/auto_button" />
 
     </RelativeLayout>
 
@@ -93,7 +83,7 @@
             android:layout_marginTop="10dp"
             android:textAppearance="?attr/textAppearanceBodyMedium"
             android:textColor="@color/aurora_ink"
-            android:text="@string/dialog_hold_to_speak" />
+            android:text="@string/dialog_tap_to_talk" />
 
         <TextView
             android:id="@+id/dialog_partial"

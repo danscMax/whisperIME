@@ -99,6 +99,7 @@
 
     <!-- Recognition dialog -->
     <string name="dialog_hold_to_speak">Hold to talk</string>
+    <string name="dialog_tap_to_talk">Tap to talk</string>
     <string name="dialog_listening">Listening…</string>
     <string name="dialog_processing">Processing…</string>
     <string name="dialog_no_model_title">Model not downloaded yet</string>

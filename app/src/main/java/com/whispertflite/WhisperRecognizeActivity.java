@@ -49,7 +49,6 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     private static final String TAG = "WhisperRecognizeActivity";
     private ImageButton btnRecord;
     private ImageButton btnCancel;
-    private ImageButton btnModeAuto;
     private com.whispertflite.ui.AuroraOrbView orb;
     private ProgressBar processingBar = null;
     private TextView statusText;
@@ -61,7 +60,6 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     private SharedPreferences sp = null;
     private Context mContext;
     private CountDownTimer countDownTimer;
-    private boolean modeAuto = false;
     private String langCode = "auto";
 
     // ACTION_PROCESS_TEXT support: dictation replaces the selected text.
@@ -77,7 +75,18 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
         ThemeUtils.applyPalette(this);
         sp = PreferenceManager.getDefaultSharedPreferences(this);
         sdcardDataFolder = this.getExternalFilesDir(null);
-        selectedTfliteFile = new File(sdcardDataFolder, sp.getString("modelName", MULTI_LINGUAL_TOP_WORLD_SLOW));
+        // Use the SAME model the rest of the app selected (selectedModelId), not the legacy
+        // "modelName" pref — otherwise the dialog reports "no model" whenever that stale default
+        // (small) isn't the downloaded one. Works for TFLite and whisper.cpp (loadModel routes by file).
+        ModelInfo sel = null;
+        String selId = sp.getString("selectedModelId", null);
+        if (selId != null) sel = ModelRegistry.byId(selId);
+        if (sel == null) { // fall back to any downloaded registry model
+            for (ModelInfo m : ModelRegistry.all()) {
+                if (new File(sdcardDataFolder, m.filename).exists()) { sel = m; break; }
+            }
+        }
+        selectedTfliteFile = new File(sdcardDataFolder, sel != null ? sel.filename : "none");
 
         Intent intent = getIntent();
         processTextMode = Intent.ACTION_PROCESS_TEXT.equals(intent.getAction());
@@ -87,6 +96,9 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_recognize);
 
+        // Don't vanish on an accidental tap outside while the user is dictating — close only via the X.
+        setFinishOnTouchOutside(false);
+
         // Position the sheet at the bottom of the screen (floating window).
         WindowManager.LayoutParams params = getWindow().getAttributes();
         params.width = WindowManager.LayoutParams.MATCH_PARENT;
@@ -95,7 +107,6 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
 
         btnCancel = findViewById(R.id.btnCancel);
         btnRecord = findViewById(R.id.btnRecord);
-        btnModeAuto = findViewById(R.id.btnModeAuto);
         orb = findViewById(R.id.orb);
         orb.setColors(themeColor(com.google.android.material.R.attr.colorPrimary),
                 themeColor(com.google.android.material.R.attr.colorPrimaryContainer));
@@ -126,17 +137,11 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
         initModel(selectedTfliteFile, langToken);
         updateChip();
 
-        modeAuto = sp.getBoolean("imeModeAuto", false);
-        btnModeAuto.setImageResource(modeAuto ? R.drawable.ic_auto_on_36dp : R.drawable.ic_auto_off_36dp);
-
         mRecorder = new Recorder(this);
         mRecorder.setRmsListener(rms -> runOnUiThread(() -> orb.pushLevel(rms)));
         mRecorder.setListener(message -> {
             if (message.equals(Recorder.MSG_RECORDING)) {
-                runOnUiThread(() -> {
-                    setStatus(R.string.dialog_listening);
-                    startMicPulse();
-                });
+                runOnUiThread(() -> setStatus(R.string.dialog_listening));
             } else if (message.equals(Recorder.MSG_RECORDING_DONE)) {
                 HapticFeedback.vibrate(mContext);
                 runOnUiThread(this::stopMicPulse);
@@ -148,53 +153,37 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
                     stopMicPulse();
                     processingBar.setProgress(0);
                     processingBar.setVisibility(View.INVISIBLE);
-                    setStatus(R.string.dialog_hold_to_speak);
+                    setStatus(R.string.dialog_tap_to_talk); // let the user tap the orb to retry
                     Toast.makeText(mContext, R.string.error_no_input, Toast.LENGTH_SHORT).show();
                 });
             }
         });
 
-        if (modeAuto) {
-            btnRecord.setVisibility(View.GONE);
-            HapticFeedback.vibrate(this);
-            startRecording();
-            startCountdown();
-        }
-
-        btnModeAuto.setOnClickListener(v -> {
-            modeAuto = !modeAuto;
-            sp.edit().putBoolean("imeModeAuto", modeAuto).apply();
-            btnRecord.setVisibility(modeAuto ? View.GONE : View.VISIBLE);
-            btnModeAuto.setImageResource(modeAuto ? R.drawable.ic_auto_on_36dp : R.drawable.ic_auto_off_36dp);
-            if (mWhisper != null) stopTranscription();
-            setResult(RESULT_CANCELED, null);
-            finish();
-        });
-
-        btnRecord.setOnTouchListener((v, event) -> {
-            if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                if (checkRecordPermission()) {
-                    if (!mWhisper.isInProgress()) {
-                        HapticFeedback.vibrate(this);
-                        startRecording();
-                        startCountdown();
-                    } else {
-                        Toast.makeText(this, getString(R.string.please_wait), Toast.LENGTH_SHORT).show();
-                    }
-                }
-            } else if (event.getAction() == MotionEvent.ACTION_UP) {
-                if (mRecorder != null && mRecorder.isInProgress()) {
-                    mRecorder.stop();
-                }
+        // One unified mode: the dialog listens as soon as it opens and auto-stops on a speech pause
+        // (VAD). Tap the orb to stop early or to listen again; the X (top-left) always cancels.
+        btnRecord.setOnClickListener(v -> {
+            if (mRecorder.isInProgress()) {
+                mRecorder.stop();               // stop now -> transcribe what was captured
+            } else if (mWhisper != null && !mWhisper.isInProgress()) {
+                startListening();               // idle: start (or retry) listening
             }
-            return true;
         });
+
+        if (checkRecordPermission()) startListening();
+    }
+
+    /** Begin a VAD-gated listening session (auto-stops on a speech pause). */
+    private void startListening() {
+        HapticFeedback.vibrate(this);
+        setStatus(R.string.dialog_listening);
+        mRecorder.initVad();   // auto-stop on silence
+        mRecorder.start();
+        startCountdown();
     }
 
     private void showNoModelState() {
         findViewById(R.id.dialog_main_group).setVisibility(View.GONE);
         processingBar.setVisibility(View.GONE);
-        btnModeAuto.setVisibility(View.GONE);
         View noModel = findViewById(R.id.dialog_no_model_group);
         noModel.setVisibility(View.VISIBLE);
         findViewById(R.id.dialog_open_catalog).setOnClickListener(v -> {
@@ -237,22 +226,12 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
         chip.setText(modelLabel + " · " + lang);
     }
 
-    // The orb reacts to live RMS while recording; here we only flip idle/active.
-    private void startMicPulse() {
-        // orb swells from the RMS feed; nothing else to do.
-    }
-
     private void stopMicPulse() {
         if (orb != null) orb.setIdle();
     }
 
     private int themeColor(int attr) {
         return MaterialColors.getColor(orb, attr, Color.GRAY);
-    }
-
-    private void startRecording() {
-        if (modeAuto) mRecorder.initVad();
-        mRecorder.start();
     }
 
     // Model initialization

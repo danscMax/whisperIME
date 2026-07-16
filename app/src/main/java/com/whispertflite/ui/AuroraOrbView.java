@@ -95,24 +95,20 @@ public class AuroraOrbView extends View {
         // 1) Wide halo that feathers fully to transparent — the glow in the dark.
         float haloR = baseR * (1.00f + 0.30f * level);
         paint.setShader(new RadialGradient(cx, cy, haloR,
-                new int[]{ withAlpha(accent, (int) (70 + 120 * level)),
-                           withAlpha(cool, 34), Color.TRANSPARENT },
+                new int[]{ withAlpha(accent, (int) (66 + 120 * level)),
+                           withAlpha(cool, 30), Color.TRANSPARENT },
                 new float[]{ 0f, 0.5f, 1f }, Shader.TileMode.CLAMP));
         canvas.drawCircle(cx, cy, haloR, paint);
 
-        // 2) Bloom body: white-hot centre out to a soft, feathered accent edge.
+        // 2) The orb — a full, soft, Siri-like glowing sphere. A long white core that eases through a
+        //    light tint into the accent and feathers out, so it reads as a lit sphere, not a ring.
         float bodyR = baseR * swell;
         paint.setShader(new RadialGradient(cx, cy, bodyR,
-                new int[]{ Color.WHITE, accentSoft, accent, Color.TRANSPARENT },
-                new float[]{ 0f, 0.34f, 0.7f, 1f }, Shader.TileMode.CLAMP));
+                new int[]{ Color.WHITE,
+                           withAlpha(mix(Color.WHITE, accentSoft, 0.4f), 255),
+                           accentSoft, accent, withAlpha(accent, 0) },
+                new float[]{ 0f, 0.28f, 0.52f, 0.84f, 1f }, Shader.TileMode.CLAMP));
         canvas.drawCircle(cx, cy, bodyR, paint);
-
-        // 3) Concentrated white core that brightens with the voice.
-        float coreR = bodyR * (0.42f + 0.08f * level);
-        paint.setShader(new RadialGradient(cx, cy, coreR,
-                new int[]{ withAlpha(Color.WHITE, (int) (215 + 40 * level)), Color.TRANSPARENT },
-                new float[]{ 0f, 1f }, Shader.TileMode.CLAMP));
-        canvas.drawCircle(cx, cy, coreR, paint);
     }
 
     private static int withAlpha(int color, int a) {

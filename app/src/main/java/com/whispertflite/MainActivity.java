@@ -89,8 +89,8 @@ public class MainActivity extends AppCompatActivity {
     private ImageButton btnRecord;
     private ImageButton btnInfo;
     private ImageButton btnOverflow;
-    private android.widget.CheckBox append;
-    private android.widget.CheckBox translate;
+    private com.google.android.material.chip.Chip append;
+    private com.google.android.material.chip.Chip translate;
     private LinearProgressIndicator processingBar;
     private WaveformView waveform;
     private com.whispertflite.ui.AuroraOrbView orb;
@@ -253,8 +253,8 @@ public class MainActivity extends AppCompatActivity {
 
         spinnerLanguage = findViewById(R.id.spnrLanguage);
         List<Pair<String, String>> languagePairs = LanguagePairAdapter.getLanguagePairs(this);
-        languagePairAdapter = new LanguagePairAdapter(this, android.R.layout.simple_spinner_item, languagePairs);
-        languagePairAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        languagePairAdapter = new LanguagePairAdapter(this, R.layout.aurora_spinner_item, languagePairs);
+        languagePairAdapter.setDropDownViewResource(R.layout.aurora_spinner_dropdown);
         spinnerLanguage.setAdapter(languagePairAdapter);
 
         spinnerLanguage.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -620,7 +620,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private @NonNull ArrayAdapter<ModelInfo> getModelArrayAdapter(List<ModelInfo> models) {
-        ArrayAdapter<ModelInfo> adapter = new ArrayAdapter<ModelInfo>(this, android.R.layout.simple_spinner_item, models) {
+        ArrayAdapter<ModelInfo> adapter = new ArrayAdapter<ModelInfo>(this, R.layout.aurora_spinner_item, models) {
             @Override
             public View getView(int position, View convertView, ViewGroup parent) {
                 View view = super.getView(position, convertView, parent);
@@ -637,7 +637,7 @@ public class MainActivity extends AppCompatActivity {
                 return view;
             }
         };
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        adapter.setDropDownViewResource(R.layout.aurora_spinner_dropdown);
         return adapter;
     }
 

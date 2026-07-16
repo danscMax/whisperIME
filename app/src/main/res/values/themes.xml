@@ -88,6 +88,19 @@
         <item name="chipSurfaceColor">@android:color/transparent</item>
     </style>
 
+    <!-- Aurora toggle chip: a clean pill that fills with the accent when on. -->
+    <style name="Widget.Aurora.Chip.Toggle" parent="Widget.Material3.Chip.Filter">
+        <item name="chipBackgroundColor">@color/aurora_chip_bg</item>
+        <item name="android:textColor">@color/aurora_chip_text</item>
+        <item name="chipStrokeColor">@color/aurora_chip_stroke</item>
+        <item name="chipStrokeWidth">1dp</item>
+        <item name="checkedIconEnabled">false</item>
+        <item name="checkedIconVisible">false</item>
+        <item name="chipIconVisible">false</item>
+        <item name="ensureMinTouchTargetSize">true</item>
+        <item name="android:textSize">13sp</item>
+    </style>
+
     <!-- Palette overlays applied at runtime by ThemeUtils.applyPalette. -->
     <style name="ThemeOverlay.Whisper.Teal" parent="">
         <item name="colorPrimary">@color/palette_teal_primary</item>

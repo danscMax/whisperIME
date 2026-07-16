@@ -25,18 +25,15 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodInfo;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
-import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.EditText;
 import androidx.activity.OnBackPressedCallback;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.transition.Fade;
@@ -108,11 +105,12 @@ public class MainActivity extends AppCompatActivity {
     private File sdcardDataFolder = null;
     private ModelInfo selectedModel = null;
     private SharedPreferences sp = null;
-    private Spinner spinnerModel;
-    private Spinner spinnerLanguage;
-    private LanguagePairAdapter languagePairAdapter;
+    private android.widget.AutoCompleteTextView spinnerModel;
+    private android.widget.AutoCompleteTextView spinnerLanguage;
+    private com.google.android.material.textfield.TextInputLayout tilModel;
+    private com.google.android.material.textfield.TextInputLayout tilLanguage;
+    private List<Pair<String, String>> languagePairs;
     private List<ModelInfo> currentDownloadedModels;
-    private AdapterView.OnItemSelectedListener modelSelectedListener;
     // Serialize every model load/unload so concurrent switches (spinner + onResume) can't run
     // deinit/init in parallel and corrupt the engine lifecycle.
     private final java.util.concurrent.ExecutorService modelExecutor =
@@ -174,12 +172,9 @@ public class MainActivity extends AppCompatActivity {
 
         selectedModel = resolveSelectedModel(downloaded);
         currentDownloadedModels = downloaded;
-        spinnerModel.setOnItemSelectedListener(null); // avoid a spurious switch during rebuild
-        spinnerModel.setAdapter(getModelArrayAdapter(downloaded));
-        spinnerModel.setSelection(Math.max(0, downloaded.indexOf(selectedModel)), false);
-        spinnerModel.setOnItemSelectedListener(modelSelectedListener);
+        setModelDropdown(downloaded, selectedModel); // onItemClick only fires on user taps — no rebuild race
         updateEngineBadge();
-        applyLanguageEnabled(languagePairAdapter);
+        applyLanguageEnabled();
         if (modelChanged) switchModelAsync();
     }
 
@@ -251,55 +246,36 @@ public class MainActivity extends AppCompatActivity {
         btnOverflow = findViewById(R.id.btnOverflow);
         btnOverflow.setOnClickListener(this::showOverflowMenu);
 
+        // Language exposed-dropdown. Items are language display names; index maps to languagePairs.
+        tilLanguage = findViewById(R.id.layout_language);
         spinnerLanguage = findViewById(R.id.spnrLanguage);
-        List<Pair<String, String>> languagePairs = LanguagePairAdapter.getLanguagePairs(this);
-        languagePairAdapter = new LanguagePairAdapter(this, R.layout.aurora_spinner_item, languagePairs);
-        languagePairAdapter.setDropDownViewResource(R.layout.aurora_spinner_dropdown);
-        spinnerLanguage.setAdapter(languagePairAdapter);
-
-        spinnerLanguage.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
-                langToken = InputLang.getIdForLanguage(InputLang.getLangList(),languagePairs.get(i).first);
-                SharedPreferences.Editor editor = sp.edit();
-                editor.putString("language",languagePairs.get(i).first);
-                editor.apply();
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> adapterView) {
-
-            }
+        languagePairs = LanguagePairAdapter.getLanguagePairs(this);
+        List<String> langNames = new ArrayList<>();
+        for (Pair<String, String> p : languagePairs) langNames.add(p.second);
+        spinnerLanguage.setAdapter(noFilterAdapter(langNames));
+        spinnerLanguage.setOnItemClickListener((parent, view, pos, id) -> {
+            langToken = InputLang.getIdForLanguage(InputLang.getLangList(), languagePairs.get(pos).first);
+            sp.edit().putString("language", languagePairs.get(pos).first).apply();
         });
 
         badgeEngine = findViewById(R.id.badge_engine);
+        tilModel = findViewById(R.id.tilModel);
         spinnerModel = findViewById(R.id.spnrTfliteFiles);
         currentDownloadedModels = downloadedModels;
-        spinnerModel.setAdapter(getModelArrayAdapter(downloadedModels));
-        spinnerModel.setSelection(Math.max(0, downloadedModels.indexOf(selectedModel)), false);
+        setModelDropdown(downloadedModels, selectedModel);
         updateEngineBadge();
-        applyLanguageEnabled(languagePairAdapter);
-        modelSelectedListener = new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                ModelInfo picked = (ModelInfo) parent.getItemAtPosition(position);
-                // Skip the initial callback fired during setup (model already loaded).
-                if (picked.id.equals(selectedModel.id) && mWhisper != null) return;
-                selectedModel = picked;
-                sp.edit().putString("selectedModelId", selectedModel.id).apply();
-                updateEngineBadge();
-                applyLanguageEnabled(languagePairAdapter);
-                // Loading a GGUF model (up to ~0.5 GB) blocks for seconds; never do it on the UI
-                // thread or the app freezes ("can't change model without restart"). Switch off-thread.
-                switchModelAsync();
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-                // Handle case when nothing is selected, if needed
-            }
-        };
-        spinnerModel.setOnItemSelectedListener(modelSelectedListener);
+        applyLanguageEnabled();
+        spinnerModel.setOnItemClickListener((parent, view, pos, id) -> {
+            if (currentDownloadedModels == null || pos >= currentDownloadedModels.size()) return;
+            ModelInfo picked = currentDownloadedModels.get(pos);
+            if (picked.id.equals(selectedModel.id)) return;
+            selectedModel = picked;
+            sp.edit().putString("selectedModelId", selectedModel.id).apply();
+            updateEngineBadge();
+            applyLanguageEnabled();
+            // Loading a GGUF model (up to ~0.5 GB) blocks for seconds; switch off the UI thread.
+            switchModelAsync();
+        });
 
         // Record button: preserve upstream press-and-hold behavior.
         btnRecord = findViewById(R.id.btnRecord);
@@ -465,14 +441,14 @@ public class MainActivity extends AppCompatActivity {
     /** Swap to {@link #selectedModel} without blocking the UI thread on the (possibly large) load. */
     private void switchModelAsync() {
         btnRecord.setEnabled(false);
-        spinnerModel.setEnabled(false);
+        tilModel.setEnabled(false);
         processingBar.setVisibility(View.VISIBLE);
         modelExecutor.submit(() -> {
             deinitModel();
             initModel();
             runOnUiThread(() -> {
                 btnRecord.setEnabled(true);
-                spinnerModel.setEnabled(true);
+                tilModel.setEnabled(true);
                 if (currentState != UiState.RESULT) processingBar.setVisibility(View.INVISIBLE);
             });
         });
@@ -499,7 +475,7 @@ public class MainActivity extends AppCompatActivity {
                     // While still recording, chunks transcribe in the background: stay in RECORDING.
                     if (recordingStopped) runOnUiThread(() -> {
                         applyState(UiState.PROCESSING);
-                        spinnerModel.setEnabled(false);
+                        tilModel.setEnabled(false);
                     });
                 } else if (message.equals(Whisper.MSG_PROCESSING_DONE)) {
                     if (recordingStopped && !mWhisper.isInProgress()) {
@@ -607,38 +583,52 @@ public class MainActivity extends AppCompatActivity {
                 ? R.string.catalog_engine_whispercpp : R.string.main_badge_tflite);
     }
 
-    /** Language selector is only meaningful for multilingual models. */
-    private void applyLanguageEnabled(LanguagePairAdapter adapter) {
-        if (!selectedModel.englishOnly) {
-            spinnerLanguage.setEnabled(true);
-            String langCode = sp.getString("language", "auto");
-            spinnerLanguage.setSelection(adapter.getIndexByCode(langCode));
-        } else {
-            spinnerLanguage.setSelection(0);
-            spinnerLanguage.setEnabled(false);
-        }
+    /** Populate the model dropdown with the given models and show {@code selected} as the value. */
+    private void setModelDropdown(List<ModelInfo> models, ModelInfo selected) {
+        List<String> labels = new ArrayList<>();
+        for (ModelInfo m : models) labels.add(modelLabel(m));
+        spinnerModel.setAdapter(noFilterAdapter(labels));
+        spinnerModel.setText(modelLabel(selected), false); // false: set value without filtering the list
     }
 
-    private @NonNull ArrayAdapter<ModelInfo> getModelArrayAdapter(List<ModelInfo> models) {
-        ArrayAdapter<ModelInfo> adapter = new ArrayAdapter<ModelInfo>(this, R.layout.aurora_spinner_item, models) {
-            @Override
-            public View getView(int position, View convertView, ViewGroup parent) {
-                View view = super.getView(position, convertView, parent);
-                TextView t = view.findViewById(android.R.id.text1);
-                t.setText(modelLabel(getItem(position)));
-                t.setTextColor(ContextCompat.getColor(MainActivity.this, R.color.aurora_ink)); // dark screen
-                return view;
-            }
-
-            @Override
-            public View getDropDownView(int position, View convertView, ViewGroup parent) {
-                View view = super.getDropDownView(position, convertView, parent);
-                ((TextView) view.findViewById(android.R.id.text1)).setText(modelLabel(getItem(position)));
-                return view;
+    /**
+     * ArrayAdapter for an exposed dropdown that ALWAYS shows every item. A plain adapter would filter
+     * the popup by the field's current text (so opening it would show only the selected row); this
+     * keeps the full list by returning all items from the filter and never shrinking the backing list.
+     */
+    private ArrayAdapter<String> noFilterAdapter(List<String> items) {
+        return new ArrayAdapter<String>(this, R.layout.aurora_menu_item, new ArrayList<>(items)) {
+            @Override public android.widget.Filter getFilter() {
+                return new android.widget.Filter() {
+                    @Override protected FilterResults performFiltering(CharSequence c) {
+                        FilterResults r = new FilterResults();
+                        r.values = items; r.count = items.size();
+                        return r;
+                    }
+                    @Override protected void publishResults(CharSequence c, FilterResults r) {
+                        notifyDataSetChanged(); // keep the full list; don't reduce it to matches
+                    }
+                };
             }
         };
-        adapter.setDropDownViewResource(R.layout.aurora_spinner_dropdown);
-        return adapter;
+    }
+
+    /** Language selector is only meaningful for multilingual models; index maps to languagePairs. */
+    private void applyLanguageEnabled() {
+        if (!selectedModel.englishOnly) {
+            tilLanguage.setEnabled(true);
+            String langCode = sp.getString("language", "auto");
+            int idx = 0;
+            for (int i = 0; i < languagePairs.size(); i++) {
+                if (languagePairs.get(i).first.equals(langCode)) { idx = i; break; }
+            }
+            langToken = InputLang.getIdForLanguage(InputLang.getLangList(), languagePairs.get(idx).first);
+            spinnerLanguage.setText(languagePairs.get(idx).second, false);
+        } else {
+            langToken = -1;
+            spinnerLanguage.setText(languagePairs.get(0).second, false); // "Detect language"
+            tilLanguage.setEnabled(false);
+        }
     }
 
     private String modelLabel(ModelInfo m) {
@@ -695,7 +685,7 @@ public class MainActivity extends AppCompatActivity {
     private void finishToResult() {
         if (resultFinalized) return;
         resultFinalized = true;
-        spinnerModel.setEnabled(true);
+        tilModel.setEnabled(true);
         String text = tvResult.getText().toString().trim();
         if (text.isEmpty()) {
             applyState(UiState.ERROR);

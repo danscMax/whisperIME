@@ -78,7 +78,7 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
             com.whispertflite.ui.FrostedBlurView blurBar = findViewById(R.id.blurBar);
             com.whispertflite.ui.FrostedBlurView footerBar = findViewById(R.id.footerBar);
             int glassTint = androidx.core.graphics.ColorUtils.setAlphaComponent(
-                    androidx.core.content.ContextCompat.getColor(this, R.color.aurora_bg), 0xBE);
+                    androidx.core.content.ContextCompat.getColor(this, R.color.aurora_bg), 0xDC);
             int line = androidx.core.content.ContextCompat.getColor(this, R.color.aurora_panel_brd);
             blurBar.attach(recycler);
             blurBar.setGlass(glassTint, line);

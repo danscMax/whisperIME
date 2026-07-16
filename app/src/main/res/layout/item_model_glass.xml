@@ -39,7 +39,6 @@
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:background="@drawable/liquid_glass_icon"
-                    android:backgroundTint="#4C7DF6"
                     android:contentDescription="@null"
                     android:padding="12dp"
                     android:src="@drawable/ic_model_bars_24dp" />

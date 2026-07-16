@@ -70,7 +70,7 @@ public class HistoryActivity extends AppCompatActivity {
         blurBar.attach(recycler);
         int bg = androidx.core.content.ContextCompat.getColor(this, R.color.aurora_bg);
         blurBar.setGlass(
-                androidx.core.graphics.ColorUtils.setAlphaComponent(bg, 0xDC),   // frosted veil over the blur
+                androidx.core.graphics.ColorUtils.setAlphaComponent(bg, 0xEE),   // frosted veil over the blur
                 androidx.core.content.ContextCompat.getColor(this, R.color.aurora_panel_brd));
         blurBar.post(() -> recycler.setPadding(recycler.getPaddingLeft(), blurBar.getHeight(),
                 recycler.getPaddingRight(), recycler.getPaddingBottom()));

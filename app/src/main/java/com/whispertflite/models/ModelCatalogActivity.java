@@ -78,7 +78,7 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
             com.whispertflite.ui.FrostedBlurView blurBar = findViewById(R.id.blurBar);
             com.whispertflite.ui.FrostedBlurView footerBar = findViewById(R.id.footerBar);
             int glassTint = androidx.core.graphics.ColorUtils.setAlphaComponent(
-                    androidx.core.content.ContextCompat.getColor(this, R.color.aurora_bg), 0xDC);
+                    androidx.core.content.ContextCompat.getColor(this, R.color.aurora_bg), 0xEE);
             int line = androidx.core.content.ContextCompat.getColor(this, R.color.aurora_panel_brd);
             blurBar.attach(recycler);
             blurBar.setGlass(glassTint, line);
@@ -251,11 +251,11 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
             ModelInfo m = items.get(position);
             ModelState state = manager.stateOf(m);
 
-            // Glass variant: tint the leading icon tile by engine.
+            // Leading engine icon tile: gradient blue (TFLite) / violet (whisper.cpp).
             View icon = h.itemView.findViewById(R.id.icon);
             if (icon != null) {
-                int c = m.engine == Engine.WHISPER_CPP ? 0xFF7A66E8 : 0xFF4C7DF6;
-                icon.setBackgroundTintList(android.content.res.ColorStateList.valueOf(c));
+                icon.setBackgroundResource(m.engine == Engine.WHISPER_CPP
+                        ? R.drawable.icon_tile_whispercpp : R.drawable.icon_tile_tflite);
             }
 
             h.name.setText(m.displayName);

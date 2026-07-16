@@ -9,22 +9,16 @@ import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.util.Pair;
-import android.view.MenuItem;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.CheckBox;
-import android.widget.Spinner;
-import android.widget.TextView;
+import android.widget.AutoCompleteTextView;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 
+import com.google.android.material.materialswitch.MaterialSwitch;
+import com.google.android.material.textfield.TextInputLayout;
 import com.whispertflite.models.ModelDownloadManager;
 import com.whispertflite.utils.LanguagePairAdapter;
 import com.whispertflite.utils.ThemeUtils;
@@ -34,9 +28,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class WhisperRecognitionServiceSettingsActivity extends AppCompatActivity {
-    private static final String TAG = "MainActivity";
+    private static final String TAG = "RecognitionSettings";
 
-    // whisper-small.tflite works well for multi-lingual
     public static final String MULTI_LINGUAL_EU_MODEL_FAST = "whisper-base.EUROPEAN_UNION.tflite";
     public static final String MULTI_LINGUAL_TOP_WORLD_FAST = "whisper-base.TOP_WORLD.tflite";
     public static final String MULTI_LINGUAL_TOP_WORLD_SLOW = "whisper-small.TOP_WORLD.tflite";
@@ -44,206 +37,145 @@ public class WhisperRecognitionServiceSettingsActivity extends AppCompatActivity
     public static final String MULTI_LINGUAL_MODEL_SLOW = "whisper-small.tflite";
     public static final String ENGLISH_ONLY_MODEL = "whisper-tiny.en.tflite";
 
-    private File sdcardDataFolder = null;
-    private File selectedTfliteFile = null;
-    private SharedPreferences sp = null;
-    private Spinner spinnerTflite;
-    private Spinner spinnerLanguage;
-    private CheckBox modeSimpleChinese;
+    private File selectedTfliteFile;
+    private SharedPreferences sp;
+    private AutoCompleteTextView modelDropdown;
+    private AutoCompleteTextView languageDropdown;
+    private TextInputLayout languageLayout;
+    private List<Pair<String, String>> languagePairs;
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
         ThemeUtils.applyNightMode(this);
+        super.onCreate(savedInstanceState);
         ThemeUtils.applyPalette(this);
         setContentView(R.layout.activity_recognition_service_settings);
         ThemeUtils.setStatusBarAppearance(this);
-        ActionBar actionBar = getSupportActionBar();
-        actionBar.setDisplayHomeAsUpEnabled(true);
+        findViewById(R.id.btnBack).setOnClickListener(v -> finish());
 
-        ModelDownloadManager.get(this).ensureVocabAssets();
-        if (!ModelDownloadManager.get(this).hasAnyModel()){
-            Intent intent = new Intent(this, DownloadActivity.class);
-            startActivity(intent);
+        ModelDownloadManager manager = ModelDownloadManager.get(this);
+        manager.ensureVocabAssets();
+        if (!manager.hasAnyModel()) {
+            startActivity(new Intent(this, DownloadActivity.class));
             finish();
+            return;
         }
 
         sp = PreferenceManager.getDefaultSharedPreferences(this);
-
-        spinnerLanguage = findViewById(R.id.spnrLanguage);
-        List<Pair<String, String>> languagePairs = LanguagePairAdapter.getLanguagePairs(this);
-        LanguagePairAdapter languagePairAdapter = new LanguagePairAdapter(this, android.R.layout.simple_spinner_item, languagePairs);
-        languagePairAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerLanguage.setAdapter(languagePairAdapter);
-
-        spinnerLanguage.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
-                SharedPreferences.Editor editor = sp.edit();
-                editor.putString("recognitionServiceLanguage",languagePairs.get(i).first);
-                editor.apply();
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> adapterView) {
-
-            }
-        });
-
-        // Call the method to copy specific file types from assets to data folder
-        sdcardDataFolder = this.getExternalFilesDir(null);
-
-        ArrayList<File> tfliteFiles = getFilesWithExtension(sdcardDataFolder, ".tflite");
-
-        selectedTfliteFile = new File(sdcardDataFolder, sp.getString("recognitionServiceModelName", MULTI_LINGUAL_TOP_WORLD_SLOW));
-        ArrayAdapter<File> tfliteAdapter = getFileArrayAdapter(tfliteFiles);
-        int position = tfliteAdapter.getPosition(selectedTfliteFile);
-        spinnerTflite = findViewById(R.id.spnrTfliteFiles);
-        spinnerTflite.setAdapter(tfliteAdapter);
-        spinnerTflite.setSelection(position,false);
-        if (selectedTfliteFile.getName().equals(MULTI_LINGUAL_EU_MODEL_FAST) || selectedTfliteFile.getName().equals(MULTI_LINGUAL_TOP_WORLD_FAST) || selectedTfliteFile.getName().equals(MULTI_LINGUAL_TOP_WORLD_SLOW)){
-            spinnerLanguage.setEnabled(true);
-            String langCode = sp.getString("recognitionServiceLanguage", "auto");
-            spinnerLanguage.setSelection(languagePairAdapter.getIndexByCode(langCode));
-        } else {
-            spinnerLanguage.setSelection(0);
-            spinnerLanguage.setEnabled(false);
+        File folder = getExternalFilesDir(null);
+        ArrayList<File> files = getFilesWithExtension(folder, ".tflite");
+        if (files.isEmpty()) {
+            startActivity(new Intent(this, com.whispertflite.models.ModelCatalogActivity.class));
+            finish();
+            return;
         }
-        spinnerTflite.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                selectedTfliteFile = (File) parent.getItemAtPosition(position);
-                SharedPreferences.Editor editor = sp.edit();
-                editor.putString("recognitionServiceModelName",selectedTfliteFile.getName());
-                editor.apply();
-                if (selectedTfliteFile.getName().equals(MULTI_LINGUAL_EU_MODEL_FAST) || selectedTfliteFile.getName().equals(MULTI_LINGUAL_TOP_WORLD_FAST) || selectedTfliteFile.getName().equals(MULTI_LINGUAL_TOP_WORLD_SLOW)){
-                    spinnerLanguage.setEnabled(true);
-                    String langCode = sp.getString("recognitionServiceLanguage", "auto");
-                    spinnerLanguage.setSelection(languagePairAdapter.getIndexByCode(langCode));
-                } else {
-                    spinnerLanguage.setSelection(0);
-                    spinnerLanguage.setEnabled(false);
-                }
+
+        languagePairs = LanguagePairAdapter.getLanguagePairs(this);
+        List<String> languageLabels = new ArrayList<>();
+        for (Pair<String, String> pair : languagePairs) languageLabels.add(pair.second);
+        languageDropdown = findViewById(R.id.spnrLanguage);
+        languageLayout = findViewById(R.id.layout_language);
+        languageDropdown.setAdapter(menuAdapter(languageLabels));
+        languageDropdown.setOnItemClickListener((parent, view, position, id) ->
+                sp.edit().putString("recognitionServiceLanguage", languagePairs.get(position).first).apply());
+
+        List<String> modelLabels = new ArrayList<>();
+        for (File file : files) modelLabels.add(modelLabel(file));
+        modelDropdown = findViewById(R.id.spnrTfliteFiles);
+        modelDropdown.setAdapter(menuAdapter(modelLabels));
+
+        String savedName = sp.getString("recognitionServiceModelName", MULTI_LINGUAL_TOP_WORLD_SLOW);
+        selectedTfliteFile = files.get(0);
+        for (File file : files) {
+            if (file.getName().equals(savedName)) {
+                selectedTfliteFile = file;
+                break;
             }
+        }
+        modelDropdown.setText(modelLabel(selectedTfliteFile), false);
+        applyLanguageSelection();
 
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {}
+        modelDropdown.setOnItemClickListener((parent, view, position, id) -> {
+            selectedTfliteFile = files.get(position);
+            sp.edit().putString("recognitionServiceModelName", selectedTfliteFile.getName()).apply();
+            applyLanguageSelection();
         });
 
-        modeSimpleChinese = findViewById(R.id.mode_simple_chinese);
-        modeSimpleChinese.setChecked(sp.getBoolean("RecognitionServiceSimpleChinese",false));  //default to traditional Chinese
-        modeSimpleChinese.setOnCheckedChangeListener((compoundButton, isChecked) -> {
-            SharedPreferences.Editor editor = sp.edit();
-            editor.putBoolean("RecognitionServiceSimpleChinese", isChecked);
-            editor.apply();
-        });
+        MaterialSwitch simpleChinese = findViewById(R.id.mode_simple_chinese);
+        simpleChinese.setChecked(sp.getBoolean("RecognitionServiceSimpleChinese", false));
+        simpleChinese.setOnCheckedChangeListener((button, checked) ->
+                sp.edit().putBoolean("RecognitionServiceSimpleChinese", checked).apply());
 
         checkPermissions();
-
     }
 
+    private ArrayAdapter<String> menuAdapter(List<String> values) {
+        return new ArrayAdapter<>(this, R.layout.aurora_menu_item, values);
+    }
 
-    private @NonNull ArrayAdapter<File> getFileArrayAdapter(ArrayList<File> tfliteFiles) {
-        ArrayAdapter<File> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, tfliteFiles) {
-            @Override
-            public View getView(int position, View convertView, ViewGroup parent) {
-                View view = super.getView(position, convertView, parent);
-                TextView textView = view.findViewById(android.R.id.text1);
-                if ((getItem(position).getName()).equals(MULTI_LINGUAL_MODEL_SLOW))
-                    textView.setText(R.string.multi_lingual_slow);
-                else if ((getItem(position).getName()).equals(MULTI_LINGUAL_TOP_WORLD_SLOW))
-                    textView.setText(R.string.multi_lingual_slow);
-                else if ((getItem(position).getName()).equals(ENGLISH_ONLY_MODEL))
-                    textView.setText(R.string.english_only_fast);
-                else if ((getItem(position).getName()).equals(MULTI_LINGUAL_MODEL_FAST))
-                    textView.setText(R.string.multi_lingual_fast);
-                else if ((getItem(position).getName()).equals(MULTI_LINGUAL_EU_MODEL_FAST))
-                    textView.setText(R.string.multi_lingual_fast);
-                else if ((getItem(position).getName()).equals(MULTI_LINGUAL_TOP_WORLD_FAST))
-                    textView.setText(R.string.multi_lingual_fast);
-                else
-                    textView.setText(getItem(position).getName().substring(0, getItem(position).getName().length() - ".tflite".length()));
-
-                return view;
+    private void applyLanguageSelection() {
+        boolean multilingual = isMultilingual(selectedTfliteFile);
+        languageLayout.setEnabled(multilingual);
+        String code = multilingual ? sp.getString("recognitionServiceLanguage", "auto") : "auto";
+        int index = 0;
+        for (int i = 0; i < languagePairs.size(); i++) {
+            if (languagePairs.get(i).first.equals(code)) {
+                index = i;
+                break;
             }
+        }
+        languageDropdown.setText(languagePairs.get(index).second, false);
+        if (!multilingual) sp.edit().putString("recognitionServiceLanguage", "auto").apply();
+    }
 
-            @Override
-            public View getDropDownView(int position, View convertView, ViewGroup parent) {
-                View view = super.getDropDownView(position, convertView, parent);
-                TextView textView = view.findViewById(android.R.id.text1);
-                if ((getItem(position).getName()).equals(MULTI_LINGUAL_MODEL_SLOW))
-                    textView.setText(R.string.multi_lingual_slow);
-                else if ((getItem(position).getName()).equals(MULTI_LINGUAL_TOP_WORLD_SLOW))
-                    textView.setText(R.string.multi_lingual_slow);
-                else if ((getItem(position).getName()).equals(ENGLISH_ONLY_MODEL))
-                    textView.setText(R.string.english_only_fast);
-                else if ((getItem(position).getName()).equals(MULTI_LINGUAL_MODEL_FAST))
-                    textView.setText(R.string.multi_lingual_fast);
-                else if ((getItem(position).getName()).equals(MULTI_LINGUAL_EU_MODEL_FAST))
-                    textView.setText(R.string.multi_lingual_fast);
-                else if ((getItem(position).getName()).equals(MULTI_LINGUAL_TOP_WORLD_FAST))
-                    textView.setText(R.string.multi_lingual_fast);
-                else
-                    textView.setText(getItem(position).getName().substring(0, getItem(position).getName().length() - ".tflite".length()));
+    private boolean isMultilingual(File file) {
+        String name = file.getName();
+        return !name.endsWith(".en.tflite") && !name.equals(ENGLISH_ONLY_MODEL);
+    }
 
-                return view;
-            }
-        };
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        return adapter;
+    private String modelLabel(File file) {
+        String name = file.getName();
+        if (name.equals(MULTI_LINGUAL_MODEL_SLOW) || name.equals(MULTI_LINGUAL_TOP_WORLD_SLOW))
+            return getString(R.string.multi_lingual_slow);
+        if (name.equals(ENGLISH_ONLY_MODEL)) return getString(R.string.english_only_fast);
+        if (name.equals(MULTI_LINGUAL_MODEL_FAST)
+                || name.equals(MULTI_LINGUAL_EU_MODEL_FAST)
+                || name.equals(MULTI_LINGUAL_TOP_WORLD_FAST))
+            return getString(R.string.multi_lingual_fast);
+        return name.endsWith(".tflite") ? name.substring(0, name.length() - 7) : name;
     }
 
     private void checkPermissions() {
-        List<String> perms = new ArrayList<>();
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            perms.add(Manifest.permission.RECORD_AUDIO);
-            Toast.makeText(this, getString(R.string.need_record_audio_permission), Toast.LENGTH_SHORT).show();
+        List<String> permissions = new ArrayList<>();
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+                != PackageManager.PERMISSION_GRANTED) {
+            permissions.add(Manifest.permission.RECORD_AUDIO);
+            Toast.makeText(this, R.string.need_record_audio_permission, Toast.LENGTH_SHORT).show();
         }
-        if ((Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) && (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)){
-            perms.add(Manifest.permission.POST_NOTIFICATIONS);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            permissions.add(Manifest.permission.POST_NOTIFICATIONS);
         }
-        if (!perms.isEmpty()) {
-            requestPermissions(perms.toArray(new String[] {}), 0);
-        }
+        if (!permissions.isEmpty()) requestPermissions(permissions.toArray(new String[0]), 0);
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            Log.d(TAG, "Record permission is granted");
-        } else {
-            Log.d(TAG, "Record permission is not granted");
-        }
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
+        super.onRequestPermissionsResult(requestCode, permissions, results);
+        boolean granted = results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED;
+        Log.d(TAG, granted ? "Record permission granted" : "Record permission denied");
     }
 
     public ArrayList<File> getFilesWithExtension(File directory, String extension) {
-        ArrayList<File> filteredFiles = new ArrayList<>();
-
-        // Check if the directory is accessible
-        if (directory != null && directory.exists()) {
-            File[] files = directory.listFiles();
-
-            // Filter files by the provided extension
-            if (files != null) {
-                for (File file : files) {
-                    if (file.isFile() && file.getName().endsWith(extension)) {
-                        filteredFiles.add(file);
-                    }
-                }
-            }
+        ArrayList<File> result = new ArrayList<>();
+        if (directory == null || !directory.exists()) return result;
+        File[] files = directory.listFiles();
+        if (files == null) return result;
+        for (File file : files) {
+            if (file.isFile() && file.getName().endsWith(extension)) result.add(file);
         }
-
-        return filteredFiles;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) { //handle "back click" on action bar
-        if (item.getItemId() == android.R.id.home) {
-            finish();
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
+        return result;
     }
 }

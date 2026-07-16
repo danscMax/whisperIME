@@ -1,16 +1,25 @@
 <resources>
     <!-- Base application theme. -->
-    <style name="Theme.Whisper.NoActionBar" parent="Theme.Material3.DayNight.NoActionBar">
+    <style name="Theme.Whisper.NoActionBar" parent="Theme.Material3Expressive.DayNight.NoActionBar">
         <!-- Customize your light theme here. -->
         <item name="android:windowBackground">@color/windowBackground</item>
         <item name="android:windowAnimationStyle">@style/Animation.Whisper.Activity</item>
+        <!-- Edge-to-edge immersion: let the ambient backdrop bleed under transparent system bars. -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:enforceStatusBarContrast">false</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
     </style>
 
     <!-- Base application theme. -->
-    <style name="Theme.Whisper.ActionBar" parent="Theme.Material3.DayNight">
+    <style name="Theme.Whisper.ActionBar" parent="Theme.Material3Expressive.DayNight">
         <!-- Customize your light theme here. -->
         <item name="android:windowBackground">@color/windowBackground</item>
         <item name="android:windowAnimationStyle">@style/Animation.Whisper.Activity</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:enforceStatusBarContrast">false</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
     </style>
 
     <!-- Simple, coherent fade for every activity open/close (Main <-> Settings/History/Catalog). -->
@@ -114,6 +123,29 @@
         <item name="chipIconVisible">false</item>
         <item name="ensureMinTouchTargetSize">true</item>
         <item name="android:textSize">13sp</item>
+    </style>
+
+    <style name="Widget.LivingSignal.Dropdown" parent="Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
+        <item name="boxBackgroundColor">@color/aurora_panel</item>
+        <item name="boxCornerRadiusTopStart">18dp</item>
+        <item name="boxCornerRadiusTopEnd">18dp</item>
+        <item name="boxCornerRadiusBottomStart">18dp</item>
+        <item name="boxCornerRadiusBottomEnd">18dp</item>
+        <item name="boxStrokeColor">@color/aurora_panel_brd</item>
+        <item name="boxStrokeWidth">1dp</item>
+        <item name="boxStrokeWidthFocused">1dp</item>
+        <item name="endIconTint">@color/aurora_ink_dim</item>
+        <item name="android:textColorHint">@color/aurora_ink_dim</item>
+    </style>
+
+    <style name="Widget.LivingSignal.Chip.Toggle" parent="Widget.Material3.Chip.Filter">
+        <item name="chipBackgroundColor">@color/aurora_chip_bg</item>
+        <item name="android:textColor">@color/aurora_chip_text</item>
+        <item name="chipStrokeColor">@color/aurora_chip_stroke</item>
+        <item name="chipStrokeWidth">1dp</item>
+        <item name="checkedIconVisible">false</item>
+        <item name="ensureMinTouchTargetSize">true</item>
+        <item name="android:textSize">12sp</item>
     </style>
 
     <!-- Palette overlays applied at runtime by ThemeUtils.applyPalette. -->

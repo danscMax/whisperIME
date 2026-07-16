@@ -41,8 +41,8 @@ public class HistoryActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
         ThemeUtils.applyNightMode(this);
+        super.onCreate(savedInstanceState);
         ThemeUtils.applyPalette(this);
         setContentView(R.layout.activity_history);
         ThemeUtils.setStatusBarAppearance(this);
@@ -64,6 +64,19 @@ public class HistoryActivity extends AppCompatActivity {
         recycler.setLayoutManager(new LinearLayoutManager(this));
         adapter = new HistoryAdapter();
         recycler.setAdapter(adapter);
+
+        // Frosted top bar: the list scrolls under it, blurred (API 31+) / translucent glass otherwise.
+        com.whispertflite.ui.FrostedBlurView blurBar = findViewById(R.id.blurBar);
+        blurBar.attach(recycler);
+        int bg = androidx.core.content.ContextCompat.getColor(this, R.color.aurora_bg);
+        blurBar.setGlass(
+                androidx.core.graphics.ColorUtils.setAlphaComponent(bg, 0xBE),   // frosted veil over the blur
+                androidx.core.content.ContextCompat.getColor(this, R.color.aurora_panel_brd));
+        blurBar.post(() -> recycler.setPadding(recycler.getPaddingLeft(), blurBar.getHeight(),
+                recycler.getPaddingRight(), recycler.getPaddingBottom()));
+        recycler.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override public void onScrolled(RecyclerView rv, int dx, int dy) { blurBar.markDirty(); }
+        });
 
         EditText search = findViewById(R.id.searchField);
         search.addTextChangedListener(new TextWatcher() {

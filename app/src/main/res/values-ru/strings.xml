@@ -91,6 +91,14 @@
     <string name="main_cd_menu">Ещё</string>
     <string name="main_cd_speak">Озвучить результат</string>
     <string name="main_cd_share">Поделиться</string>
+    <string name="main_local_badge">Локально · приватно</string>
+    <string name="main_state_ready">Готова · удерживайте сигнал</string>
+    <string name="main_state_listening">Слушает · отпустите для завершения</string>
+    <string name="main_state_processing">Фокусирует речь</string>
+    <string name="main_state_result">Сигнал распознан</string>
+    <string name="main_state_error">Сигнал потерян</string>
+    <string name="main_hold_signal">Удерживайте сигнал и говорите</string>
+    <string name="main_context_format">%1$s · %2$s</string>
 
     <!-- IME strip -->
     <string name="ime_hint">Нажми и говори</string>

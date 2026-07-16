@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.inputmethodservice.InputMethodService;
 import android.os.Handler;
@@ -21,6 +22,7 @@ import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
+import android.widget.PopupMenu;
 import android.widget.TextView;
 
 import androidx.core.content.ContextCompat;
@@ -29,13 +31,13 @@ import androidx.preference.PreferenceManager;
 import com.github.houbb.opencc4j.util.ZhConverterUtil;
 import com.google.android.material.color.DynamicColors;
 import com.google.android.material.color.MaterialColors;
-import com.google.android.material.progressindicator.CircularProgressIndicator;
 import com.whispertflite.asr.Recorder;
 import com.whispertflite.asr.Whisper;
 import com.whispertflite.asr.WhisperResult;
 import com.whispertflite.history.HistoryDb;
 import com.whispertflite.models.ModelInfo;
 import com.whispertflite.models.ModelRegistry;
+import com.whispertflite.ui.LivingSignalView;
 import com.whispertflite.utils.HapticFeedback;
 import com.whispertflite.utils.InputLang;
 
@@ -50,21 +52,16 @@ public class WhisperInputMethodService extends InputMethodService {
 
     private ImageButton btnRecord;
     private ImageButton btnKeyboard;
-    private ImageButton btnTranslate;
-    private ImageButton btnModeAuto;
     private ImageButton btnEnter;
     private ImageButton btnDel;
-    private ImageButton btnSettings;
-    private View recordRing;
-    private CircularProgressIndicator processingSpinner;
+    private ImageButton btnMore;
     private TextView tvStatus;
     private TextView tvHint;
     private TextView tvModelChip;
     private TextView tvTimer;
     private LinearLayout idleGroup;
     private LinearLayout layoutButtons;
-    private com.whispertflite.ui.WaveformView waveform;
-    private com.whispertflite.ui.AuroraOrbView orb;
+    private LivingSignalView orb;
     private View rootView;
 
     private Recorder mRecorder = null;
@@ -176,33 +173,25 @@ public class WhisperInputMethodService extends InputMethodService {
 
         btnRecord = rootView.findViewById(R.id.btnRecord);
         btnKeyboard = rootView.findViewById(R.id.btnKeyboard);
-        btnTranslate = rootView.findViewById(R.id.btnTranslate);
-        btnModeAuto = rootView.findViewById(R.id.btnModeAuto);
         btnEnter = rootView.findViewById(R.id.btnEnter);
         btnDel = rootView.findViewById(R.id.btnDel);
-        btnSettings = rootView.findViewById(R.id.btnSettings);
-        recordRing = rootView.findViewById(R.id.record_ring);
-        processingSpinner = rootView.findViewById(R.id.processing_spinner);
+        btnMore = rootView.findViewById(R.id.btnMore);
         tvStatus = rootView.findViewById(R.id.tv_status);
         tvHint = rootView.findViewById(R.id.tv_hint);
         tvModelChip = rootView.findViewById(R.id.tv_model_chip);
         tvTimer = rootView.findViewById(R.id.tvTimer);
         idleGroup = rootView.findViewById(R.id.idle_group);
         layoutButtons = rootView.findViewById(R.id.layout_buttons);
-        waveform = rootView.findViewById(R.id.waveform);
         orb = rootView.findViewById(R.id.orb);
-        orb.setColors(themeColor(com.google.android.material.R.attr.colorPrimary),
+        orb.setColors(themeColor(androidx.appcompat.R.attr.colorPrimary),
                 themeColor(com.google.android.material.R.attr.colorPrimaryContainer));
 
-        btnTranslate.setImageResource(translate ? R.drawable.ic_english_on_36dp : R.drawable.ic_english_off_36dp);
         modeAuto = sp.getBoolean("imeModeAuto", false);
-        btnModeAuto.setImageResource(modeAuto ? R.drawable.ic_auto_on_36dp : R.drawable.ic_auto_off_36dp);
         // Keys (keyboard-exit above all) stay visible in both modes: auto must never trap the user.
         checkRecordPermission();
 
         mRecorder = new Recorder(this);
         mRecorder.setRmsListener(rms -> handler.post(() -> {
-            waveform.push(rms);
             orb.pushLevel(rms);
         }));
         mRecorder.setListener(new Recorder.RecorderListener() {
@@ -314,32 +303,58 @@ public class WhisperInputMethodService extends InputMethodService {
             switchToPreviousInputMethod();
         });
 
-        btnTranslate.setOnClickListener(v -> {
-            translate = !translate;
-            btnTranslate.setImageResource(translate ? R.drawable.ic_english_on_36dp : R.drawable.ic_english_off_36dp);
-        });
-
         btnEnter.setOnClickListener(v ->
                 getCurrentInputConnection().sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER)));
 
-        btnSettings.setOnClickListener(v -> {
-            Intent intent = new Intent(this, SettingsActivity.class);
-            intent.addFlags(FLAG_ACTIVITY_NEW_TASK);
-            startActivity(intent);
-        });
-
-        btnModeAuto.setOnClickListener(v -> {
-            modeAuto = !modeAuto;
-            sp.edit().putBoolean("imeModeAuto", modeAuto).apply();
-            btnModeAuto.setImageResource(modeAuto ? R.drawable.ic_auto_on_36dp : R.drawable.ic_auto_off_36dp);
-        });
+        btnMore.setOnClickListener(this::showImeMenu);
 
         return rootView;
     }
 
+    private void showImeMenu(View anchor) {
+        PopupMenu menu = new PopupMenu(themedContext(), anchor);
+        android.view.MenuItem translateItem = menu.getMenu().add(0, 1, 0, R.string.translate_short);
+        translateItem.setCheckable(true);
+        translateItem.setChecked(translate);
+        android.view.MenuItem autoItem = menu.getMenu().add(0, 2, 1, R.string.auto_button);
+        autoItem.setCheckable(true);
+        autoItem.setChecked(modeAuto);
+        menu.getMenu().add(0, 3, 2, R.string.settings_title);
+        menu.setOnMenuItemClickListener(item -> {
+            if (item.getItemId() == 1) {
+                translate = !translate;
+                updateModelChip();
+                return true;
+            }
+            if (item.getItemId() == 2) {
+                modeAuto = !modeAuto;
+                sp.edit().putBoolean("imeModeAuto", modeAuto).apply();
+                updateModelChip();
+                return true;
+            }
+            if (item.getItemId() == 3) {
+                Intent intent = new Intent(this, SettingsActivity.class);
+                intent.addFlags(FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent);
+                return true;
+            }
+            return false;
+        });
+        menu.show();
+    }
+
     /** App theme wrapper carrying the palette overlay picked in preferences. */
     private Context themedContext() {
-        Context base = new ContextThemeWrapper(this, R.style.Theme_Whisper_NoActionBar);
+        Context source = this;
+        String nightMode = sp.getString("nightMode", "system");
+        if (!"system".equals(nightMode)) {
+            Configuration configuration = new Configuration(getResources().getConfiguration());
+            configuration.uiMode = (configuration.uiMode & ~Configuration.UI_MODE_NIGHT_MASK)
+                    | ("dark".equals(nightMode)
+                    ? Configuration.UI_MODE_NIGHT_YES : Configuration.UI_MODE_NIGHT_NO);
+            source = createConfigurationContext(configuration);
+        }
+        Context base = new ContextThemeWrapper(source, R.style.Theme_Whisper_NoActionBar);
         String palette = sp.getString("palette", "teal");
         if ("dynamic".equals(palette)) {
             return DynamicColors.wrapContextIfAvailable(base);
@@ -466,22 +481,22 @@ public class WhisperInputMethodService extends InputMethodService {
         boolean recording = state == UiState.RECORDING;
         boolean processing = state == UiState.PROCESSING;
 
-        idleGroup.setVisibility(recording || processing ? View.GONE : View.VISIBLE);
-        waveform.setVisibility(recording ? View.VISIBLE : View.GONE);
+        idleGroup.setVisibility(View.VISIBLE);
         tvTimer.setVisibility(recording ? View.VISIBLE : View.GONE);
-        recordRing.setVisibility(recording ? View.VISIBLE : View.GONE);
-        processingSpinner.setVisibility(processing ? View.VISIBLE : View.GONE);
-        btnRecord.setVisibility(processing ? View.INVISIBLE : View.VISIBLE);
-        orb.setVisibility(processing ? View.INVISIBLE : View.VISIBLE);
+        btnRecord.setEnabled(!processing);
+        btnRecord.setAlpha(processing ? 0.55f : 1f);
         tvStatus.setVisibility(View.GONE);
+        tvHint.setText(recording ? R.string.dialog_listening
+                : processing ? R.string.dialog_processing : R.string.ime_hint);
+        orb.setSignalState(recording ? LivingSignalView.SignalState.LISTENING
+                : processing ? LivingSignalView.SignalState.PROCESSING
+                : LivingSignalView.SignalState.READY);
 
         if (recording) {
             recordStartMs = System.currentTimeMillis();
             tvTimer.setText("0:00");
-            waveform.clear();
             timerHandler.post(timerTick);
         } else {
-            orb.setIdle();  // orb returns to calm breathing
             timerHandler.removeCallbacks(timerTick);
         }
     }
@@ -490,7 +505,9 @@ public class WhisperInputMethodService extends InputMethodService {
     private void updateModelChip() {
         if (tvModelChip == null || selectedModel == null) return;
         String langCode = sp.getString("language", "auto");
-        tvModelChip.setText(selectedModel.displayName + " · " + langCode);
+        String mode = modeAuto ? getString(R.string.auto_button) : getString(R.string.dialog_hold_to_speak);
+        String action = translate ? getString(R.string.translate_short) : langCode;
+        tvModelChip.setText(selectedModel.displayName + " · " + action + " · " + mode);
     }
 
     private int themeColor(int attr) {

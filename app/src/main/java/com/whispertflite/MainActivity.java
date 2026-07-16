@@ -42,7 +42,6 @@ import androidx.transition.TransitionManager;
 import com.github.houbb.opencc4j.util.ZhConverterUtil;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.color.MaterialColors;
-import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.whispertflite.asr.Recorder;
 import com.whispertflite.asr.RecordBuffer;
 import com.whispertflite.asr.Whisper;
@@ -51,7 +50,7 @@ import com.whispertflite.history.HistoryDb;
 import com.whispertflite.models.ModelDownloadManager;
 import com.whispertflite.models.ModelInfo;
 import com.whispertflite.models.ModelRegistry;
-import com.whispertflite.ui.WaveformView;
+import com.whispertflite.ui.LivingSignalView;
 import com.whispertflite.utils.HapticFeedback;
 import com.whispertflite.utils.InputLang;
 import com.whispertflite.utils.LanguagePairAdapter;
@@ -88,9 +87,7 @@ public class MainActivity extends AppCompatActivity {
     private ImageButton btnOverflow;
     private com.google.android.material.chip.Chip append;
     private com.google.android.material.chip.Chip translate;
-    private LinearProgressIndicator processingBar;
-    private WaveformView waveform;
-    private com.whispertflite.ui.AuroraOrbView orb;
+    private LivingSignalView orb;
     private TextView tvReadyHint;
     private TextView tvHintTap;
     private TextView tvTimer;
@@ -98,6 +95,9 @@ public class MainActivity extends AppCompatActivity {
     private LinearLayout layoutRecording;
     private LinearLayout layoutError;
     private LinearLayout layoutActions;
+    private LinearLayout contextPanel;
+    private MaterialButton btnContext;
+    private TextView dockStatus;
 
     private Recorder mRecorder = null;
     private Whisper mWhisper = null;
@@ -168,7 +168,10 @@ public class MainActivity extends AppCompatActivity {
         String prefId = sp.getString("selectedModelId", selectedModel != null ? selectedModel.id : null);
         boolean modelChanged = selectedModel == null || !selectedModel.id.equals(prefId);
         boolean listChanged = !sameModelList(downloaded);
-        if (!modelChanged && !listChanged) return;
+        if (!modelChanged && !listChanged) {
+            updateContextPill();
+            return;
+        }
 
         selectedModel = resolveSelectedModel(downloaded);
         currentDownloadedModels = downloaded;
@@ -189,19 +192,17 @@ public class MainActivity extends AppCompatActivity {
     @SuppressLint("ClickableViewAccessibility")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        ThemeUtils.applyNightMode(this);
         super.onCreate(savedInstanceState);
         mContext = this;
-        ThemeUtils.applyNightMode(this);
         ThemeUtils.applyPalette(this);
         setContentView(R.layout.activity_main);
         ThemeUtils.setStatusBarAppearance(this);
         sp = PreferenceManager.getDefaultSharedPreferences(this);
         checkInputMethodEnabled();
 
-        processingBar = findViewById(R.id.processing_bar);
-        waveform = findViewById(R.id.waveform);
         orb = findViewById(R.id.orb);
-        orb.setColors(themeColor(com.google.android.material.R.attr.colorPrimary),
+        orb.setColors(themeColor(androidx.appcompat.R.attr.colorPrimary),
                 themeColor(com.google.android.material.R.attr.colorPrimaryContainer));
         tvReadyHint = findViewById(R.id.tvReadyHint);
         tvHintTap = findViewById(R.id.tvHintTap);
@@ -210,6 +211,15 @@ public class MainActivity extends AppCompatActivity {
         layoutRecording = findViewById(R.id.layout_recording);
         layoutError = findViewById(R.id.layout_error);
         layoutActions = findViewById(R.id.layout_actions);
+        contextPanel = findViewById(R.id.contextPanel);
+        btnContext = findViewById(R.id.btnContext);
+        dockStatus = findViewById(R.id.dockStatus);
+        btnContext.setOnClickListener(v -> {
+            TransitionManager.beginDelayedTransition((ViewGroup) contextPanel.getParent(),
+                    new Fade().setDuration(180));
+            contextPanel.setVisibility(contextPanel.getVisibility() == View.VISIBLE
+                    ? View.GONE : View.VISIBLE);
+        });
 
         append = findViewById(R.id.mode_append);
         translate = findViewById(R.id.mode_translate);
@@ -256,6 +266,7 @@ public class MainActivity extends AppCompatActivity {
         spinnerLanguage.setOnItemClickListener((parent, view, pos, id) -> {
             langToken = InputLang.getIdForLanguage(InputLang.getLangList(), languagePairs.get(pos).first);
             sp.edit().putString("language", languagePairs.get(pos).first).apply();
+            updateContextPill();
         });
 
         badgeEngine = findViewById(R.id.badge_engine);
@@ -273,6 +284,7 @@ public class MainActivity extends AppCompatActivity {
             sp.edit().putString("selectedModelId", selectedModel.id).apply();
             updateEngineBadge();
             applyLanguageEnabled();
+            updateContextPill();
             // Loading a GGUF model (up to ~0.5 GB) blocks for seconds; switch off the UI thread.
             switchModelAsync();
         });
@@ -331,7 +343,7 @@ public class MainActivity extends AppCompatActivity {
         // Audio recording functionality
         mRecorder = new Recorder(this);
         mRecorder.setRmsListener(rms -> runOnUiThread(() -> {
-            if (currentState == UiState.RECORDING) { waveform.push(rms); orb.pushLevel(rms); }
+            if (currentState == UiState.RECORDING) orb.pushLevel(rms);
         }));
         // Each VAD chunk feeds the Whisper queue for live, sequential (pseudo-streaming) transcription.
         // Guard the mutable field: a model switch can null mWhisper while the recorder still emits a chunk.
@@ -366,12 +378,21 @@ public class MainActivity extends AppCompatActivity {
 
     private void showOverflowMenu(View anchor) {
         PopupMenu menu = new PopupMenu(this, anchor);
-        android.view.MenuItem item = menu.getMenu().add(0, 1, 0, R.string.settings_simple_chinese);
+        menu.getMenu().add(0, 2, 0, R.string.info);
+        android.view.MenuItem item = menu.getMenu().add(0, 1, 1, R.string.settings_simple_chinese);
         item.setCheckable(true);
         item.setChecked(sp.getBoolean("simpleChinese", false));
         menu.setOnMenuItemClickListener(mi -> {
-            sp.edit().putBoolean("simpleChinese", !mi.isChecked()).apply();
-            return true;
+            if (mi.getItemId() == 2) {
+                startActivity(new Intent(Intent.ACTION_VIEW,
+                        Uri.parse("https://github.com/woheller69/whisperIME#Donate")));
+                return true;
+            }
+            if (mi.getItemId() == 1) {
+                sp.edit().putBoolean("simpleChinese", !mi.isChecked()).apply();
+                return true;
+            }
+            return false;
         });
         menu.show();
     }
@@ -394,21 +415,37 @@ public class MainActivity extends AppCompatActivity {
         layoutError.setVisibility(error ? View.VISIBLE : View.GONE);
         layoutActions.setVisibility(result ? View.VISIBLE : View.GONE);
         perfChip.setVisibility(result ? View.VISIBLE : View.GONE);
-        processingBar.setVisibility(processing ? View.VISIBLE : View.INVISIBLE);
         // Transcript-panel placeholder shows only when the panel is empty (READY, nothing typed yet).
         boolean empty = tvResult.getText().length() == 0;
         if (tvReadyHint != null)
             tvReadyHint.setVisibility(state == UiState.READY && empty ? View.VISIBLE : View.GONE);
-        // The "tap to speak" caption under the orb hides while recording (the timer takes over above).
-        if (tvHintTap != null) tvHintTap.setVisibility(recording ? View.GONE : View.VISIBLE);
+        if (tvHintTap != null) {
+            tvHintTap.setVisibility(View.VISIBLE);
+            tvHintTap.setText(state == UiState.RECORDING ? R.string.main_state_listening
+                    : state == UiState.PROCESSING ? R.string.main_state_processing
+                    : state == UiState.RESULT ? R.string.main_state_result
+                    : state == UiState.ERROR ? R.string.main_state_error
+                    : R.string.main_state_ready);
+        }
+        dockStatus.setVisibility(result ? View.GONE : View.VISIBLE);
+        dockStatus.setText(state == UiState.RECORDING ? R.string.main_state_listening
+                : state == UiState.PROCESSING ? R.string.main_state_processing
+                : state == UiState.ERROR ? R.string.main_retry
+                : R.string.main_hold_signal);
+
+        LivingSignalView.SignalState signalState = state == UiState.RECORDING
+                ? LivingSignalView.SignalState.LISTENING
+                : state == UiState.PROCESSING ? LivingSignalView.SignalState.PROCESSING
+                : state == UiState.RESULT ? LivingSignalView.SignalState.RESULT
+                : state == UiState.ERROR ? LivingSignalView.SignalState.ERROR
+                : LivingSignalView.SignalState.READY;
+        orb.setSignalState(signalState);
 
         if (recording) {
             recordStartMs = System.currentTimeMillis();
             tvTimer.setText("0:00");
-            waveform.clear();
             timerHandler.post(timerTick);
         } else {
-            orb.setIdle(); // orb returns to calm breathing
             timerHandler.removeCallbacks(timerTick);
         }
     }
@@ -442,14 +479,17 @@ public class MainActivity extends AppCompatActivity {
     private void switchModelAsync() {
         btnRecord.setEnabled(false);
         tilModel.setEnabled(false);
-        processingBar.setVisibility(View.VISIBLE);
+        btnContext.setEnabled(false);
+        dockStatus.setText(R.string.main_model_loading);
+        orb.setSignalState(LivingSignalView.SignalState.PROCESSING);
         modelExecutor.submit(() -> {
             deinitModel();
             initModel();
             runOnUiThread(() -> {
                 btnRecord.setEnabled(true);
                 tilModel.setEnabled(true);
-                if (currentState != UiState.RESULT) processingBar.setVisibility(View.INVISIBLE);
+                btnContext.setEnabled(true);
+                applyState(currentState);
             });
         });
     }
@@ -581,6 +621,7 @@ public class MainActivity extends AppCompatActivity {
     private void updateEngineBadge() {
         badgeEngine.setText(selectedModel.engine == ModelInfo.Engine.WHISPER_CPP
                 ? R.string.catalog_engine_whispercpp : R.string.main_badge_tflite);
+        updateContextPill();
     }
 
     /** Populate the model dropdown with the given models and show {@code selected} as the value. */
@@ -629,6 +670,14 @@ public class MainActivity extends AppCompatActivity {
             spinnerLanguage.setText(languagePairs.get(0).second, false); // "Detect language"
             tilLanguage.setEnabled(false);
         }
+        updateContextPill();
+    }
+
+    private void updateContextPill() {
+        if (btnContext == null || selectedModel == null) return;
+        String model = selectedModel.displayName.replace(" · TOP_WORLD", "");
+        CharSequence language = spinnerLanguage != null ? spinnerLanguage.getText() : "";
+        btnContext.setText(getString(R.string.main_context_format, model, language));
     }
 
     private String modelLabel(ModelInfo m) {

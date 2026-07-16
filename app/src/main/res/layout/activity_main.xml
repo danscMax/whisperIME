@@ -1,165 +1,250 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Aurora: dark-first, ChatGPT-voice idiom. The transcript is the content hero (centre); the
-     living light orb is the record button, docked at the bottom within thumb reach. The accent
-     (orb/wave/pills) follows the palette's colorPrimary. All view ids are preserved for MainActivity. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
-    android:background="@drawable/aurora_bg_radial">
+    android:background="@drawable/living_signal_backdrop">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
-        android:paddingHorizontal="20dp"
-        android:paddingTop="14dp"
-        android:paddingBottom="20dp"
+        android:paddingStart="18dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="18dp"
+        android:paddingBottom="14dp"
         android:focusable="true"
         android:focusableInTouchMode="true">
 
-        <!-- Root holds initial focus so the transcript EditText doesn't auto-open the keyboard on
-             launch; the field focuses only when the user taps it to edit the result. -->
-
-        <!-- top bar -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="48dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
-            <TextView
+            <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:fontFamily="@font/space_grotesk"
-                android:text="@string/app_name"
-                android:textColor="@color/aurora_ink"
-                android:textFontWeight="700"
-                android:textSize="22sp"
-                android:letterSpacing="-0.02" />
+                android:orientation="vertical">
 
-            <ImageButton
-                android:id="@+id/btnInfo"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_marginStart="6dp"
-                android:background="@drawable/aurora_circle_btn"
-                android:src="@drawable/ic_info_48dp"
-                app:tint="@color/aurora_ink"
-                android:contentDescription="@string/info" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/space_grotesk"
+                    android:letterSpacing="-0.03"
+                    android:text="@string/app_name"
+                    android:textColor="@color/aurora_ink"
+                    android:textFontWeight="700"
+                    android:textSize="23sp" />
 
-            <ImageButton
-                android:id="@+id/btnHistory"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_marginStart="6dp"
-                android:background="@drawable/aurora_circle_btn"
-                android:src="@drawable/ic_history_24dp"
-                app:tint="@color/aurora_ink"
-                android:contentDescription="@string/history_title" />
-
-            <ImageButton
-                android:id="@+id/btnSettings"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_marginStart="6dp"
-                android:background="@drawable/aurora_circle_btn"
-                android:src="@drawable/ic_settings_24dp"
-                app:tint="@color/aurora_ink"
-                android:contentDescription="@string/settings_title" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/space_mono_regular"
+                    android:letterSpacing="0.08"
+                    android:text="@string/main_local_badge"
+                    android:textAllCaps="true"
+                    android:textColor="@color/aurora_ink_dim"
+                    android:textSize="9sp" />
+            </LinearLayout>
 
             <ImageButton
                 android:id="@+id/btnOverflow"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_marginStart="6dp"
-                android:background="@drawable/aurora_circle_btn"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="@drawable/living_glass_pill"
+                android:contentDescription="@string/main_cd_menu"
                 android:src="@drawable/ic_more_vert_24dp"
-                app:tint="@color/aurora_ink"
-                android:contentDescription="@string/main_cd_menu" />
+                app:tint="@color/aurora_ink" />
+
+            <ImageButton
+                android:id="@+id/btnInfo"
+                android:layout_width="1dp"
+                android:layout_height="1dp"
+                android:visibility="gone"
+                android:contentDescription="@string/info" />
         </LinearLayout>
 
-        <!-- model + language: Material 3 exposed dropdowns (rounded, elevated popup, ripple) -->
-        <LinearLayout
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnContext"
+            style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
+            android:layout_height="52dp"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="@color/aurora_panel"
+            android:fontFamily="@font/space_grotesk"
             android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:paddingHorizontal="18dp"
+            android:textColor="@color/aurora_ink"
+            android:textSize="15sp"
+            app:cornerRadius="26dp"
+            app:icon="@drawable/ic_expand_more_24dp"
+            app:iconGravity="textEnd"
+            app:iconTint="@color/aurora_ink_dim"
+            app:strokeColor="@color/aurora_panel_brd"
+            app:strokeWidth="1dp" />
 
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/tilModel"
-                style="@style/Widget.Aurora.Dropdown"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1">
-
-                <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                    android:id="@+id/spnrTfliteFiles"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="none"
-                    android:fontFamily="@font/space_grotesk"
-                    android:textFontWeight="500"
-                    android:textColor="@color/aurora_ink"
-                    android:textSize="16sp"
-                    android:dropDownVerticalOffset="8dp"
-                    android:popupBackground="@drawable/aurora_dropdown_bg" />
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <TextView
-                android:id="@+id/badge_engine"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="10dp"
-                android:background="@drawable/badge_background"
-                android:fontFamily="@font/space_mono_regular"
-                android:paddingHorizontal="10dp"
-                android:paddingVertical="3dp"
-                android:text="@string/main_badge_tflite"
-                android:textColor="@color/aurora_ink"
-                android:textSize="10sp" />
-        </LinearLayout>
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/layout_language"
-            style="@style/Widget.Aurora.Dropdown"
+        <LinearLayout
+            android:id="@+id/contextPanel"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp">
+            android:layout_marginTop="8dp"
+            android:background="@drawable/living_glass_panel"
+            android:elevation="10dp"
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:visibility="gone">
 
-            <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                android:id="@+id/spnrLanguage"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="none"
-                android:fontFamily="@font/space_grotesk"
-                android:textFontWeight="500"
-                android:textColor="@color/aurora_ink"
-                android:textSize="16sp"
-                android:dropDownVerticalOffset="8dp"
-                    android:popupBackground="@drawable/aurora_dropdown_bg" />
-        </com.google.android.material.textfield.TextInputLayout>
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
-        <!-- CONTENT HERO: transcript panel fills the centre -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilModel"
+                    style="@style/Widget.LivingSignal.Dropdown"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="@string/select_model">
+
+                    <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                        android:id="@+id/spnrTfliteFiles"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/space_grotesk"
+                        android:inputType="none"
+                        android:popupBackground="@drawable/living_glass_panel"
+                        android:textColor="@color/aurora_ink"
+                        android:textSize="14sp" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <TextView
+                    android:id="@+id/badge_engine"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/living_glass_pill"
+                    android:fontFamily="@font/space_mono_regular"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="5dp"
+                    android:text="@string/main_badge_tflite"
+                    android:textColor="@color/aurora_ink"
+                    android:textSize="9sp" />
+            </LinearLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layout_language"
+                style="@style/Widget.LivingSignal.Dropdown"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:hint="@string/language">
+
+                <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                    android:id="@+id/spnrLanguage"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/space_grotesk"
+                    android:inputType="none"
+                    android:popupBackground="@drawable/living_glass_panel"
+                    android:textColor="@color/aurora_ink"
+                    android:textSize="14sp" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.chip.ChipGroup
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                app:chipSpacingHorizontal="8dp">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/mode_append"
+                    style="@style/Widget.LivingSignal.Chip.Toggle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/append_short" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/mode_translate"
+                    style="@style/Widget.LivingSignal.Chip.Toggle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/translate_short" />
+            </com.google.android.material.chip.ChipGroup>
+        </LinearLayout>
+
         <FrameLayout
+            android:layout_width="176dp"
+            android:layout_height="176dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="2dp">
+
+            <com.whispertflite.ui.LivingSignalView
+                android:id="@+id/orb"
+                android:layout_width="176dp"
+                android:layout_height="176dp" />
+
+            <ImageButton
+                android:id="@+id/btnRecord"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@android:color/transparent"
+                android:contentDescription="@string/main_cd_record" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:id="@+id/layout_recording"
+            android:layout_width="wrap_content"
+            android:layout_height="24dp"
+            android:layout_gravity="center_horizontal"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <View
+                android:layout_width="6dp"
+                android:layout_height="6dp"
+                android:background="@drawable/living_live_dot" />
+
+            <TextView
+                android:id="@+id/tvTimer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="7dp"
+                android:fontFamily="@font/space_mono_regular"
+                android:text="0:00"
+                android:textColor="@color/aurora_ink"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvHintTap"
+            android:layout_width="wrap_content"
+            android:layout_height="24dp"
+            android:layout_gravity="center_horizontal"
+            android:fontFamily="@font/space_mono_regular"
+            android:gravity="center"
+            android:letterSpacing="0.05"
+            android:text="@string/main_state_ready"
+            android:textAllCaps="true"
+            android:textColor="@color/aurora_ink_dim"
+            android:textSize="10sp" />
+
+        <FrameLayout
+            android:id="@+id/transcriptPanel"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:layout_marginTop="14dp"
-            android:background="@drawable/aurora_panel_bg"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/living_glass_panel"
+            android:minHeight="150dp"
             android:padding="18dp">
-
-            <com.google.android.material.progressindicator.LinearProgressIndicator
-                android:id="@+id/processing_bar"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_gravity="top"
-                android:indeterminate="true"
-                android:visibility="invisible"
-                app:trackCornerRadius="3dp" />
 
             <LinearLayout
                 android:id="@+id/layout_result"
@@ -173,67 +258,22 @@
                     android:layout_height="0dp"
                     android:layout_weight="1"
                     android:background="@android:color/transparent"
+                    android:fontFamily="@font/space_grotesk"
                     android:gravity="top"
-                    android:textColorHint="@color/aurora_ink_dim"
                     android:inputType="textMultiLine"
+                    android:lineSpacingMultiplier="1.16"
                     android:textColor="@color/aurora_ink"
-                    android:textSize="18sp"
-                    android:lineSpacingMultiplier="1.15"
-                    android:textCursorDrawable="@null" />
+                    android:textCursorDrawable="@null"
+                    android:textSize="18sp" />
 
-                <LinearLayout
-                    android:layout_width="match_parent"
+                <TextView
+                    android:id="@+id/perf_chip"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-
-                    <TextView
-                        android:id="@+id/perf_chip"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:fontFamily="@font/space_mono_regular"
-                        android:textColor="@color/aurora_ink_dim"
-                        android:textSize="11sp" />
-
-                    <LinearLayout
-                        android:id="@+id/layout_actions"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal">
-
-                        <ImageButton
-                            android:id="@+id/fabCopy"
-                            android:layout_width="42dp"
-                            android:layout_height="42dp"
-                            android:layout_marginStart="8dp"
-                            android:background="@drawable/aurora_circle_btn"
-                            android:src="@drawable/ic_copy"
-                            app:tint="@color/aurora_ink"
-                            android:contentDescription="@string/copy_to_clipboard" />
-
-                        <ImageButton
-                            android:id="@+id/btnSpeak"
-                            android:layout_width="42dp"
-                            android:layout_height="42dp"
-                            android:layout_marginStart="8dp"
-                            android:background="@drawable/aurora_circle_btn"
-                            android:src="@drawable/ic_volume_up_24dp"
-                            app:tint="@color/aurora_ink"
-                            android:contentDescription="@string/main_cd_speak" />
-
-                        <ImageButton
-                            android:id="@+id/btnShare"
-                            android:layout_width="42dp"
-                            android:layout_height="42dp"
-                            android:layout_marginStart="8dp"
-                            android:background="@drawable/aurora_circle_btn"
-                            android:src="@drawable/ic_share_24dp"
-                            app:tint="@color/aurora_ink"
-                            android:contentDescription="@string/main_cd_share" />
-                    </LinearLayout>
-                </LinearLayout>
+                    android:fontFamily="@font/space_mono_regular"
+                    android:textColor="@color/aurora_ink_dim"
+                    android:textSize="10sp"
+                    android:visibility="gone" />
             </LinearLayout>
 
             <TextView
@@ -241,10 +281,11 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
-                android:fontFamily="@font/space_mono_regular"
+                android:fontFamily="@font/space_grotesk"
+                android:gravity="center"
                 android:text="@string/main_hint_ready"
                 android:textColor="@color/aurora_ink_dim"
-                android:textSize="13sp" />
+                android:textSize="14sp" />
 
             <LinearLayout
                 android:id="@+id/layout_error"
@@ -264,9 +305,9 @@
                     android:textSize="17sp" />
 
                 <TextView
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
+                    android:layout_marginTop="5dp"
                     android:gravity="center"
                     android:text="@string/main_error_hint"
                     android:textColor="@color/aurora_ink_dim"
@@ -275,92 +316,85 @@
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnRetry"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="12dp"
                     android:text="@string/main_retry" />
             </LinearLayout>
         </FrameLayout>
 
-        <!-- toggles -->
-        <com.google.android.material.chip.ChipGroup
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginTop="10dp"
-            app:chipSpacingHorizontal="10dp"
-            app:singleLine="true"
-            app:selectionRequired="false"
-            app:singleSelection="false">
-
-            <com.google.android.material.chip.Chip
-                android:id="@+id/mode_append"
-                style="@style/Widget.Aurora.Chip.Toggle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/append_short" />
-
-            <com.google.android.material.chip.Chip
-                android:id="@+id/mode_translate"
-                style="@style/Widget.Aurora.Chip.Toggle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/translate_short" />
-        </com.google.android.material.chip.ChipGroup>
-
-        <!-- recording readout (waveform + timer) shows above the orb only while recording -->
         <LinearLayout
-            android:id="@+id/layout_recording"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:visibility="gone">
-
-            <com.whispertflite.ui.WaveformView
-                android:id="@+id/waveform"
-                android:layout_width="match_parent"
-                android:layout_height="40dp" />
-
-            <TextView
-                android:id="@+id/tvTimer"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:fontFamily="@font/space_mono_regular"
-                android:text="0:00"
-                android:textColor="@color/aurora_ink"
-                android:textSize="16sp" />
-        </LinearLayout>
-
-        <!-- BOTTOM: the orb record button within thumb reach -->
-        <FrameLayout
-            android:layout_width="150dp"
-            android:layout_height="150dp"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginTop="2dp">
-
-            <com.whispertflite.ui.AuroraOrbView
-                android:id="@+id/orb"
-                android:layout_width="150dp"
-                android:layout_height="150dp" />
+            android:layout_height="64dp"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/living_glass_dock"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="8dp">
 
             <ImageButton
-                android:id="@+id/btnRecord"
-                android:layout_width="150dp"
-                android:layout_height="150dp"
-                android:background="@android:color/transparent"
-                android:contentDescription="@string/main_cd_record" />
-        </FrameLayout>
+                android:id="@+id/btnHistory"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/history_title"
+                android:src="@drawable/ic_history_24dp"
+                app:tint="@color/aurora_ink" />
 
-        <TextView
-            android:id="@+id/tvHintTap"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginTop="2dp"
-            android:fontFamily="@font/space_mono_regular"
-            android:text="@string/main_hint_tap"
-            android:textColor="@color/aurora_ink_dim"
-            android:textSize="12sp" />
+            <TextView
+                android:id="@+id/dockStatus"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="@font/space_grotesk"
+                android:gravity="center"
+                android:text="@string/main_hold_signal"
+                android:textColor="@color/aurora_ink_dim"
+                android:textSize="12sp" />
+
+            <LinearLayout
+                android:id="@+id/layout_actions"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <ImageButton
+                    android:id="@+id/fabCopy"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/copy_to_clipboard"
+                    android:src="@drawable/ic_copy"
+                    app:tint="@color/aurora_ink" />
+
+                <ImageButton
+                    android:id="@+id/btnSpeak"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/main_cd_speak"
+                    android:src="@drawable/ic_volume_up_24dp"
+                    app:tint="@color/aurora_ink" />
+
+                <ImageButton
+                    android:id="@+id/btnShare"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/main_cd_share"
+                    android:src="@drawable/ic_share_24dp"
+                    app:tint="@color/aurora_ink" />
+            </LinearLayout>
+
+            <ImageButton
+                android:id="@+id/btnSettings"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/settings_title"
+                android:src="@drawable/ic_settings_24dp"
+                app:tint="@color/aurora_ink" />
+        </LinearLayout>
     </LinearLayout>
 </FrameLayout>

@@ -116,7 +116,7 @@
 
         <activity android:name="com.whispertflite.WhisperRecognitionServiceSettingsActivity"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|uiMode"
-            android:theme="@style/Theme.Whisper.ActionBar"
+            android:theme="@style/Theme.Whisper.NoActionBar"
             android:label="@string/voice_input"
             android:exported="true">
             <intent-filter>

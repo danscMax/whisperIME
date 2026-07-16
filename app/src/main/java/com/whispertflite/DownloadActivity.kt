@@ -28,8 +28,8 @@ class DownloadActivity : AppCompatActivity(), ModelDownloadManager.Listener {
     private var selected: ModelInfo? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
         ThemeUtils.applyNightMode(this)
+        super.onCreate(savedInstanceState)
         ThemeUtils.applyPalette(this)
         val b = ActivityDownloadBinding.inflate(layoutInflater)
         binding = b
@@ -40,7 +40,7 @@ class DownloadActivity : AppCompatActivity(), ModelDownloadManager.Listener {
 
         // Aurora hero orb: tint from the selected palette (bright accent + deep container).
         b.onboardingOrb.setColors(
-            MaterialColors.getColor(b.onboardingOrb, com.google.android.material.R.attr.colorPrimary),
+            MaterialColors.getColor(b.onboardingOrb, androidx.appcompat.R.attr.colorPrimary),
             MaterialColors.getColor(b.onboardingOrb, com.google.android.material.R.attr.colorPrimaryContainer)
         )
 
@@ -88,7 +88,7 @@ class DownloadActivity : AppCompatActivity(), ModelDownloadManager.Listener {
     private fun highlight(card: MaterialCardView, on: Boolean) {
         card.strokeWidth = if (on) (2 * resources.displayMetrics.density).toInt() else 0
         card.strokeColor = MaterialColors.getColor(
-            card, com.google.android.material.R.attr.colorPrimary
+            card, androidx.appcompat.R.attr.colorPrimary
         )
     }
 

@@ -1,159 +1,167 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:background="@drawable/dialog_sheet_background"
     android:layout_gravity="bottom"
+    android:background="@drawable/dialog_sheet_background"
+    android:orientation="vertical"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
     android:paddingBottom="18dp">
 
-    <!-- Drag handle -->
     <View
-        android:layout_width="32dp"
+        android:layout_width="38dp"
         android:layout_height="4dp"
         android:layout_gravity="center_horizontal"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="4dp"
-        android:background="@drawable/dialog_drag_handle"
-        android:alpha="0.4" />
+        android:layout_marginTop="9dp"
+        android:layout_marginBottom="5dp"
+        android:alpha="0.55"
+        android:background="@drawable/dialog_drag_handle" />
 
-    <!-- Top action row: a clear, always-visible close on the right. -->
     <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp">
+        android:layout_height="48dp">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/space_grotesk"
+                android:text="@string/dialog_dictate"
+                android:textColor="@color/aurora_ink"
+                android:textFontWeight="700"
+                android:textSize="19sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/space_mono_regular"
+                android:text="@string/main_local_badge"
+                android:textColor="@color/aurora_ink_dim"
+                android:textSize="9sp" />
+        </LinearLayout>
 
         <ImageButton
             android:id="@+id/btnCancel"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:layout_alignParentEnd="true"
-            android:background="@drawable/aurora_circle_btn"
+            android:background="@drawable/living_glass_circle"
+            android:contentDescription="@string/exit_button"
+            android:padding="12dp"
             android:src="@drawable/ic_cancel_36dp"
-            android:tint="@color/aurora_ink"
-            android:contentDescription="@string/exit_button" />
-
+            app:tint="@color/aurora_ink" />
     </RelativeLayout>
 
-    <ProgressBar
-        android:id="@+id/processing_bar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:visibility="invisible"
-        android:indeterminate="false"
-        android:progressTint="?attr/colorPrimary"
-        android:indeterminateTint="?attr/colorPrimary"
-        style="?android:attr/progressBarStyleHorizontal" />
-
-    <!-- Normal (listening / processing) state -->
     <LinearLayout
         android:id="@+id/dialog_main_group"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
+        android:layout_marginTop="2dp"
+        android:background="@drawable/living_glass_panel"
         android:gravity="center_horizontal"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:paddingTop="4dp">
+        android:orientation="vertical"
+        android:paddingHorizontal="18dp"
+        android:paddingTop="22dp"
+        android:paddingBottom="20dp">
 
-        <!-- The living orb is the record affordance; a transparent button over it handles touch. -->
         <FrameLayout
-            android:layout_width="84dp"
-            android:layout_height="84dp">
+            android:layout_width="136dp"
+            android:layout_height="136dp">
 
-            <com.whispertflite.ui.AuroraOrbView
+            <com.whispertflite.ui.LivingSignalView
                 android:id="@+id/orb"
-                android:layout_width="84dp"
-                android:layout_height="84dp" />
+                android:layout_width="136dp"
+                android:layout_height="136dp" />
 
             <ImageButton
                 android:id="@+id/btnRecord"
-                android:layout_width="84dp"
-                android:layout_height="84dp"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
                 android:background="@android:color/transparent"
                 android:contentDescription="@string/record_button" />
         </FrameLayout>
 
         <TextView
             android:id="@+id/dialog_status"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:layout_marginTop="16dp"
+            android:fontFamily="@font/space_grotesk"
+            android:gravity="center"
+            android:text="@string/dialog_tap_to_talk"
             android:textColor="@color/aurora_ink"
-            android:text="@string/dialog_tap_to_talk" />
+            android:textFontWeight="600"
+            android:textSize="18sp" />
 
         <TextView
             android:id="@+id/dialog_partial"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:minHeight="24dp"
-            android:gravity="center"
-            android:maxLines="2"
+            android:layout_marginTop="8dp"
             android:ellipsize="end"
-            android:textAppearance="?attr/textAppearanceBodySmall"
-            android:textColor="@color/aurora_ink_dim" />
+            android:gravity="center"
+            android:maxLines="3"
+            android:minHeight="40dp"
+            android:textColor="@color/aurora_ink_dim"
+            android:textSize="14sp" />
 
         <TextView
             android:id="@+id/dialog_chip"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            android:paddingTop="5dp"
-            android:paddingBottom="5dp"
-            android:background="@drawable/aurora_pill_bg"
-            android:textAppearance="?attr/textAppearanceLabelSmall"
-            android:textColor="@color/aurora_ink" />
-
+            android:layout_marginTop="4dp"
+            android:background="@drawable/living_glass_pill"
+            android:ellipsize="end"
+            android:fontFamily="@font/space_mono_regular"
+            android:letterSpacing="0.03"
+            android:maxLines="1"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="6dp"
+            android:textColor="@color/aurora_ink_dim"
+            android:textSize="10sp" />
     </LinearLayout>
 
-    <!-- Edge state: no model downloaded -->
     <LinearLayout
         android:id="@+id/dialog_no_model_group"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:background="@drawable/living_glass_panel"
+        android:gravity="center"
         android:orientation="vertical"
-        android:gravity="center_horizontal"
-        android:visibility="gone"
-        android:paddingStart="24dp"
-        android:paddingEnd="24dp"
-        android:paddingTop="8dp">
+        android:padding="22dp"
+        android:visibility="gone">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="26sp"
-            android:text="📦" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:fontFamily="@font/space_grotesk"
+            android:text="@string/dialog_no_model_title"
             android:textColor="@color/aurora_ink"
-            android:text="@string/dialog_no_model_title" />
+            android:textFontWeight="600"
+            android:textSize="17sp" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
+            android:layout_marginTop="5dp"
             android:gravity="center"
-            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:text="@string/dialog_no_model_desc"
             android:textColor="@color/aurora_ink_dim"
-            android:text="@string/dialog_no_model_desc" />
+            android:textSize="13sp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/dialog_open_catalog"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_height="48dp"
             android:layout_marginTop="12dp"
             android:text="@string/dialog_open_catalog" />
-
     </LinearLayout>
-
 </LinearLayout>

@@ -4,4 +4,24 @@
     <color name="colorAccent">#ff6750A4</color>
     <color name="colorAccentDark">#996750A4</color>
     <color name="windowBackground">#111111</color>
+    <color name="aurora_bg">#060811</color>
+    <color name="aurora_bg2">#0A1020</color>
+    <color name="aurora_ink">#F4F7FF</color>
+    <color name="aurora_ink_dim">#98A3B8</color>
+    <color name="aurora_panel">#18FFFFFF</color>
+    <color name="aurora_panel_brd">#32FFFFFF</color>
+    <color name="aurora_scrim">#99000000</color>
+    <color name="living_bg_mid">#080C17</color>
+    <color name="living_backdrop_glow">#277667FF</color>
+    <color name="living_glass_pressed">#2EFFFFFF</color>
+    <color name="living_glass_focus">#8A6DE7FF</color>
+    <color name="living_dock_start">#26FFFFFF</color>
+    <color name="living_dock_end">#12FFFFFF</color>
+    <color name="living_cyan">#6DE7FF</color>
+    <color name="living_violet">#8A7CFF</color>
+    <color name="living_magenta">#FF67CE</color>
+<color name="living_blob_a">#3A8A7CFF</color>
+<color name="living_blob_b">#2E6DE7FF</color>
+<color name="living_blob_c">#24FF67CE</color>
+<color name="living_panel_top">#24FFFFFF</color>
 </resources>

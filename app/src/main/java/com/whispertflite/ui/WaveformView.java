@@ -43,7 +43,7 @@ public class WaveformView extends View {
         // Resolve colorPrimary from the themed context so the wave follows the active palette.
         TypedValue tv = new TypedValue();
         context.getTheme().resolveAttribute(
-                com.google.android.material.R.attr.colorPrimary, tv, true);
+                androidx.appcompat.R.attr.colorPrimary, tv, true);
         mAccent = tv.data;
         mPaint.setColor(mAccent);
         // Soft glow around each bar.

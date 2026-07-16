@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Circular glass button (dark theme): top sheen fading down + luminous hairline. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true">
+        <shape android:shape="oval">
+            <gradient android:angle="90" android:startColor="#40FFFFFF" android:endColor="#1AFFFFFF" />
+            <stroke android:width="1dp" android:color="#5CFFFFFF" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="oval">
+            <gradient android:angle="90" android:startColor="#29FFFFFF" android:endColor="#0FFFFFFF" />
+            <stroke android:width="1dp" android:color="#38FFFFFF" />
+        </shape>
+    </item>
+</selector>

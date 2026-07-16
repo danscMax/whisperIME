@@ -1,79 +1,88 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Aurora: dark radial bg, frosted rows, pill search. Ids preserved for HistoryActivity. -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- History: list scrolls under a frosted-glass top bar (toolbar + search). Ids preserved. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:fitsSystemWindows="true"
-    android:background="@drawable/aurora_bg_radial">
+    android:background="@drawable/living_signal_backdrop"
+    android:fitsSystemWindows="true">
 
-    <com.google.android.material.appbar.MaterialToolbar
-        android:id="@+id/toolbar"
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recycler"
         android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
-        android:theme="@style/ThemeOverlay.Aurora.OnDark"
-        android:background="@android:color/transparent"
-        app:navigationIcon="@drawable/ic_arrow_back_24dp"
-        app:navigationIconTint="@color/aurora_ink"
-        app:titleTextAppearance="@style/TextAppearance.Aurora.Toolbar"
-        app:titleTextColor="@color/aurora_ink"
-        app:title="@string/history_title" />
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:paddingHorizontal="12dp"
+        android:paddingBottom="16dp" />
+    <!-- paddingTop is set in code to the frosted bar's measured height -->
 
-    <!-- search pill -->
-    <EditText
-        android:id="@+id/searchField"
-        android:layout_width="match_parent"
+    <LinearLayout
+        android:id="@+id/emptyState"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="16dp"
-        android:layout_marginBottom="8dp"
-        android:background="@drawable/aurora_pill_bg"
-        android:drawableStart="@drawable/ic_search_24dp"
-        android:drawableTint="@color/aurora_ink_dim"
-        android:drawablePadding="10dp"
-        android:paddingHorizontal="16dp"
-        android:paddingVertical="12dp"
-        android:hint="@string/history_search_hint"
-        android:textColor="@color/aurora_ink"
-        android:textColorHint="@color/aurora_ink_dim"
-        android:inputType="text"
-        android:imeOptions="actionSearch"
-        android:maxLines="1" />
+        android:layout_gravity="center"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:visibility="gone">
 
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent">
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recycler"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:clipToPadding="false"
-            android:paddingHorizontal="12dp"
-            android:paddingBottom="16dp" />
-
-        <LinearLayout
-            android:id="@+id/emptyState"
+        <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:visibility="gone">
+            android:text="@string/history_empty_emoji"
+            android:textSize="56sp" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/history_empty_emoji"
-                android:textSize="56sp" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/history_empty_hint"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="@color/aurora_ink_dim" />
+    </LinearLayout>
 
-            <TextView
-                android:layout_width="wrap_content"
+    <com.whispertflite.ui.FrostedBlurView
+        android:id="@+id/blurBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:paddingBottom="6dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <com.google.android.material.appbar.MaterialToolbar
+                android:id="@+id/toolbar"
+                android:layout_width="match_parent"
+                android:layout_height="?attr/actionBarSize"
+                android:background="@android:color/transparent"
+                android:theme="@style/ThemeOverlay.Aurora.OnDark"
+                app:navigationIcon="@drawable/ic_arrow_back_24dp"
+                app:navigationIconTint="@color/aurora_ink"
+                app:title="@string/history_title"
+                app:titleTextAppearance="@style/TextAppearance.Aurora.Toolbar"
+                app:titleTextColor="@color/aurora_ink" />
+
+            <EditText
+                android:id="@+id/searchField"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:text="@string/history_empty_hint"
-                android:textAppearance="?attr/textAppearanceBodyMedium"
-                android:textColor="@color/aurora_ink_dim" />
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="8dp"
+                android:background="@drawable/living_glass_pill"
+                android:drawableStart="@drawable/ic_search_24dp"
+                android:drawablePadding="10dp"
+                android:drawableTint="@color/aurora_ink_dim"
+                android:hint="@string/history_search_hint"
+                android:imeOptions="actionSearch"
+                android:inputType="text"
+                android:maxLines="1"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="12dp"
+                android:textColor="@color/aurora_ink"
+                android:textColorHint="@color/aurora_ink_dim" />
         </LinearLayout>
-    </FrameLayout>
-</LinearLayout>
+    </com.whispertflite.ui.FrostedBlurView>
+</FrameLayout>

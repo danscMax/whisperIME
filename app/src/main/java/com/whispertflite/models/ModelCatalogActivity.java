@@ -43,9 +43,10 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         ThemeUtils.applyNightMode(this);
-        ThemeUtils.applyPalette(this);
         super.onCreate(savedInstanceState);
+        ThemeUtils.applyPalette(this);
         setContentView(R.layout.activity_model_catalog);
+        ThemeUtils.setStatusBarAppearance(this);
 
         manager = ModelDownloadManager.get(this);
         prefs = PreferenceManager.getDefaultSharedPreferences(this);
@@ -58,6 +59,25 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
         adapter = new Adapter();
         adapter.setHasStableIds(true);
         recycler.setAdapter(adapter);
+
+        // Frosted top bar + footer: the cards scroll under them, blurred (API 31+) / translucent glass.
+        com.whispertflite.ui.FrostedBlurView blurBar = findViewById(R.id.blurBar);
+        com.whispertflite.ui.FrostedBlurView footerBar = findViewById(R.id.footerBar);
+        int glass = androidx.core.graphics.ColorUtils.setAlphaComponent(
+                androidx.core.content.ContextCompat.getColor(this, R.color.aurora_bg), 0xBE);
+        int line = androidx.core.content.ContextCompat.getColor(this, R.color.aurora_panel_brd);
+        blurBar.attach(recycler);
+        blurBar.setGlass(glass, line);
+        footerBar.attach(recycler);
+        footerBar.setGlass(glass, line);
+        recycler.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override public void onScrolled(RecyclerView rv, int dx, int dy) {
+                blurBar.markDirty();
+                footerBar.markDirty();
+            }
+        });
+        blurBar.post(() -> recycler.setPadding(recycler.getPaddingLeft(), blurBar.getHeight(),
+                recycler.getPaddingRight(), footerBar.getHeight()));
 
         ChipGroup filterGroup = findViewById(R.id.filterGroup);
         filterGroup.setOnCheckedStateChangeListener((group, ids) -> {
@@ -227,7 +247,7 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
             float density = getResources().getDisplayMetrics().density;
             h.card.setStrokeWidth((int) ((active ? 1.5f : 1f) * density));
             h.card.setStrokeColor(active
-                    ? getColorAttr(com.google.android.material.R.attr.colorPrimary)
+                    ? getColorAttr(androidx.appcompat.R.attr.colorPrimary)
                     : androidx.core.content.ContextCompat.getColor(
                             ModelCatalogActivity.this, R.color.aurora_panel_brd));
 

@@ -92,6 +92,14 @@
     <string name="main_cd_menu">More options</string>
     <string name="main_cd_speak">Speak result</string>
     <string name="main_cd_share">Share</string>
+    <string name="main_local_badge">Private · on device</string>
+    <string name="main_state_ready">Ready · hold the signal</string>
+    <string name="main_state_listening">Listening · release to finish</string>
+    <string name="main_state_processing">Focusing speech</string>
+    <string name="main_state_result">Signal captured</string>
+    <string name="main_state_error">Signal lost</string>
+    <string name="main_hold_signal">Hold the signal to speak</string>
+    <string name="main_context_format">%1$s · %2$s</string>
 
     <!-- IME strip -->
     <string name="ime_hint">Tap and speak</string>

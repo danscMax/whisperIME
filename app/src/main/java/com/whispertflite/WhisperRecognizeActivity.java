@@ -81,7 +81,10 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
         ModelInfo sel = null;
         String selId = sp.getString("selectedModelId", null);
         if (selId != null) sel = ModelRegistry.byId(selId);
-        if (sel == null) { // fall back to any downloaded registry model
+        // Fall back to any actually-downloaded model when none is selected OR the selected model's
+        // file isn't on disk (stale pref) — otherwise the dialog would wrongly report "no model".
+        if (sel == null || !new File(sdcardDataFolder, sel.filename).exists()) {
+            sel = null;
             for (ModelInfo m : ModelRegistry.all()) {
                 if (new File(sdcardDataFolder, m.filename).exists()) { sel = m; break; }
             }

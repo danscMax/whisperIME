@@ -197,7 +197,7 @@ public class WhisperInputMethodService extends InputMethodService {
         btnTranslate.setImageResource(translate ? R.drawable.ic_english_on_36dp : R.drawable.ic_english_off_36dp);
         modeAuto = sp.getBoolean("imeModeAuto", false);
         btnModeAuto.setImageResource(modeAuto ? R.drawable.ic_auto_on_36dp : R.drawable.ic_auto_off_36dp);
-        layoutButtons.setVisibility(modeAuto ? View.GONE : View.VISIBLE);
+        // Keys (keyboard-exit above all) stay visible in both modes: auto must never trap the user.
         checkRecordPermission();
 
         mRecorder = new Recorder(this);
@@ -276,7 +276,18 @@ public class WhisperInputMethodService extends InputMethodService {
         });
 
         btnRecord.setOnTouchListener((v, event) -> {
-            if (modeAuto) return true;  // hands-free mode drives recording itself
+            if (modeAuto) {
+                // Hands-free: tap to start listening, tap again to stop (VAD also auto-stops).
+                if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                    if (mRecorder != null && mRecorder.isInProgress()) {
+                        mRecorder.stop();
+                    } else if (checkRecordPermission() && mWhisper != null && !mWhisper.isInProgress()) {
+                        HapticFeedback.vibrate(this);
+                        startRecording();
+                    }
+                }
+                return true;
+            }
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
                 if (checkRecordPermission()) {
                     if (mWhisper != null && !mWhisper.isInProgress()) {
@@ -320,9 +331,7 @@ public class WhisperInputMethodService extends InputMethodService {
         btnModeAuto.setOnClickListener(v -> {
             modeAuto = !modeAuto;
             sp.edit().putBoolean("imeModeAuto", modeAuto).apply();
-            layoutButtons.setVisibility(modeAuto ? View.GONE : View.VISIBLE);
             btnModeAuto.setImageResource(modeAuto ? R.drawable.ic_auto_on_36dp : R.drawable.ic_auto_off_36dp);
-            switchToPreviousInputMethod();
         });
 
         return rootView;
@@ -410,8 +419,7 @@ public class WhisperInputMethodService extends InputMethodService {
                 boolean committed = getCurrentInputConnection() != null
                         && getCurrentInputConnection().commitText(trimmed + " ", 1);
                 if (committed) imeDraft.append(trimmed).append(" ");
-                // slightly delayed switch-back, otherwise some apps reject commitText on inactive connection
-                if (modeAuto && committed) handler.postDelayed(() -> switchToPreviousInputMethod(), 100);
+                // Stay on the strip after a result: the user leaves only via the keyboard key.
             }
         });
     }

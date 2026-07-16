@@ -81,30 +81,39 @@
                 android:contentDescription="@string/main_cd_menu" />
         </LinearLayout>
 
-        <!-- model + language pills -->
+        <!-- model + language: Material 3 exposed dropdowns (rounded, elevated popup, ripple) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
-            android:background="@drawable/aurora_pill_bg"
             android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingHorizontal="14dp"
-            android:paddingVertical="6dp">
+            android:orientation="horizontal">
 
-            <Spinner
-                android:theme="@style/ThemeOverlay.Aurora.OnDark"
-                android:id="@+id/spnrTfliteFiles"
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/tilModel"
+                style="@style/Widget.Aurora.Dropdown"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:popupBackground="@drawable/aurora_dropdown_bg" />
+                android:layout_weight="1">
+
+                <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                    android:id="@+id/spnrTfliteFiles"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="none"
+                    android:fontFamily="@font/space_grotesk"
+                    android:textFontWeight="500"
+                    android:textColor="@color/aurora_ink"
+                    android:textSize="16sp"
+                    android:dropDownVerticalOffset="8dp"
+                    android:popupBackground="@drawable/aurora_dropdown_bg" />
+            </com.google.android.material.textfield.TextInputLayout>
 
             <TextView
                 android:id="@+id/badge_engine"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="10dp"
                 android:background="@drawable/badge_background"
                 android:fontFamily="@font/space_mono_regular"
                 android:paddingHorizontal="10dp"
@@ -114,24 +123,25 @@
                 android:textSize="10sp" />
         </LinearLayout>
 
-        <LinearLayout
+        <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/layout_language"
+            style="@style/Widget.Aurora.Dropdown"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/aurora_pill_bg"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingHorizontal="14dp"
-            android:paddingVertical="2dp">
+            android:layout_marginTop="8dp">
 
-            <Spinner
-                android:theme="@style/ThemeOverlay.Aurora.OnDark"
+            <com.google.android.material.textfield.MaterialAutoCompleteTextView
                 android:id="@+id/spnrLanguage"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:popupBackground="@drawable/aurora_dropdown_bg" />
-        </LinearLayout>
+                android:inputType="none"
+                android:fontFamily="@font/space_grotesk"
+                android:textFontWeight="500"
+                android:textColor="@color/aurora_ink"
+                android:textSize="16sp"
+                android:dropDownVerticalOffset="8dp"
+                    android:popupBackground="@drawable/aurora_dropdown_bg" />
+        </com.google.android.material.textfield.TextInputLayout>
 
         <!-- CONTENT HERO: transcript panel fills the centre -->
         <FrameLayout

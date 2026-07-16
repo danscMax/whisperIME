@@ -88,6 +88,21 @@
         <item name="chipSurfaceColor">@android:color/transparent</item>
     </style>
 
+    <!-- Aurora exposed dropdown: a rounded translucent pill with a light chevron and dark popup. -->
+    <style name="Widget.Aurora.Dropdown" parent="Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
+        <item name="boxBackgroundColor">@color/aurora_panel</item>
+        <item name="boxCornerRadiusTopStart">22dp</item>
+        <item name="boxCornerRadiusTopEnd">22dp</item>
+        <item name="boxCornerRadiusBottomStart">22dp</item>
+        <item name="boxCornerRadiusBottomEnd">22dp</item>
+        <item name="boxStrokeColor">@color/aurora_panel_brd</item>
+        <item name="boxStrokeWidth">1dp</item>
+        <item name="boxStrokeWidthFocused">1dp</item>
+        <item name="hintEnabled">false</item>
+        <item name="endIconTint">@color/aurora_ink</item>
+        <item name="android:textColorHint">@color/aurora_ink_dim</item>
+    </style>
+
     <!-- Aurora toggle chip: a clean pill that fills with the accent when on. -->
     <style name="Widget.Aurora.Chip.Toggle" parent="Widget.Material3.Chip.Filter">
         <item name="chipBackgroundColor">@color/aurora_chip_bg</item>

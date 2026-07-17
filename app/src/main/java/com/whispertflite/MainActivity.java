@@ -256,7 +256,7 @@ public class MainActivity extends AppCompatActivity {
         languagePairs = LanguagePairAdapter.getLanguagePairs(this);
         List<String> langNames = new ArrayList<>();
         for (Pair<String, String> p : languagePairs) langNames.add(p.second);
-        spinnerLanguage.setAdapter(noFilterAdapter(langNames));
+        spinnerLanguage.setAdapter(noFilterAdapter(spinnerLanguage, langNames));
         spinnerLanguage.setOnItemClickListener((parent, view, pos, id) -> {
             langToken = InputLang.getIdForLanguage(InputLang.getLangList(), languagePairs.get(pos).first);
             sp.edit().putString("language", languagePairs.get(pos).first).apply();
@@ -611,7 +611,7 @@ public class MainActivity extends AppCompatActivity {
     private void setModelDropdown(List<ModelInfo> models, ModelInfo selected) {
         List<String> labels = new ArrayList<>();
         for (ModelInfo m : models) labels.add(modelLabel(m));
-        spinnerModel.setAdapter(noFilterAdapter(labels));
+        spinnerModel.setAdapter(noFilterAdapter(spinnerModel, labels));
         spinnerModel.setText(modelLabel(selected), false); // false: set value without filtering the list
     }
 
@@ -620,7 +620,8 @@ public class MainActivity extends AppCompatActivity {
      * the popup by the field's current text (so opening it would show only the selected row); this
      * keeps the full list by returning all items from the filter and never shrinking the backing list.
      */
-    private ArrayAdapter<String> noFilterAdapter(List<String> items) {
+    private ArrayAdapter<String> noFilterAdapter(android.widget.AutoCompleteTextView host,
+                                                 List<String> items) {
         return new ArrayAdapter<String>(this, R.layout.menu_item, new ArrayList<>(items)) {
             @Override public android.widget.Filter getFilter() {
                 return new android.widget.Filter() {
@@ -633,6 +634,18 @@ public class MainActivity extends AppCompatActivity {
                         notifyDataSetChanged(); // keep the full list; don't reduce it to matches
                     }
                 };
+            }
+
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                TextView row = (TextView) super.getView(position, convertView, parent);
+                // Mark the active choice: warm ink + a check, so the open list shows the current pick.
+                boolean selected = row.getText().toString().contentEquals(host.getText());
+                row.setTextColor(ContextCompat.getColor(MainActivity.this,
+                        selected ? R.color.glass_warm : R.color.glass_ink));
+                row.setCompoundDrawablesRelativeWithIntrinsicBounds(
+                        0, 0, selected ? R.drawable.ic_check_20dp : 0, 0);
+                return row;
             }
         };
     }

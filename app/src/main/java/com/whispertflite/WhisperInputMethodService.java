@@ -7,14 +7,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.content.res.Configuration;
-import android.graphics.Color;
 import android.inputmethodservice.InputMethodService;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.InputType;
 import android.util.Log;
-import android.view.ContextThemeWrapper;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -29,8 +26,6 @@ import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 
 import com.github.houbb.opencc4j.util.ZhConverterUtil;
-import com.google.android.material.color.DynamicColors;
-import com.google.android.material.color.MaterialColors;
 import com.whispertflite.asr.Recorder;
 import com.whispertflite.asr.Whisper;
 import com.whispertflite.asr.WhisperResult;
@@ -40,6 +35,7 @@ import com.whispertflite.models.ModelRegistry;
 import com.whispertflite.ui.LivingSignalView;
 import com.whispertflite.utils.HapticFeedback;
 import com.whispertflite.utils.InputLang;
+import com.whispertflite.utils.ThemeUtils;
 
 import java.io.File;
 import java.util.List;
@@ -65,6 +61,8 @@ public class WhisperInputMethodService extends InputMethodService {
     private View rootView;
 
     private Recorder mRecorder = null;
+    /** Appearance the current input view was inflated with; see onStartInputView. */
+    private String viewAppearance;
     private Whisper mWhisper = null;
     private File sdcardDataFolder = null;
     private ModelInfo selectedModel = null;
@@ -123,6 +121,12 @@ public class WhisperInputMethodService extends InputMethodService {
 
     @Override
     public void onStartInputView(EditorInfo attribute, boolean restarting) {
+        // The service outlives the settings screen and gets no configuration change out of the
+        // app's own theme preference, so without this the dock keeps the look it was inflated
+        // with until the process dies.
+        if (!ThemeUtils.appearanceSignature(this).equals(viewAppearance)) {
+            setInputView(onCreateInputView());
+        }
         currentInputType = attribute.inputType;
         selectedModel = resolveModel();
 
@@ -168,7 +172,8 @@ public class WhisperInputMethodService extends InputMethodService {
 
         // The IME context has no activity theme; wrap it with the app theme + palette overlay so
         // Material attrs (colorPrimary/colorSurface/...) resolve. Follows values-night automatically.
-        Context themed = themedContext();
+        Context themed = ThemeUtils.serviceContext(this);
+        viewAppearance = ThemeUtils.appearanceSignature(this);
         rootView = LayoutInflater.from(themed).inflate(R.layout.voice_service, null);
 
         btnRecord = rootView.findViewById(R.id.btnRecord);
@@ -183,14 +188,16 @@ public class WhisperInputMethodService extends InputMethodService {
         idleGroup = rootView.findViewById(R.id.idle_group);
         layoutButtons = rootView.findViewById(R.id.layout_buttons);
         orb = rootView.findViewById(R.id.orb);
-        orb.setColors(themeColor(androidx.appcompat.R.attr.colorPrimary),
-                themeColor(com.google.android.material.R.attr.colorPrimaryContainer));
+        int[] orbTint = ThemeUtils.orbColors(this);
+        orb.setColors(orbTint[0], orbTint[1]);
 
         modeAuto = sp.getBoolean("imeModeAuto", false);
         // Keys (keyboard-exit above all) stay visible in both modes: auto must never trap the user.
         checkRecordPermission();
 
-        mRecorder = new Recorder(this);
+        // The recorder belongs to the service, not the view: onCreateInputView runs again when
+        // the appearance changes, and a second Recorder would leave the first holding the mic.
+        if (mRecorder == null) mRecorder = new Recorder(this);
         mRecorder.setRmsListener(rms -> handler.post(() -> {
             orb.pushLevel(rms);
         }));
@@ -312,7 +319,7 @@ public class WhisperInputMethodService extends InputMethodService {
     }
 
     private void showImeMenu(View anchor) {
-        PopupMenu menu = new PopupMenu(themedContext(), anchor);
+        PopupMenu menu = new PopupMenu(ThemeUtils.serviceContext(this), anchor);
         android.view.MenuItem translateItem = menu.getMenu().add(0, 1, 0, R.string.translate_short);
         translateItem.setCheckable(true);
         translateItem.setChecked(translate);
@@ -343,33 +350,6 @@ public class WhisperInputMethodService extends InputMethodService {
         menu.show();
     }
 
-    /** App theme wrapper carrying the palette overlay picked in preferences. */
-    private Context themedContext() {
-        Context source = this;
-        String nightMode = sp.getString("nightMode", "system");
-        if (!"system".equals(nightMode)) {
-            Configuration configuration = new Configuration(getResources().getConfiguration());
-            configuration.uiMode = (configuration.uiMode & ~Configuration.UI_MODE_NIGHT_MASK)
-                    | ("dark".equals(nightMode)
-                    ? Configuration.UI_MODE_NIGHT_YES : Configuration.UI_MODE_NIGHT_NO);
-            source = createConfigurationContext(configuration);
-        }
-        Context base = new ContextThemeWrapper(source, R.style.Theme_Whisper_NoActionBar);
-        String palette = sp.getString("palette", "teal");
-        if ("dynamic".equals(palette)) {
-            return DynamicColors.wrapContextIfAvailable(base);
-        }
-        int overlay;
-        switch (palette) {
-            case "terracotta": overlay = R.style.ThemeOverlay_Whisper_Terracotta; break;
-            case "indigo":     overlay = R.style.ThemeOverlay_Whisper_Indigo;     break;
-            case "forest":     overlay = R.style.ThemeOverlay_Whisper_Forest;     break;
-            case "teal":
-            default:           overlay = R.style.ThemeOverlay_Whisper_Teal;       break;
-        }
-        base.getTheme().applyStyle(overlay, true);
-        return base;
-    }
 
     private void startRecording() {
         recordingStopped = false;
@@ -508,10 +488,6 @@ public class WhisperInputMethodService extends InputMethodService {
         String mode = modeAuto ? getString(R.string.auto_button) : getString(R.string.dialog_hold_to_speak);
         String action = translate ? getString(R.string.translate_short) : langCode;
         tvModelChip.setText(selectedModel.displayName + " · " + action + " · " + mode);
-    }
-
-    private int themeColor(int attr) {
-        return MaterialColors.getColor(rootView, attr, Color.GRAY);
     }
 
     private boolean checkRecordPermission() {

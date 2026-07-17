@@ -53,23 +53,59 @@ public class ThemeUtils {
 
     /**
      * The orb's {bright, soft} tint. The chosen palette survives here and only here: the glass
-     * owns colorPrimary on every screen, so the orb cannot read its hue off the activity's theme.
+     * owns colorPrimary on every screen, so the orb cannot read its hue off the caller's theme.
      * Resolved against a throwaway context wearing the palette alone, which keeps this independent
      * of whether the caller has applied the glass overlay yet.
      */
-    public static int[] orbColors(Activity activity) {
-        Context c = paletteContext(activity);
+    public static int[] orbColors(Context context) {
+        // Night-correct first: the palette colours are -night qualified, and a service's resources
+        // follow the system, not the app's preference.
+        Context c = paletteContext(nightContext(context));
         return new int[]{
                 resolveColor(c, androidx.appcompat.R.attr.colorPrimary),
                 resolveColor(c, com.google.android.material.R.attr.colorPrimaryContainer)};
     }
 
-    private static Context paletteContext(Activity activity) {
-        String palette = paletteKey(activity);
+    /**
+     * A context wearing the app theme, the chosen palette, the chosen night mode and the glass.
+     * The IME is a service: it has no activity theme, and AppCompat's night mode never reaches it,
+     * so the preference has to be turned into a real configuration by hand.
+     */
+    public static Context serviceContext(Context service) {
+        Context themed = new androidx.appcompat.view.ContextThemeWrapper(
+                nightContext(service), R.style.Theme_Whisper_NoActionBar);
+        themed = paletteContext(themed);
+        themed.getTheme().applyStyle(R.style.ThemeOverlay_Whisper_Glass, true);
+        return themed;
+    }
+
+    /**
+     * The night mode preference as a real configuration. A no-op for activities, whose resources
+     * AppCompat has already overridden; the work is for contexts it never touches, like the IME.
+     */
+    private static Context nightContext(Context context) {
+        String nightMode = PreferenceManager.getDefaultSharedPreferences(context)
+                .getString("nightMode", "system");
+        if ("system".equals(nightMode)) return context;
+        Configuration config = new Configuration(context.getResources().getConfiguration());
+        config.uiMode = (config.uiMode & ~Configuration.UI_MODE_NIGHT_MASK)
+                | ("dark".equals(nightMode)
+                ? Configuration.UI_MODE_NIGHT_YES : Configuration.UI_MODE_NIGHT_NO);
+        return context.createConfigurationContext(config);
+    }
+
+    /** What the UI is built from; compare across reads to notice the user changed it. */
+    public static String appearanceSignature(Context context) {
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
+        return sp.getString("nightMode", "system") + "/" + sp.getString("palette", "teal");
+    }
+
+    private static Context paletteContext(Context context) {
+        String palette = paletteKey(context);
         if ("dynamic".equals(palette)) {
-            return DynamicColors.wrapContextIfAvailable(activity);
+            return DynamicColors.wrapContextIfAvailable(context);
         }
-        return new androidx.appcompat.view.ContextThemeWrapper(activity, paletteOverlay(palette));
+        return new androidx.appcompat.view.ContextThemeWrapper(context, paletteOverlay(palette));
     }
 
     private static int resolveColor(Context c, int attr) {

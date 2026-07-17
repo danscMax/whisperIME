@@ -80,7 +80,7 @@
             android:id="@+id/dialog_chip"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="6dp"
             android:background="@drawable/living_glass_pill"
             android:ellipsize="end"
             android:fontFamily="@font/space_mono_regular"
@@ -91,38 +91,12 @@
             android:textColor="@color/glass_ink_dim"
             android:textSize="10sp" />
 
-        <TextView
-            android:id="@+id/dialog_status"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:fontFamily="@font/space_grotesk"
-            android:gravity="center"
-            android:text="@string/dialog_tap_to_talk"
-            android:textColor="@color/glass_ink"
-            android:textFontWeight="700"
-            android:textSize="22sp" />
-
-        <TextView
-            android:id="@+id/dialog_partial"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:ellipsize="end"
-            android:fontFamily="@font/space_grotesk"
-            android:gravity="center"
-            android:lineSpacingMultiplier="1.15"
-            android:maxLines="3"
-            android:minHeight="52dp"
-            android:textColor="@color/glass_ink_dim"
-            android:textSize="16sp" />
-
-        <!-- Orb at the bottom centre, flanked by keyboard (switch to typing) and close — the
-             thumb reaches the record target, and the buttons fill the sides instead of empty space. -->
+        <!-- Orb is the hero, up under the header, flanked by keyboard (switch to typing) and close;
+             state and the live transcription read directly beneath it, so there's no dead band. -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
+            android:layout_marginTop="12dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -142,13 +116,13 @@
                 android:layout_weight="1" />
 
             <FrameLayout
-                android:layout_width="176dp"
-                android:layout_height="176dp">
+                android:layout_width="184dp"
+                android:layout_height="184dp">
 
                 <com.whispertflite.ui.LivingSignalView
                     android:id="@+id/orb"
-                    android:layout_width="176dp"
-                    android:layout_height="176dp" />
+                    android:layout_width="184dp"
+                    android:layout_height="184dp" />
 
                 <ImageButton
                     android:id="@+id/btnRecord"
@@ -173,6 +147,33 @@
                 android:src="@drawable/ic_close_24dp"
                 app:tint="@color/glass_ink" />
         </LinearLayout>
+
+        <TextView
+            android:id="@+id/dialog_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:fontFamily="@font/space_grotesk"
+            android:gravity="center"
+            android:text="@string/dialog_tap_to_talk"
+            android:textColor="@color/glass_ink"
+            android:textFontWeight="700"
+            android:textSize="20sp" />
+
+        <!-- Live transcription; collapses when empty (no reserved dead space at idle). -->
+        <TextView
+            android:id="@+id/dialog_partial"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:ellipsize="end"
+            android:fontFamily="@font/space_grotesk"
+            android:gravity="center"
+            android:lineSpacingMultiplier="1.15"
+            android:maxLines="3"
+            android:textColor="@color/glass_ink_dim"
+            android:textSize="16sp"
+            android:visibility="gone" />
     </LinearLayout>
 
     <LinearLayout

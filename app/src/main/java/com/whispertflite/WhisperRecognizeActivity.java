@@ -213,6 +213,7 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
         if (mRecorder == null || !mRecorder.isInProgress()) {
             orb.setSignalState(LivingSignalView.SignalState.READY);
             setStatus(modeAuto ? R.string.dialog_tap_to_talk : R.string.dialog_hold_to_speak);
+            if (partialText != null) partialText.setVisibility(View.GONE);  // no dead band at idle
         }
     }
 
@@ -311,7 +312,10 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
                 }
                 if (result.trim().length() > 0) {
                     final String text = result.trim();
-                    runOnUiThread(() -> partialText.setText(text));
+                    runOnUiThread(() -> {
+                        partialText.setVisibility(View.VISIBLE);
+                        partialText.setText(text);
+                    });
                     saveHistory(text, whisperResult.getLanguage());
                     sendResult(text);
                 } else {

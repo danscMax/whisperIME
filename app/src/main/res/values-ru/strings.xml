@@ -109,6 +109,10 @@
     <string name="dialog_tap_to_talk">Коснитесь, чтобы говорить</string>
     <string name="dialog_listening">Слушаю…</string>
     <string name="dialog_processing">Обрабатываю…</string>
+    <string name="dialog_mode_auto">Авто</string>
+    <string name="dialog_mode_hold">Зажать</string>
+    <string name="dialog_mode_cd">Режим распознавания: автоматический или по нажатию</string>
+    <string name="switch_to_keyboard">Переключить на клавиатуру</string>
     <string name="dialog_no_model_title">Модель ещё не скачана</string>
     <string name="dialog_no_model_desc">Для голосового ввода нужна модель распознавания.</string>
     <string name="dialog_open_catalog">Открыть каталог</string>

@@ -20,28 +20,50 @@
         android:background="@drawable/dialog_drag_handle" />
 
     <LinearLayout
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center_horizontal"
-        android:orientation="vertical">
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
 
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/space_grotesk"
+                android:text="@string/dialog_dictate"
+                android:textColor="@color/glass_ink"
+                android:textFontWeight="700"
+                android:textSize="19sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/space_mono_regular"
+                android:text="@string/main_local_badge"
+                android:textColor="@color/glass_ink_body"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <!-- Recognition mode: push-to-talk by default, tap to switch to hands-free auto (VAD). -->
         <TextView
+            android:id="@+id/dialog_mode"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/space_grotesk"
-            android:text="@string/dialog_dictate"
-            android:textColor="@color/glass_ink"
-            android:textFontWeight="700"
-            android:textSize="19sp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
+            android:background="@drawable/living_glass_pill"
+            android:contentDescription="@string/dialog_mode_cd"
             android:fontFamily="@font/space_mono_regular"
-            android:text="@string/main_local_badge"
-            android:textColor="@color/glass_ink_dim"
-            android:textSize="9sp" />
+            android:letterSpacing="0.04"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="9dp"
+            android:text="@string/dialog_mode_hold"
+            android:textAllCaps="true"
+            android:textColor="@color/glass_ink"
+            android:textSize="12sp" />
     </LinearLayout>
 
     <!-- Status and the live transcription read at the top; the orb is the hero at the very bottom,
@@ -109,7 +131,7 @@
                 android:layout_width="52dp"
                 android:layout_height="52dp"
                 android:background="@drawable/glass_circle_btn"
-                android:contentDescription="@string/exit_button"
+                android:contentDescription="@string/switch_to_keyboard"
                 android:padding="14dp"
                 android:src="@drawable/ic_keyboard_36dp"
                 app:tint="@color/glass_ink" />
@@ -146,7 +168,7 @@
                 android:layout_width="52dp"
                 android:layout_height="52dp"
                 android:background="@drawable/glass_circle_btn"
-                android:contentDescription="@string/exit_button"
+                android:contentDescription="@android:string/cancel"
                 android:padding="15dp"
                 android:src="@drawable/ic_close_24dp"
                 app:tint="@color/glass_ink" />

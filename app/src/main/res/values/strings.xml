@@ -115,6 +115,10 @@
     <string name="dialog_open_catalog">Open catalog</string>
     <string name="dialog_dictate">Dictate</string>
     <string name="dialog_copied">Copied</string>
+    <string name="dialog_mode_auto">Auto</string>
+    <string name="dialog_mode_hold">Push</string>
+    <string name="dialog_mode_cd">Recognition mode: automatic or push-to-talk</string>
+    <string name="switch_to_keyboard">Switch to keyboard</string>
 
     <string name="catalog_title">Models</string>
     <string name="catalog_filter_all">All</string>

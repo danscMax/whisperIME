@@ -58,6 +58,7 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     private SharedPreferences sp = null;
     private Context mContext;
     private String langCode = "auto";
+    private boolean modeAuto = false;   // false = push-to-talk (default), true = hands-free VAD
 
     // ACTION_PROCESS_TEXT support: dictation replaces the selected text.
     private boolean processTextMode = false;
@@ -162,31 +163,68 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
                 HapticFeedback.vibrate(mContext);
                 runOnUiThread(() -> {
                     orb.setSignalState(LivingSignalView.SignalState.ERROR);
-                    setStatus(R.string.dialog_tap_to_talk); // let the user tap the orb to retry
+                    setStatus(modeAuto ? R.string.dialog_tap_to_talk : R.string.dialog_hold_to_speak);
                     Toast.makeText(mContext, R.string.error_no_input, Toast.LENGTH_SHORT).show();
                 });
             }
         });
 
-        // One unified mode: the dialog listens as soon as it opens and auto-stops on a speech pause
-        // (VAD). Tap the orb to stop early or to listen again; the X (top-left) always cancels.
-        btnRecord.setOnClickListener(v -> {
-            if (mRecorder.isInProgress()) {
-                mRecorder.stop();               // stop now -> transcribe what was captured
-            } else if (mWhisper != null && !mWhisper.isInProgress()) {
-                startListening();               // idle: start (or retry) listening
-            }
+        // Two modes, same as the IME: push-to-talk (default) — hold the orb, release to transcribe;
+        // auto (hands-free) — tap to start, VAD auto-stops on a speech pause, tap again to stop early.
+        modeAuto = sp.getBoolean("imeModeAuto", false);
+        TextView modeToggle = findViewById(R.id.dialog_mode);
+        modeToggle.setOnClickListener(v -> {
+            if (mRecorder.isInProgress()) mRecorder.stop();
+            modeAuto = !modeAuto;
+            sp.edit().putBoolean("imeModeAuto", modeAuto).apply();
+            applyModeUi();
         });
 
-        if (checkRecordPermission()) startListening();
+        btnRecord.setOnTouchListener((v, event) -> {
+            if (modeAuto) {
+                // Hands-free: tap toggles listening; VAD also auto-stops.
+                if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                    if (mRecorder.isInProgress()) mRecorder.stop();
+                    else if (mWhisper != null && !mWhisper.isInProgress()) startListening(true);
+                }
+                return true;
+            }
+            // Push-to-talk: record while held, transcribe on release.
+            if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                if (mWhisper != null && !mWhisper.isInProgress()) startListening(false);
+            } else if (event.getAction() == MotionEvent.ACTION_UP
+                    || event.getAction() == MotionEvent.ACTION_CANCEL) {
+                if (mRecorder.isInProgress()) mRecorder.stop();
+            }
+            return true;
+        });
+
+        applyModeUi();
+        // Auto mode starts listening on open; push-to-talk waits calmly for the user to hold.
+        if (modeAuto && checkRecordPermission()) startListening(true);
     }
 
-    /** Begin a VAD-gated listening session (auto-stops on a speech pause). */
-    private void startListening() {
+    /** Reflect the current mode on the toggle pill and the idle prompt (when not busy). */
+    private void applyModeUi() {
+        TextView modeToggle = findViewById(R.id.dialog_mode);
+        modeToggle.setText(modeAuto ? R.string.dialog_mode_auto : R.string.dialog_mode_hold);
+        modeToggle.setBackgroundResource(
+                modeAuto ? R.drawable.living_glass_pill_warm : R.drawable.living_glass_pill);
+        if (mRecorder == null || !mRecorder.isInProgress()) {
+            orb.setSignalState(LivingSignalView.SignalState.READY);
+            setStatus(modeAuto ? R.string.dialog_tap_to_talk : R.string.dialog_hold_to_speak);
+        }
+    }
+
+    /**
+     * Start a capture. Auto mode gates it with VAD (auto-stop on silence); push-to-talk records
+     * continuously until {@link Recorder#stop()} on release.
+     */
+    private void startListening(boolean auto) {
         HapticFeedback.vibrate(this);
         setStatus(R.string.dialog_listening);
         orb.setSignalState(LivingSignalView.SignalState.LISTENING);
-        mRecorder.initVad();   // auto-stop on silence
+        if (auto) mRecorder.initVad();   // auto-stop on silence
         mRecorder.start();
     }
 
@@ -276,6 +314,10 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
                     runOnUiThread(() -> partialText.setText(text));
                     saveHistory(text, whisperResult.getLanguage());
                     sendResult(text);
+                } else {
+                    // Nothing recognized (silence, or an all-marker result cleaned to empty):
+                    // don't finish — return to the calm idle prompt so the user can try again.
+                    runOnUiThread(WhisperRecognizeActivity.this::applyModeUi);
                 }
             }
         });

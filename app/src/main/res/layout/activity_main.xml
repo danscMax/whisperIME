@@ -180,63 +180,6 @@
         </LinearLayout>
 
         <FrameLayout
-            android:layout_width="176dp"
-            android:layout_height="176dp"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginTop="2dp">
-
-            <com.whispertflite.ui.LivingSignalView
-                android:id="@+id/orb"
-                android:layout_width="176dp"
-                android:layout_height="176dp" />
-
-            <ImageButton
-                android:id="@+id/btnRecord"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="@android:color/transparent"
-                android:contentDescription="@string/main_cd_record" />
-        </FrameLayout>
-
-        <LinearLayout
-            android:id="@+id/layout_recording"
-            android:layout_width="wrap_content"
-            android:layout_height="24dp"
-            android:layout_gravity="center_horizontal"
-            android:gravity="center"
-            android:orientation="horizontal"
-            android:visibility="gone">
-
-            <View
-                android:layout_width="6dp"
-                android:layout_height="6dp"
-                android:background="@drawable/living_live_dot" />
-
-            <TextView
-                android:id="@+id/tvTimer"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="7dp"
-                android:fontFamily="@font/space_mono_regular"
-                android:text="0:00"
-                android:textColor="@color/glass_ink"
-                android:textSize="12sp" />
-        </LinearLayout>
-
-        <TextView
-            android:id="@+id/tvHintTap"
-            android:layout_width="wrap_content"
-            android:layout_height="24dp"
-            android:layout_gravity="center_horizontal"
-            android:fontFamily="@font/space_mono_regular"
-            android:gravity="center"
-            android:letterSpacing="0.05"
-            android:text="@string/main_state_ready"
-            android:textAllCaps="true"
-            android:textColor="@color/glass_ink_dim"
-            android:textSize="10sp" />
-
-        <FrameLayout
             android:id="@+id/transcriptPanel"
             android:layout_width="match_parent"
             android:layout_height="0dp"
@@ -322,10 +265,72 @@
             </LinearLayout>
         </FrameLayout>
 
+        <!-- State line + orb sit at the bottom, in the thumb's reach — the record target should
+             never need a stretch. Recording timer and READY hint are mutually exclusive states. -->
+        <LinearLayout
+            android:id="@+id/layout_recording"
+            android:layout_width="wrap_content"
+            android:layout_height="22dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <View
+                android:layout_width="6dp"
+                android:layout_height="6dp"
+                android:background="@drawable/living_live_dot" />
+
+            <TextView
+                android:id="@+id/tvTimer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="7dp"
+                android:fontFamily="@font/space_mono_regular"
+                android:text="0:00"
+                android:textColor="@color/glass_ink"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvHintTap"
+            android:layout_width="wrap_content"
+            android:layout_height="22dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="8dp"
+            android:fontFamily="@font/space_mono_regular"
+            android:gravity="center"
+            android:letterSpacing="0.05"
+            android:text="@string/main_state_ready"
+            android:textAllCaps="true"
+            android:textColor="@color/glass_ink_dim"
+            android:textSize="10sp" />
+
+        <FrameLayout
+            android:layout_width="168dp"
+            android:layout_height="168dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="6dp">
+
+            <com.whispertflite.ui.LivingSignalView
+                android:id="@+id/orb"
+                android:layout_width="168dp"
+                android:layout_height="168dp" />
+
+            <ImageButton
+                android:id="@+id/btnRecord"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@android:color/transparent"
+                android:contentDescription="@string/main_cd_record" />
+        </FrameLayout>
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="64dp"
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="4dp"
             android:background="@drawable/living_glass_dock"
             android:gravity="center_vertical"
             android:orientation="horizontal"

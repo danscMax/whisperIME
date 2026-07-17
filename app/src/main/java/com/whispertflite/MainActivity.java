@@ -54,7 +54,6 @@ import com.whispertflite.utils.InputLang;
 import com.whispertflite.utils.LanguagePairAdapter;
 import com.whispertflite.utils.ThemeUtils;
 
-import org.woheller69.freeDroidWarn.FreeDroidWarn;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -368,7 +367,6 @@ public class MainActivity extends AppCompatActivity {
 
         applyState(UiState.READY);
 
-        FreeDroidWarn.showWarningOnUpgrade(this, BuildConfig.VERSION_CODE);
         if (GithubStar.shouldShowStarDialog(this)) GithubStar.starDialog(this, "https://github.com/woheller69/whisperIME");
         // Assume this Activity is the current activity, check record permission
         checkPermissions();

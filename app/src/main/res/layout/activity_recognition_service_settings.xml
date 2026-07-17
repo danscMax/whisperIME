@@ -54,13 +54,21 @@
             android:textColor="@color/living_cyan"
             android:textSize="10sp" />
 
+        <!-- The pills carry their own label: a floating hint would notch a gap through the
+             glass stroke, and these two values are not self-describing on a settings form. -->
+        <TextView
+            style="@style/TextAppearance.LivingSignal.FieldLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="@string/select_model" />
+
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/tilRecognitionModel"
             style="@style/Widget.LivingSignal.Dropdown"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:hint="@string/select_model">
+            android:layout_marginTop="6dp">
 
             <com.google.android.material.textfield.MaterialAutoCompleteTextView
                 android:id="@+id/spnrTfliteFiles"
@@ -68,17 +76,23 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/space_grotesk"
                 android:inputType="none"
-                android:popupBackground="@drawable/living_glass_panel"
+                android:popupBackground="@drawable/menu_sheet"
                 android:textColor="@color/aurora_ink" />
         </com.google.android.material.textfield.TextInputLayout>
+
+        <TextView
+            style="@style/TextAppearance.LivingSignal.FieldLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/language" />
 
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/layout_language"
             style="@style/Widget.LivingSignal.Dropdown"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:hint="@string/language">
+            android:layout_marginTop="6dp">
 
             <com.google.android.material.textfield.MaterialAutoCompleteTextView
                 android:id="@+id/spnrLanguage"
@@ -86,7 +100,7 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/space_grotesk"
                 android:inputType="none"
-                android:popupBackground="@drawable/living_glass_panel"
+                android:popupBackground="@drawable/menu_sheet"
                 android:textColor="@color/aurora_ink" />
         </com.google.android.material.textfield.TextInputLayout>
 

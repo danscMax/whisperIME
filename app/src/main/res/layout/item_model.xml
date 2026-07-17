@@ -7,10 +7,10 @@
     android:layout_height="wrap_content"
     android:layout_marginHorizontal="6dp"
     android:layout_marginVertical="7dp"
-    app:cardBackgroundColor="#C6FFFFFF"
+    app:cardBackgroundColor="@color/glass_card"
     app:cardCornerRadius="26dp"
     app:cardElevation="6dp"
-    app:strokeColor="#66FFFFFF"
+    app:strokeColor="@color/glass_card_brd"
     app:strokeWidth="1dp">
 
     <FrameLayout
@@ -43,7 +43,7 @@
                     android:contentDescription="@null"
                     android:padding="12dp"
                     android:src="@drawable/ic_model_bars_24dp"
-                    app:tint="#2A2F3C" />
+                    app:tint="@color/glass_tile_ink" />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -59,7 +59,7 @@
                         android:ellipsize="end"
                         android:fontFamily="@font/space_grotesk"
                         android:maxLines="1"
-                        android:textColor="#161B2C"
+                        android:textColor="@color/glass_ink"
                         android:textFontWeight="750"
                         android:textSize="17sp" />
 
@@ -71,30 +71,22 @@
                         android:ellipsize="end"
                         android:fontFamily="@font/space_mono_regular"
                         android:maxLines="1"
-                        android:textColor="#6A7183"
+                        android:textColor="@color/glass_ink_dim"
                         android:textSize="12sp" />
                 </LinearLayout>
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/engineChip"
-                    style="@style/Widget.Aurora.Chip.Badge"
+                    style="@style/Widget.Glass.Chip.Badge"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="6dp"
                     android:clickable="false" />
-
-                <ImageView
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
-                    android:layout_marginStart="4dp"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_chevron_right_20dp"
-                    app:tint="#98A0B0" />
             </LinearLayout>
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/statusChip"
-                style="@style/Widget.Aurora.Chip.Status"
+                style="@style/Widget.Glass.Chip.Status"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="start"
@@ -122,6 +114,8 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
+                        app:indicatorColor="@color/glass_warm"
+                        app:trackColor="@color/glass_outline"
                         app:trackCornerRadius="4dp" />
 
                     <ImageButton
@@ -132,7 +126,7 @@
                         android:layout_marginStart="4dp"
                         android:contentDescription="@string/catalog_cancel"
                         android:src="@drawable/ic_cancel_36dp"
-                        app:tint="?attr/colorPrimary" />
+                        app:tint="@color/glass_ink_body" />
                 </LinearLayout>
 
                 <TextView
@@ -141,7 +135,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
                     android:fontFamily="@font/space_mono_regular"
-                    android:textColor="#6A7183"
+                    android:textColor="@color/glass_ink_dim"
                     android:textSize="12sp" />
             </LinearLayout>
 
@@ -156,16 +150,15 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/deleteButton"
-                    style="@style/Widget.Material3.Button.TextButton"
+                    style="@style/Widget.Glass.Button.Danger"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/catalog_delete"
-                    android:textColor="#E0564B"
                     android:visibility="gone" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/downloadButton"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    style="@style/Widget.Glass.Button.Ghost"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"

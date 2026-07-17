@@ -28,4 +28,6 @@
 <color name="living_blob_b">#1E257D9A</color>
 <color name="living_blob_c">#1AC43D95</color>
 <color name="living_panel_top">#E6FFFFFF</color>
+<color name="menu_sheet">#FFF3F6FC</color>
+<color name="menu_sheet_brd">#FFDBE3F0</color>
 </resources>

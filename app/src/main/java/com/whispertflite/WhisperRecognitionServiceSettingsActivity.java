@@ -47,7 +47,6 @@ public class WhisperRecognitionServiceSettingsActivity extends AppCompatActivity
     @SuppressLint("ClickableViewAccessibility")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        ThemeUtils.applyNightMode(this);
         super.onCreate(savedInstanceState);
         ThemeUtils.applyPalette(this);
         setContentView(R.layout.activity_recognition_service_settings);

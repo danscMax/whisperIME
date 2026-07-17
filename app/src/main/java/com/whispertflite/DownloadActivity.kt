@@ -28,7 +28,6 @@ class DownloadActivity : AppCompatActivity(), ModelDownloadManager.Listener {
     private var selected: ModelInfo? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        ThemeUtils.applyNightMode(this)
         super.onCreate(savedInstanceState)
         ThemeUtils.applyPalette(this)
         val b = ActivityDownloadBinding.inflate(layoutInflater)

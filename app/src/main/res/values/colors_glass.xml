@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Warm liquid-glass control tokens. These describe the *glass* surfaces (model catalog and every
+  screen rolled onto the same look): a light frosted card system whose accent is warm amber.
+  They are deliberately independent of the selectable Material palette (teal/terracotta/...),
+  which is tuned for M3 tonal surfaces and clashes with the glass cards.
+-->
+<resources>
+
+    <!-- Ink -->
+    <color name="glass_ink">#161B2C</color>        <!-- headlines -->
+    <color name="glass_ink_body">#3A4155</color>   <!-- body / labels -->
+    <color name="glass_ink_dim">#6A7183</color>    <!-- meta, mono -->
+    <color name="glass_ink_faint">#98A0B0</color>  <!-- chevrons, disabled -->
+
+    <!-- Solid control: filled buttons, checked filter chips -->
+    <color name="glass_solid">#1E2740</color>
+    <color name="glass_on_solid">#FFFFFF</color>
+    <color name="glass_solid_dim">#E61E283C</color>
+
+    <!-- Glass pill: unchecked chips, dropdown boxes, footer -->
+    <color name="glass_pill">#6BFFFFFF</color>
+    <color name="glass_pill_brd">#8CFFFFFF</color>
+    <color name="glass_sheet">#D9FFFFFF</color>    <!-- opaque-ish menus/popups -->
+    <color name="glass_dialog">#F7F4F7FA</color>   <!-- floating windows must stay near-opaque -->
+
+    <!-- Outline for ghost controls (ink at 20%) -->
+    <color name="glass_outline">#33283246</color>
+
+    <!-- Warm accent = "on / active" (matches the warm glow of the active card) -->
+    <color name="glass_warm">#F5793B</color>
+    <color name="glass_warm_bg">#D9FFE1C2</color>
+    <color name="glass_warm_ink">#8A4A18</color>
+
+    <color name="glass_danger">#E0564B</color>
+
+    <!-- Engine badges: semantic per engine, not per palette -->
+    <color name="glass_engine_tflite_bg">#294C7DF6</color>
+    <color name="glass_engine_tflite_fg">#2E5AD0</color>
+    <color name="glass_engine_cpp_bg">#298C6EF0</color>
+    <color name="glass_engine_cpp_fg">#6A4FD0</color>
+
+    <!-- Card surfaces (kept here so the adapter stops hardcoding hex) -->
+    <color name="glass_card">#C6FFFFFF</color>
+    <color name="glass_card_brd">#66FFFFFF</color>
+    <color name="glass_card_active">#C8FFEAD3</color>
+    <color name="glass_card_active_brd">#C0FFD3A6</color>
+    <color name="glass_shadow">#FF6E86AA</color>
+    <color name="glass_shadow_active">#FFF5924A</color>
+    <color name="glass_tile_ink">#2A2F3C</color>
+</resources>

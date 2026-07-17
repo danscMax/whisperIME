@@ -38,7 +38,21 @@ public class ThemeUtils {
     }
 
     /**
+     * Re-point the Material colour roles at the warm liquid-glass tokens. Call after
+     * {@link #applyPalette} and before setContentView on every glass (light frosted) screen, so
+     * stock widgets inherit the card look instead of the tonal palette.
+     */
+    public static void applyGlass(Activity activity) {
+        activity.getTheme().applyStyle(R.style.ThemeOverlay_Whisper_Glass, true);
+    }
+
+    /**
      * Apply the night mode chosen in preferences ("nightMode": system|light|dark).
+     *
+     * <p>Call this from {@link android.app.Application#onCreate()}. Calling it from an activity's
+     * onCreate is too late for that activity's base context: the activity itself repaints, but
+     * windows inflated outside it (exposed-dropdown popups, menus) keep resolving -night resources
+     * against the *system* configuration, so their text comes out inverted and unreadable.
      */
     public static void applyNightMode(Context context) {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
@@ -51,6 +65,19 @@ public class ThemeUtils {
             default:      nightMode = AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM; break;
         }
         AppCompatDelegate.setDefaultNightMode(nightMode);
+    }
+
+    /**
+     * Dark system-bar icons, for screens whose surface is light in both themes (the warm glass).
+     * Uses the androidx controller so it also works below API 35, unlike
+     * {@link #setStatusBarAppearance}.
+     */
+    public static void setLightSystemBars(Activity activity) {
+        androidx.core.view.WindowInsetsControllerCompat c =
+                androidx.core.view.WindowCompat.getInsetsController(
+                        activity.getWindow(), activity.getWindow().getDecorView());
+        c.setAppearanceLightStatusBars(true);
+        c.setAppearanceLightNavigationBars(true);
     }
 
     public static void setStatusBarAppearance(Activity activity){

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Warm accent when on (the app's single "active" colour), frosted ink when off. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:color="@color/glass_warm" android:state_checked="true" />
+    <item android:alpha="0.14" android:color="@color/glass_solid" />
+</selector>

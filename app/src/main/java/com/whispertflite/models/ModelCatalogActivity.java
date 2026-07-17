@@ -1,17 +1,20 @@
 package com.whispertflite.models;
 
 import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
 import android.os.Bundle;
 import android.text.format.Formatter;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.TextView;
 
+import androidx.annotation.ColorRes;
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -20,6 +23,7 @@ import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.snackbar.Snackbar;
@@ -42,12 +46,15 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        // Warm liquid-glass catalog is a light surface regardless of the app's night mode.
-        getDelegate().setLocalNightMode(androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO);
         super.onCreate(savedInstanceState);
         ThemeUtils.applyPalette(this);
+        // The warm glass is a light surface in both themes. It gets there through its own tokens,
+        // never through a local night mode: forcing MODE_NIGHT_NO here leaked the light config into
+        // the shared resources, so every popup inflated afterwards (even back on the main screen)
+        // came out light-on-dark.
+        ThemeUtils.applyGlass(this);
         setContentView(R.layout.activity_model_catalog);
-        ThemeUtils.setStatusBarAppearance(this);
+        ThemeUtils.setLightSystemBars(this);
 
         manager = ModelDownloadManager.get(this);
         prefs = PreferenceManager.getDefaultSharedPreferences(this);
@@ -156,7 +163,7 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
     }
 
     private void confirmDelete(ModelInfo model) {
-        new AlertDialog.Builder(this)
+        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.catalog_delete)
                 .setMessage(getString(R.string.catalog_delete_confirm, model.displayName))
                 .setNegativeButton(android.R.string.cancel, null)
@@ -170,6 +177,9 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
                     refresh();
                 })
                 .show();
+        // The confirm is destructive; the shared dialog theme keeps both actions neutral ink.
+        dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE)
+                .setTextColor(color(R.color.glass_danger));
     }
 
     /** Number of models currently on disk (to hide delete on the last one). */
@@ -219,38 +229,40 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
             ModelState state = manager.stateOf(m);
 
             h.name.setText(m.displayName);
-            h.engineChip.setText(m.engine == Engine.TFLITE
-                    ? R.string.catalog_engine_tflite : R.string.catalog_engine_whispercpp);
             h.meta.setText(meta(m));
+
+            // Engine badge is tinted by engine, not by the app palette: the reader is telling two
+            // runtimes apart, and a palette accent here just fights the card.
+            boolean tflite = m.engine == Engine.TFLITE;
+            h.engineChip.setText(tflite ? R.string.catalog_engine_tflite : R.string.catalog_engine_whispercpp);
+            tint(h.engineChip,
+                    tflite ? R.color.glass_engine_tflite_bg : R.color.glass_engine_cpp_bg,
+                    tflite ? R.color.glass_engine_tflite_fg : R.color.glass_engine_cpp_fg);
 
             // Warm liquid glass: the active model glows warm (dark icon tile + warm sheen + warm shadow),
             // the rest are light frosted cards with a dark-on-light icon.
             boolean active = state == ModelState.ACTIVE;
-            android.widget.ImageView icon = h.itemView.findViewById(R.id.icon);
-            if (icon != null) {
-                icon.setBackgroundResource(active ? R.drawable.icon_circle_dark : R.drawable.icon_circle_light);
-                icon.setImageTintList(android.content.res.ColorStateList.valueOf(active ? 0xFFFFFFFF : 0xFF2A2F3C));
-            }
-            View sheen = h.itemView.findViewById(R.id.cardSheen);
-            if (sheen != null) sheen.setBackgroundResource(active ? R.drawable.card_sheen_warm : R.drawable.card_sheen_glass);
-            h.card.setCardBackgroundColor(active ? 0xC8FFEAD3 : 0xC6FFFFFF);
-            float density = getResources().getDisplayMetrics().density;
-            h.card.setStrokeWidth((int) (density));
-            h.card.setStrokeColor(active ? 0xC0FFD3A6 : 0x66FFFFFF);
+            h.icon.setBackgroundResource(active ? R.drawable.icon_circle_dark : R.drawable.icon_circle_light);
+            h.icon.setImageTintList(ColorStateList.valueOf(
+                    color(active ? R.color.glass_on_solid : R.color.glass_tile_ink)));
+            h.cardSheen.setBackgroundResource(active ? R.drawable.card_sheen_warm : R.drawable.card_sheen_glass);
+            h.card.setCardBackgroundColor(color(active ? R.color.glass_card_active : R.color.glass_card));
+            h.card.setStrokeWidth(Math.round(getResources().getDisplayMetrics().density));
+            h.card.setStrokeColor(color(active ? R.color.glass_card_active_brd : R.color.glass_card_brd));
             if (android.os.Build.VERSION.SDK_INT >= 28) {
-                h.card.setOutlineSpotShadowColor(active ? 0xFFF5924A : 0xFF6E86AA);
+                h.card.setOutlineSpotShadowColor(
+                        color(active ? R.color.glass_shadow_active : R.color.glass_shadow));
             }
 
-            // status chip: Active, or "engine soon" for not-yet-wired gguf
+            // status chip: Active (warm, echoing the card), or "engine soon" for not-yet-wired gguf
             boolean soon = m.engine == Engine.WHISPER_CPP && !ModelRegistry.WHISPER_CPP_READY;
+            h.statusChip.setVisibility(active || soon ? View.VISIBLE : View.GONE);
             if (active) {
-                h.statusChip.setVisibility(View.VISIBLE);
                 h.statusChip.setText(R.string.catalog_active);
+                tint(h.statusChip, R.color.glass_warm_bg, R.color.glass_warm_ink);
             } else if (soon) {
-                h.statusChip.setVisibility(View.VISIBLE);
                 h.statusChip.setText(R.string.catalog_engine_soon);
-            } else {
-                h.statusChip.setVisibility(View.GONE);
+                tint(h.statusChip, R.color.glass_pill, R.color.glass_ink_dim);
             }
 
             boolean downloading = state == ModelState.DOWNLOADING;
@@ -300,7 +312,8 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
             final com.google.android.material.card.MaterialCardView card;
             final TextView name, meta, progressText;
             final Chip engineChip, statusChip;
-            final View progressGroup, buttonRow;
+            final View progressGroup, buttonRow, cardSheen;
+            final ImageView icon;
             final LinearProgressIndicator progress;
             final ImageButton cancelButton;
             final MaterialButton downloadButton, useButton, deleteButton;
@@ -308,6 +321,8 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
             VH(@NonNull View v) {
                 super(v);
                 card = (com.google.android.material.card.MaterialCardView) v;
+                icon = v.findViewById(R.id.icon);
+                cardSheen = v.findViewById(R.id.cardSheen);
                 name = v.findViewById(R.id.name);
                 meta = v.findViewById(R.id.meta);
                 engineChip = v.findViewById(R.id.engineChip);
@@ -334,9 +349,13 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
         return langs + " · " + size + " · " + getString(hint);
     }
 
-    private int getColorAttr(int attr) {
-        android.util.TypedValue tv = new android.util.TypedValue();
-        getTheme().resolveAttribute(attr, tv, true);
-        return tv.data;
+    private int color(@ColorRes int res) {
+        return ContextCompat.getColor(this, res);
+    }
+
+    /** Paint a chip as a soft tinted pill. */
+    private void tint(Chip chip, @ColorRes int bg, @ColorRes int fg) {
+        chip.setChipBackgroundColor(ColorStateList.valueOf(color(bg)));
+        chip.setTextColor(color(fg));
     }
 }

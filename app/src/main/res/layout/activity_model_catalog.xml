@@ -15,9 +15,9 @@
         android:layout_marginTop="4dp"
         android:background="@android:color/transparent"
         app:navigationIcon="@drawable/ic_arrow_back_24dp"
-        app:navigationIconTint="#1A2030"
+        app:navigationIconTint="@color/glass_ink"
         app:title="@string/catalog_title"
-        app:titleTextColor="#12172A" />
+        app:titleTextColor="@color/glass_ink" />
 
     <com.google.android.material.chip.ChipGroup
         android:id="@+id/filterGroup"
@@ -31,7 +31,7 @@
 
         <com.google.android.material.chip.Chip
             android:id="@+id/filterAll"
-            style="@style/Widget.Material3.Chip.Filter"
+            style="@style/Widget.Glass.Chip.Filter"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:checked="true"
@@ -39,14 +39,14 @@
 
         <com.google.android.material.chip.Chip
             android:id="@+id/filterTflite"
-            style="@style/Widget.Material3.Chip.Filter"
+            style="@style/Widget.Glass.Chip.Filter"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/catalog_filter_tflite" />
 
         <com.google.android.material.chip.Chip
             android:id="@+id/filterWhisperCpp"
-            style="@style/Widget.Material3.Chip.Filter"
+            style="@style/Widget.Glass.Chip.Filter"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/catalog_filter_whispercpp" />
@@ -77,14 +77,14 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:textColor="#3A3F4E"
+            android:textColor="@color/glass_ink_body"
             android:textSize="14sp" />
 
         <com.google.android.material.materialswitch.MaterialSwitch
             android:id="@+id/wifiOnlySwitch"
+            style="@style/Widget.Glass.Switch"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/catalog_wifi_only"
-            android:textColor="#3A3F4E" />
+            android:text="@string/catalog_wifi_only" />
     </LinearLayout>
 </LinearLayout>

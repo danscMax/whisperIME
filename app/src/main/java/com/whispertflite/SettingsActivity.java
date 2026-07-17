@@ -29,7 +29,6 @@ public class SettingsActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        ThemeUtils.applyNightMode(this);
         super.onCreate(savedInstanceState);
         ThemeUtils.applyPalette(this);
         setContentView(R.layout.activity_settings);

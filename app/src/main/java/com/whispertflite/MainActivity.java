@@ -192,7 +192,6 @@ public class MainActivity extends AppCompatActivity {
     @SuppressLint("ClickableViewAccessibility")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        ThemeUtils.applyNightMode(this);
         super.onCreate(savedInstanceState);
         mContext = this;
         ThemeUtils.applyPalette(this);

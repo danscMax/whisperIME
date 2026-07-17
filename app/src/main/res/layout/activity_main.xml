@@ -50,36 +50,58 @@
                     android:textSize="9sp" />
             </LinearLayout>
 
-            <!-- Nav lives in the header so the bottom belongs entirely to the orb — the thumb never
-                 reaches past a menu bar to hit the record target. -->
-            <ImageButton
-                android:id="@+id/btnHistory"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/history_title"
-                android:src="@drawable/ic_history_24dp"
-                app:tint="@color/glass_ink" />
+            <!-- Nav grouped into one frosted pill so the three icons read as a single control, and
+                 kept in the header so the bottom belongs entirely to the orb. -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="46dp"
+                android:background="@drawable/glass_pill_bar"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="4dp">
 
-            <ImageButton
-                android:id="@+id/btnSettings"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:layout_marginStart="2dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/settings_title"
-                android:src="@drawable/ic_settings_24dp"
-                app:tint="@color/glass_ink" />
+                <ImageButton
+                    android:id="@+id/btnHistory"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/history_title"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_history_24dp"
+                    app:tint="@color/glass_ink" />
 
-            <ImageButton
-                android:id="@+id/btnOverflow"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:layout_marginStart="2dp"
-                android:background="@drawable/living_glass_pill"
-                android:contentDescription="@string/main_cd_menu"
-                android:src="@drawable/ic_more_vert_24dp"
-                app:tint="@color/glass_ink" />
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="20dp"
+                    android:layout_marginHorizontal="2dp"
+                    android:background="@color/glass_card_brd" />
+
+                <ImageButton
+                    android:id="@+id/btnSettings"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/settings_title"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_settings_24dp"
+                    app:tint="@color/glass_ink" />
+
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="20dp"
+                    android:layout_marginHorizontal="2dp"
+                    android:background="@color/glass_card_brd" />
+
+                <ImageButton
+                    android:id="@+id/btnOverflow"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/main_cd_menu"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_more_vert_24dp"
+                    app:tint="@color/glass_ink" />
+            </LinearLayout>
 
             <ImageButton
                 android:id="@+id/btnInfo"

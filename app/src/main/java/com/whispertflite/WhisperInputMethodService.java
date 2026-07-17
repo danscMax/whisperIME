@@ -502,7 +502,7 @@ public class WhisperInputMethodService extends InputMethodService {
 
     private void deinitModel() {
         if (mWhisper != null) {
-            mWhisper.unloadModel();
+            mWhisper.shutdown();   // free the engine AND stop the worker thread (unloadModel leaks it)
             mWhisper = null;
         }
         loadedModelId = null;

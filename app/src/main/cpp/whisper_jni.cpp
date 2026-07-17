@@ -155,6 +155,16 @@ Java_com_whispertflite_engine_WhisperCpp_nativeTranscribe(JNIEnv *env, jclass, j
     wparams.abort_callback  = abort_callback;
     wparams.abort_callback_user_data = nullptr;
 
+    // Cap the encoder context to the actual audio length (+ margin) instead of always encoding a full
+    // 30 s window: whisper's encoder runs over `audio_ctx` frames (~50 per second of audio), so short
+    // VAD chunks skip most of the encoder for a large latency win.
+    // ponytail: the 256-frame (~5 s) pad is a calibration knob — widen it if word tails get cut on
+    // real speech (needs an on-device WER check); capped at the model's 1500, floored for tiny blips.
+    int audio_ctx = (int) ((n_samples / 16000.0) * 50.0 + 0.5) + 256;
+    if (audio_ctx > 1500) audio_ctx = 1500;
+    if (audio_ctx < 256)  audio_ctx = 256;
+    wparams.audio_ctx = audio_ctx;
+
     int rc = whisper_full(ctx, wparams, samples, (int) n_samples);
     env->ReleaseFloatArrayElements(pcm16k, samples, JNI_ABORT);
 
@@ -177,6 +187,17 @@ Java_com_whispertflite_engine_WhisperCpp_nativeTranscribe(JNIEnv *env, jclass, j
     }
 
     return env->NewStringUTF(result.c_str());
+}
+
+// ISO code of the language whisper detected on the last run (used for "auto" so downstream Chinese
+// simplified/traditional conversion still works). Reads the context's stored auto-detect result.
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_whispertflite_engine_WhisperCpp_nativeDetectedLang(JNIEnv *env, jclass, jlong ctxPtr) {
+    auto *ctx = reinterpret_cast<whisper_context *>(ctxPtr);
+    if (ctx == nullptr) return env->NewStringUTF("");
+    int id = whisper_full_lang_id(ctx);
+    const char *code = id >= 0 ? whisper_lang_str(id) : nullptr;
+    return env->NewStringUTF(code ? code : "");
 }
 
 extern "C" JNIEXPORT void JNICALL

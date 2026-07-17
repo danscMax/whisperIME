@@ -74,14 +74,22 @@ public final class WhisperCppEngine implements AsrEngine {
         } catch (RuntimeException e) {
             return new WhisperResult("", "", action);
         }
-        String detected = "auto".equals(lang) ? "" : lang;
+        // On "auto", read back whisper's detected language so downstream zh simplified/traditional
+        // conversion still fires; otherwise the requested code is authoritative.
+        String detected;
+        if ("auto".equals(lang)) {
+            String d = WhisperCpp.nativeDetectedLang(ctxPtr);
+            detected = d != null ? d : "";
+        } else {
+            detected = lang;
+        }
         return new WhisperResult(com.whispertflite.asr.Transcript.clean(text), detected, action);
     }
 
     /** 16-bit little-endian PCM to normalized float [-1, 1] — whisper.cpp's expected input. */
     private static float[] pcm16ToFloat(byte[] pcm) {
         int n = pcm.length / 2;
-        ByteBuffer bb = ByteBuffer.wrap(pcm).order(ByteOrder.nativeOrder());
+        ByteBuffer bb = ByteBuffer.wrap(pcm).order(ByteOrder.LITTLE_ENDIAN);
         float[] out = new float[n];
         for (int i = 0; i < n; i++) {
             out[i] = bb.getShort() / 32768.0f;

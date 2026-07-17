@@ -39,6 +39,7 @@ public class WhisperRecognitionService extends RecognitionService {
     private static final String TAG = "WhisperRecognitionService";
     private Recorder mRecorder = null;
     private Whisper mWhisper = null;
+    private String loadedModelPath = null;   // keep the model warm across utterances (avoid reloading)
     private File sdcardDataFolder = null;
     private File selectedTfliteFile = null;
     private boolean recognitionCancelled = false;
@@ -76,7 +77,7 @@ public class WhisperRecognitionService extends RecognitionService {
                 throw new RuntimeException(e);
             }
         } else {
-            initModel(selectedTfliteFile, callback, langToken);
+            ensureModel(selectedTfliteFile, callback, langToken);
 
             mRecorder = new Recorder(this);
             mRecorder.setListener(message -> {
@@ -126,7 +127,7 @@ public class WhisperRecognitionService extends RecognitionService {
     protected void onCancel(Callback callback) {
         Log.d(TAG,"cancel");
         stopRecording();
-        deinitModel();
+        if (mWhisper != null) mWhisper.stop();   // abort an in-flight run but keep the model warm
         recognitionCancelled = true;
     }
 
@@ -136,15 +137,20 @@ public class WhisperRecognitionService extends RecognitionService {
         stopRecording();
     }
 
-    // Model initialization
-    private void initModel(File modelFile, Callback callback, int langToken) {
-        boolean isMultilingualModel = !(modelFile.getName().endsWith(ENGLISH_ONLY_MODEL_EXTENSION));
-        String vocabFileName = isMultilingualModel ? MULTILINGUAL_VOCAB_FILE : ENGLISH_ONLY_VOCAB_FILE;
-        File vocabFile = new File(sdcardDataFolder, vocabFileName);
-
-        mWhisper = new Whisper(this);
-        mWhisper.loadModel(modelFile, vocabFile, isMultilingualModel);
-        Log.d(TAG, "Initialized: " + modelFile.getName());
+    // Load the model only when it's not already loaded (or the selection changed), then (re)bind the
+    // current request's callback. Keeping the native context warm across utterances avoids reloading
+    // hundreds of MB per request; the listener is rebound each time so results reach the live callback.
+    private void ensureModel(File modelFile, Callback callback, int langToken) {
+        if (mWhisper == null || !modelFile.getAbsolutePath().equals(loadedModelPath)) {
+            deinitModel();
+            boolean isMultilingualModel = !(modelFile.getName().endsWith(ENGLISH_ONLY_MODEL_EXTENSION));
+            String vocabFileName = isMultilingualModel ? MULTILINGUAL_VOCAB_FILE : ENGLISH_ONLY_VOCAB_FILE;
+            File vocabFile = new File(sdcardDataFolder, vocabFileName);
+            mWhisper = new Whisper(this);
+            mWhisper.loadModel(modelFile, vocabFile, isMultilingualModel);
+            loadedModelPath = modelFile.getAbsolutePath();
+            Log.d(TAG, "Loaded: " + modelFile.getName());
+        }
         mWhisper.setLanguage(langToken);
         Log.d(TAG, "Language token " + langToken);
         mWhisper.setListener(new Whisper.WhisperListener() {
@@ -157,7 +163,6 @@ public class WhisperRecognitionService extends RecognitionService {
                     Log.d(TAG, whisperResult.getResult().trim());
                     try {
                         callback.endOfSpeech();
-                        deinitModel();
                         Bundle results = new Bundle();
                         ArrayList<String> resultList = new ArrayList<>();
 
@@ -196,7 +201,9 @@ public class WhisperRecognitionService extends RecognitionService {
                         @Override
                         public void onToastHidden() {
                             super.onToastHidden();
-                            if (mWhisper!=null) toast.show();
+                            // keep the "processing" toast up only while a run is actually in flight;
+                            // the model now stays loaded, so gating on mWhisper!=null would loop forever
+                            if (mWhisper != null && mWhisper.isInProgress()) toast.show();
                         }
                     });
                 }
@@ -214,9 +221,10 @@ public class WhisperRecognitionService extends RecognitionService {
     }
     private void deinitModel() {
         if (mWhisper != null) {
-            mWhisper.unloadModel();
+            mWhisper.shutdown();   // free the engine AND stop the worker thread (unloadModel leaks it)
             mWhisper = null;
         }
+        loadedModelPath = null;
     }
 
     private void checkRecordPermission(Callback callback) {

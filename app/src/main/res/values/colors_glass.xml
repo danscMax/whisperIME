@@ -80,4 +80,8 @@
     <color name="glass_iris_b">#2270E0B0</color>
     <color name="glass_iris_c">#2CFF9AD0</color>
     <color name="glass_beam">#3DFFFFFF</color>
+    <!-- Provider bottom sheet: warm sweep in light; a lifted (not near-black) frosted dark. -->
+    <color name="provider_sheet_top">#D7EAF1</color>
+    <color name="provider_sheet_mid">#ECE6E4</color>
+    <color name="provider_sheet_bottom">#F8D6BB</color>
 </resources>

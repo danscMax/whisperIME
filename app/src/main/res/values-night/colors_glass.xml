@@ -76,4 +76,8 @@
     <color name="glass_iris_b">#1670E0B0</color>
     <color name="glass_iris_c">#1FFF9AD0</color>
     <color name="glass_beam">#1AFFFFFF</color>
+    <!-- Provider bottom sheet lifted well above the near-black backdrop so it reads as glass. -->
+    <color name="provider_sheet_top">#212B3B</color>
+    <color name="provider_sheet_mid">#26232C</color>
+    <color name="provider_sheet_bottom">#32241B</color>
 </resources>

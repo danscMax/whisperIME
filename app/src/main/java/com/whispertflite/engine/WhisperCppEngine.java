@@ -75,7 +75,7 @@ public final class WhisperCppEngine implements AsrEngine {
             return new WhisperResult("", "", action);
         }
         String detected = "auto".equals(lang) ? "" : lang;
-        return new WhisperResult(text == null ? "" : text.trim(), detected, action);
+        return new WhisperResult(com.whispertflite.asr.Transcript.clean(text), detected, action);
     }
 
     /** 16-bit little-endian PCM to normalized float [-1, 1] — whisper.cpp's expected input. */

@@ -4,7 +4,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/living_signal_backdrop"
+    android:background="@drawable/liquid_glass_bg"
     android:fitsSystemWindows="true">
 
     <androidx.recyclerview.widget.RecyclerView
@@ -37,7 +37,7 @@
             android:layout_marginTop="12dp"
             android:text="@string/history_empty_hint"
             android:textAppearance="?attr/textAppearanceBodyMedium"
-            android:textColor="@color/aurora_ink_dim" />
+            android:textColor="@color/glass_ink_dim" />
     </LinearLayout>
 
     <com.whispertflite.ui.FrostedBlurView
@@ -57,12 +57,12 @@
                 android:layout_width="match_parent"
                 android:layout_height="?attr/actionBarSize"
                 android:background="@android:color/transparent"
-                android:theme="@style/ThemeOverlay.Aurora.OnDark"
+                android:theme="@style/ThemeOverlay.Glass.OnSurface"
                 app:navigationIcon="@drawable/ic_arrow_back_24dp"
-                app:navigationIconTint="@color/aurora_ink"
+                app:navigationIconTint="@color/glass_ink"
                 app:title="@string/history_title"
-                app:titleTextAppearance="@style/TextAppearance.Aurora.Toolbar"
-                app:titleTextColor="@color/aurora_ink" />
+                app:titleTextAppearance="@style/TextAppearance.Glass.Toolbar"
+                app:titleTextColor="@color/glass_ink" />
 
             <EditText
                 android:id="@+id/searchField"
@@ -74,15 +74,15 @@
                 android:background="@drawable/living_glass_pill"
                 android:drawableStart="@drawable/ic_search_24dp"
                 android:drawablePadding="10dp"
-                android:drawableTint="@color/aurora_ink_dim"
+                android:drawableTint="@color/glass_ink_dim"
                 android:hint="@string/history_search_hint"
                 android:imeOptions="actionSearch"
                 android:inputType="text"
                 android:maxLines="1"
                 android:paddingHorizontal="16dp"
                 android:paddingVertical="12dp"
-                android:textColor="@color/aurora_ink"
-                android:textColorHint="@color/aurora_ink_dim" />
+                android:textColor="@color/glass_ink"
+                android:textColorHint="@color/glass_ink_dim" />
         </LinearLayout>
     </com.whispertflite.ui.FrostedBlurView>
 </FrameLayout>

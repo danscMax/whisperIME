@@ -12,7 +12,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.speech.RecognizerIntent;
 import android.util.Log;
@@ -30,7 +29,6 @@ import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 
 import com.github.houbb.opencc4j.util.ZhConverterUtil;
-import com.google.android.material.color.MaterialColors;
 import com.whispertflite.asr.Recorder;
 import com.whispertflite.asr.Whisper;
 import com.whispertflite.asr.WhisperResult;
@@ -70,6 +68,7 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         mContext = this;
         ThemeUtils.applyPalette(this);
+        ThemeUtils.applyGlass(this);
         sp = PreferenceManager.getDefaultSharedPreferences(this);
         sdcardDataFolder = this.getExternalFilesDir(null);
         // Use the SAME model the rest of the app selected (selectedModelId), not the legacy
@@ -110,8 +109,8 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
         btnCancel = findViewById(R.id.btnCancel);
         btnRecord = findViewById(R.id.btnRecord);
         orb = findViewById(R.id.orb);
-        orb.setColors(themeColor(androidx.appcompat.R.attr.colorPrimary),
-                themeColor(com.google.android.material.R.attr.colorPrimaryContainer));
+        int[] orbTint = ThemeUtils.orbColors(this);
+        orb.setColors(orbTint[0], orbTint[1]);
         statusText = findViewById(R.id.dialog_status);
         partialText = findViewById(R.id.dialog_partial);
 
@@ -209,10 +208,6 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
 
     private void stopMicPulse() {
         if (orb != null) orb.setIdle();
-    }
-
-    private int themeColor(int attr) {
-        return MaterialColors.getColor(orb, attr, Color.GRAY);
     }
 
     /**

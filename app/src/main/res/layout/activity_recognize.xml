@@ -34,7 +34,7 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/space_grotesk"
                 android:text="@string/dialog_dictate"
-                android:textColor="@color/aurora_ink"
+                android:textColor="@color/glass_ink"
                 android:textFontWeight="700"
                 android:textSize="19sp" />
 
@@ -43,7 +43,7 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/space_mono_regular"
                 android:text="@string/main_local_badge"
-                android:textColor="@color/aurora_ink_dim"
+                android:textColor="@color/glass_ink_dim"
                 android:textSize="9sp" />
         </LinearLayout>
 
@@ -56,7 +56,7 @@
             android:contentDescription="@string/exit_button"
             android:padding="12dp"
             android:src="@drawable/ic_cancel_36dp"
-            app:tint="@color/aurora_ink" />
+            app:tint="@color/glass_ink" />
     </RelativeLayout>
 
     <LinearLayout
@@ -96,7 +96,7 @@
             android:fontFamily="@font/space_grotesk"
             android:gravity="center"
             android:text="@string/dialog_tap_to_talk"
-            android:textColor="@color/aurora_ink"
+            android:textColor="@color/glass_ink"
             android:textFontWeight="600"
             android:textSize="18sp" />
 
@@ -109,7 +109,7 @@
             android:gravity="center"
             android:maxLines="3"
             android:minHeight="40dp"
-            android:textColor="@color/aurora_ink_dim"
+            android:textColor="@color/glass_ink_dim"
             android:textSize="14sp" />
 
         <TextView
@@ -124,7 +124,7 @@
             android:maxLines="1"
             android:paddingHorizontal="12dp"
             android:paddingVertical="6dp"
-            android:textColor="@color/aurora_ink_dim"
+            android:textColor="@color/glass_ink_dim"
             android:textSize="10sp" />
     </LinearLayout>
 
@@ -144,7 +144,7 @@
             android:layout_height="wrap_content"
             android:fontFamily="@font/space_grotesk"
             android:text="@string/dialog_no_model_title"
-            android:textColor="@color/aurora_ink"
+            android:textColor="@color/glass_ink"
             android:textFontWeight="600"
             android:textSize="17sp" />
 
@@ -154,7 +154,7 @@
             android:layout_marginTop="5dp"
             android:gravity="center"
             android:text="@string/dialog_no_model_desc"
-            android:textColor="@color/aurora_ink_dim"
+            android:textColor="@color/glass_ink_dim"
             android:textSize="13sp" />
 
         <com.google.android.material.button.MaterialButton

@@ -49,6 +49,7 @@ public class WhisperRecognitionServiceSettingsActivity extends AppCompatActivity
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         ThemeUtils.applyPalette(this);
+        ThemeUtils.applyGlass(this);
         setContentView(R.layout.activity_recognition_service_settings);
         ThemeUtils.setStatusBarAppearance(this);
         findViewById(R.id.btnBack).setOnClickListener(v -> finish());
@@ -110,7 +111,7 @@ public class WhisperRecognitionServiceSettingsActivity extends AppCompatActivity
     }
 
     private ArrayAdapter<String> menuAdapter(List<String> values) {
-        return new ArrayAdapter<>(this, R.layout.aurora_menu_item, values);
+        return new ArrayAdapter<>(this, R.layout.menu_item, values);
     }
 
     private void applyLanguageSelection() {

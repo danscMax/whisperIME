@@ -4,13 +4,9 @@
     <color name="colorAccent">#ff6750A4</color>
     <color name="colorAccentDark">#996750A4</color>
     <color name="windowBackground">#111111</color>
-    <color name="aurora_bg">#060811</color>
-    <color name="aurora_bg2">#0A1020</color>
-    <color name="aurora_ink">#F4F7FF</color>
-    <color name="aurora_ink_dim">#98A3B8</color>
-    <color name="aurora_panel">#18FFFFFF</color>
-    <color name="aurora_panel_brd">#32FFFFFF</color>
-    <color name="aurora_scrim">#99000000</color>
+    <color name="glass_screen">#060811</color>
+    <color name="glass_screen_alt">#0A1020</color>
+    <color name="glass_scrim">#99000000</color>
     <color name="living_bg_mid">#080C17</color>
     <color name="living_backdrop_glow">#277667FF</color>
     <color name="living_glass_pressed">#2EFFFFFF</color>

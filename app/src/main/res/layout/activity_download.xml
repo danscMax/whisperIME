@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
     android:fillViewport="true"
-    android:background="@drawable/living_signal_backdrop">
+    android:background="@drawable/liquid_glass_bg">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -30,7 +30,7 @@
             android:textFontWeight="700"
             android:letterSpacing="-0.02"
             android:text="@string/onboarding_title"
-            android:textColor="@color/aurora_ink"
+            android:textColor="@color/glass_ink"
             android:textSize="22sp" />
 
         <TextView
@@ -39,7 +39,7 @@
             android:layout_marginTop="4dp"
             android:gravity="center"
             android:text="@string/onboarding_subtitle"
-            android:textColor="@color/aurora_ink_dim"
+            android:textColor="@color/glass_ink_dim"
             android:textSize="13sp" />
 
         <!-- Recommended: base -->
@@ -49,7 +49,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="22dp"
             android:checkable="true"
-            app:cardBackgroundColor="@color/aurora_panel" app:strokeColor="@color/aurora_panel_brd"
+            app:cardBackgroundColor="@color/glass_card" app:strokeColor="@color/glass_card_brd"
             app:cardCornerRadius="18dp"
             app:cardElevation="0dp">
 
@@ -72,14 +72,14 @@
                         android:text="@string/onboarding_base_title"
                         android:fontFamily="@font/space_grotesk"
                         android:textFontWeight="600"
-                        android:textColor="@color/aurora_ink"
+                        android:textColor="@color/glass_ink"
                         android:textSize="15sp" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/onboarding_base_desc"
-                        android:textColor="@color/aurora_ink_dim"
+                        android:textColor="@color/glass_ink_dim"
                         android:textSize="12sp" />
                 </LinearLayout>
 
@@ -91,7 +91,7 @@
                     android:fontFamily="@font/space_mono_regular"
                     android:paddingHorizontal="10dp"
                     android:paddingVertical="4dp"
-                    android:textColor="@color/aurora_ink"
+                    android:textColor="@color/glass_ink"
                     android:textSize="11sp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -103,7 +103,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
             android:checkable="true"
-            app:cardBackgroundColor="@color/aurora_panel" app:strokeColor="@color/aurora_panel_brd"
+            app:cardBackgroundColor="@color/glass_card" app:strokeColor="@color/glass_card_brd"
             app:cardCornerRadius="18dp"
             app:cardElevation="0dp">
 
@@ -121,7 +121,7 @@
                     android:text="@string/onboarding_small_title"
                     android:fontFamily="@font/space_grotesk"
                     android:textFontWeight="600"
-                    android:textColor="@color/aurora_ink"
+                    android:textColor="@color/glass_ink"
                     android:textSize="15sp" />
 
                 <TextView
@@ -132,7 +132,7 @@
                     android:fontFamily="@font/space_mono_regular"
                     android:paddingHorizontal="10dp"
                     android:paddingVertical="4dp"
-                    android:textColor="@color/aurora_ink"
+                    android:textColor="@color/glass_ink"
                     android:textSize="11sp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -144,7 +144,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
             android:checkable="true"
-            app:cardBackgroundColor="@color/aurora_panel" app:strokeColor="@color/aurora_panel_brd"
+            app:cardBackgroundColor="@color/glass_card" app:strokeColor="@color/glass_card_brd"
             app:cardCornerRadius="18dp"
             app:cardElevation="0dp">
 
@@ -162,7 +162,7 @@
                     android:text="@string/onboarding_tiny_title"
                     android:fontFamily="@font/space_grotesk"
                     android:textFontWeight="600"
-                    android:textColor="@color/aurora_ink"
+                    android:textColor="@color/glass_ink"
                     android:textSize="15sp" />
 
                 <TextView
@@ -173,7 +173,7 @@
                     android:fontFamily="@font/space_mono_regular"
                     android:paddingHorizontal="10dp"
                     android:paddingVertical="4dp"
-                    android:textColor="@color/aurora_ink"
+                    android:textColor="@color/glass_ink"
                     android:textSize="11sp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -185,7 +185,7 @@
             android:layout_marginTop="20dp"
             android:gravity="center"
             android:fontFamily="@font/space_mono_regular"
-            android:textColor="@color/aurora_ink_dim"
+            android:textColor="@color/glass_ink_dim"
             android:textSize="12sp"
             android:visibility="gone" />
 
@@ -212,7 +212,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
             android:layout_marginTop="4dp"
-            android:textColor="@color/aurora_ink_dim"
+            android:textColor="@color/glass_ink_dim"
             android:text="@string/onboarding_more" />
     </LinearLayout>
 </ScrollView>

@@ -41,32 +41,27 @@
         <item name="android:backgroundDimEnabled">false</item>
     </style>
 
-    <!-- Force light-on-dark text inside the Aurora pills (spinners inherit android:textColorPrimary,
-         which is dark under the palette's light surface and would be invisible on the dark screen). -->
-    <style name="ThemeOverlay.Aurora.OnDark" parent="">
-        <item name="android:textColorPrimary">@color/aurora_ink</item>
-        <item name="android:textColorSecondary">@color/aurora_ink_dim</item>
-        <item name="android:textColor">@color/aurora_ink</item>
-        <item name="colorControlNormal">@color/aurora_ink</item>
+    <!-- Force glass ink on views that inherit android:textColorPrimary from the palette (spinners
+         resolve it against the palette's tonal surface, not the glass one). -->
+    <style name="ThemeOverlay.Glass.OnSurface" parent="">
+        <item name="android:textColorPrimary">@color/glass_ink</item>
+        <item name="android:textColorSecondary">@color/glass_ink_dim</item>
+        <item name="android:textColor">@color/glass_ink</item>
+        <item name="colorControlNormal">@color/glass_ink</item>
     </style>
 
-    <!-- Aurora toolbar title: Space Grotesk 700 in aurora ink (used by catalog + other dark chrome). -->
-    <style name="TextAppearance.Aurora.Toolbar" parent="TextAppearance.Material3.TitleLarge">
+    <!-- Toolbar title: Space Grotesk 700 in glass ink. -->
+    <style name="TextAppearance.Glass.Toolbar" parent="TextAppearance.Material3.TitleLarge">
         <item name="android:fontFamily">@font/space_grotesk</item>
         <item name="android:textFontWeight">700</item>
-        <item name="android:textColor">@color/aurora_ink</item>
+        <item name="android:textColor">@color/glass_ink</item>
         <item name="android:letterSpacing">-0.02</item>
     </style>
-
-
-
-
-
 
     <!-- Label sitting above a glass pill, in the same mono voice as the section headers. -->
     <style name="TextAppearance.LivingSignal.FieldLabel" parent="">
         <item name="android:fontFamily">@font/space_mono_regular</item>
-        <item name="android:textColor">@color/aurora_ink_dim</item>
+        <item name="android:textColor">@color/glass_ink_dim</item>
         <item name="android:textSize">11sp</item>
         <item name="android:letterSpacing">0.04</item>
         <item name="android:paddingStart">4dp</item>
@@ -75,25 +70,25 @@
     <!-- Glass pill selector. hintEnabled=false: the label lives outside the box, so the floating
          hint would only carve a gap through the pill's own stroke. -->
     <style name="Widget.LivingSignal.Dropdown" parent="Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
-        <item name="boxBackgroundColor">@color/aurora_panel</item>
+        <item name="boxBackgroundColor">@color/glass_card</item>
         <item name="boxCornerRadiusTopStart">18dp</item>
         <item name="boxCornerRadiusTopEnd">18dp</item>
         <item name="boxCornerRadiusBottomStart">18dp</item>
         <item name="boxCornerRadiusBottomEnd">18dp</item>
-        <item name="boxStrokeColor">@color/aurora_panel_brd</item>
+        <item name="boxStrokeColor">@color/glass_card_brd</item>
         <item name="boxStrokeWidth">1dp</item>
         <item name="boxStrokeWidthFocused">1dp</item>
         <item name="hintEnabled">false</item>
-        <item name="endIconTint">@color/aurora_ink_dim</item>
-        <item name="android:textColorHint">@color/aurora_ink_dim</item>
+        <item name="endIconTint">@color/glass_ink_dim</item>
+        <item name="android:textColorHint">@color/glass_ink_dim</item>
     </style>
 
     <!-- chipSurfaceColor must be cleared: the chip background is translucent glass, and M3 paints
          colorSurface (the palette's tonal surface) underneath, tinting the pill with the accent. -->
     <style name="Widget.LivingSignal.Chip.Toggle" parent="Widget.Material3.Chip.Filter">
-        <item name="chipBackgroundColor">@color/aurora_chip_bg</item>
-        <item name="android:textColor">@color/aurora_chip_text</item>
-        <item name="chipStrokeColor">@color/aurora_chip_stroke</item>
+        <item name="chipBackgroundColor">@color/glass_chip_bg</item>
+        <item name="android:textColor">@color/glass_chip_text</item>
+        <item name="chipStrokeColor">@color/glass_chip_stroke</item>
         <item name="chipStrokeWidth">1dp</item>
         <item name="checkedIconVisible">false</item>
         <item name="chipSurfaceColor">@android:color/transparent</item>
@@ -124,6 +119,9 @@
         <item name="android:textColorPrimary">@color/glass_ink</item>
         <item name="android:textColorSecondary">@color/glass_ink_dim</item>
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.Glass.Dialog</item>
+        <!-- "On" is warm everywhere, so every switch on a glass screen picks it up by default
+             instead of each layout asking for it. -->
+        <item name="materialSwitchStyle">@style/Widget.Glass.Switch</item>
     </style>
 
     <!-- Glass filter chip: frosted pill that fills with ink when selected (no check icon). -->

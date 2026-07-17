@@ -20,30 +20,62 @@ public class ThemeUtils {
      * Must be called BEFORE setContentView so views inflate with the overlaid colors.
      */
     public static void applyPalette(Activity activity) {
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(activity);
-        String palette = sp.getString("palette", "teal");
+        String palette = paletteKey(activity);
         if ("dynamic".equals(palette)) {
             DynamicColors.applyToActivityIfAvailable(activity);
             return;
         }
-        int overlay;
+        activity.getTheme().applyStyle(paletteOverlay(palette), true);
+    }
+
+    private static String paletteKey(Context context) {
+        return PreferenceManager.getDefaultSharedPreferences(context).getString("palette", "teal");
+    }
+
+    private static int paletteOverlay(String palette) {
         switch (palette) {
-            case "terracotta": overlay = R.style.ThemeOverlay_Whisper_Terracotta; break;
-            case "indigo":     overlay = R.style.ThemeOverlay_Whisper_Indigo;     break;
-            case "forest":     overlay = R.style.ThemeOverlay_Whisper_Forest;     break;
+            case "terracotta": return R.style.ThemeOverlay_Whisper_Terracotta;
+            case "indigo":     return R.style.ThemeOverlay_Whisper_Indigo;
+            case "forest":     return R.style.ThemeOverlay_Whisper_Forest;
             case "teal":
-            default:           overlay = R.style.ThemeOverlay_Whisper_Teal;       break;
+            default:           return R.style.ThemeOverlay_Whisper_Teal;
         }
-        activity.getTheme().applyStyle(overlay, true);
     }
 
     /**
      * Re-point the Material colour roles at the warm liquid-glass tokens. Call after
-     * {@link #applyPalette} and before setContentView on every glass (light frosted) screen, so
-     * stock widgets inherit the card look instead of the tonal palette.
+     * {@link #applyPalette} and before setContentView on every glass screen, so stock widgets
+     * inherit the card look instead of the tonal palette.
      */
     public static void applyGlass(Activity activity) {
         activity.getTheme().applyStyle(R.style.ThemeOverlay_Whisper_Glass, true);
+    }
+
+    /**
+     * The orb's {bright, soft} tint. The chosen palette survives here and only here: the glass
+     * owns colorPrimary on every screen, so the orb cannot read its hue off the activity's theme.
+     * Resolved against a throwaway context wearing the palette alone, which keeps this independent
+     * of whether the caller has applied the glass overlay yet.
+     */
+    public static int[] orbColors(Activity activity) {
+        Context c = paletteContext(activity);
+        return new int[]{
+                resolveColor(c, androidx.appcompat.R.attr.colorPrimary),
+                resolveColor(c, com.google.android.material.R.attr.colorPrimaryContainer)};
+    }
+
+    private static Context paletteContext(Activity activity) {
+        String palette = paletteKey(activity);
+        if ("dynamic".equals(palette)) {
+            return DynamicColors.wrapContextIfAvailable(activity);
+        }
+        return new androidx.appcompat.view.ContextThemeWrapper(activity, paletteOverlay(palette));
+    }
+
+    private static int resolveColor(Context c, int attr) {
+        android.util.TypedValue tv = new android.util.TypedValue();
+        c.getTheme().resolveAttribute(attr, tv, true);
+        return tv.data;
     }
 
     /**

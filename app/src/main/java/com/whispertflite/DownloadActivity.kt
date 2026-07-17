@@ -30,6 +30,7 @@ class DownloadActivity : AppCompatActivity(), ModelDownloadManager.Listener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         ThemeUtils.applyPalette(this)
+        ThemeUtils.applyGlass(this)
         val b = ActivityDownloadBinding.inflate(layoutInflater)
         binding = b
         setContentView(b.root)

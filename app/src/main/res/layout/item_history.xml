@@ -19,7 +19,7 @@
         android:maxLines="2"
         android:ellipsize="end"
         android:textAppearance="?attr/textAppearanceBodyLarge"
-        android:textColor="@color/aurora_ink" />
+        android:textColor="@color/glass_ink" />
 
     <TextView
         android:id="@+id/meta"
@@ -28,5 +28,5 @@
         android:layout_marginTop="6dp"
         android:fontFamily="@font/space_mono_regular"
         android:textAppearance="?attr/textAppearanceBodySmall"
-        android:textColor="@color/aurora_ink_dim" />
+        android:textColor="@color/glass_ink_dim" />
 </LinearLayout>

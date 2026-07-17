@@ -36,7 +36,7 @@
                 android:gravity="center"
                 android:maxLines="1"
                 android:text="@string/ime_hint"
-                android:textColor="@color/aurora_ink"
+                android:textColor="@color/glass_ink"
                 android:textFontWeight="600"
                 android:textSize="14sp" />
 
@@ -50,7 +50,7 @@
                 android:gravity="center"
                 android:letterSpacing="0.03"
                 android:maxLines="1"
-                android:textColor="@color/aurora_ink_dim"
+                android:textColor="@color/glass_ink_dim"
                 android:textSize="10sp" />
         </LinearLayout>
 
@@ -83,7 +83,7 @@
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
-        <ImageButton
+        <androidx.appcompat.widget.AppCompatImageButton
             android:id="@+id/btnDel"
             android:layout_width="48dp"
             android:layout_height="48dp"
@@ -91,9 +91,9 @@
             android:contentDescription="@string/delete_button"
             android:padding="13dp"
             android:src="@drawable/ic_ime_backspace_24dp"
-            app:tint="@color/aurora_ink" />
+            app:tint="@color/glass_ink" />
 
-        <ImageButton
+        <androidx.appcompat.widget.AppCompatImageButton
             android:id="@+id/btnKeyboard"
             android:layout_width="48dp"
             android:layout_height="48dp"
@@ -102,7 +102,7 @@
             android:contentDescription="@string/exit_button"
             android:padding="13dp"
             android:src="@drawable/ic_keyboard_36dp"
-            app:tint="@color/aurora_ink" />
+            app:tint="@color/glass_ink" />
 
         <Space
             android:layout_width="0dp"
@@ -118,7 +118,7 @@
                 android:layout_width="78dp"
                 android:layout_height="78dp" />
 
-            <ImageButton
+            <androidx.appcompat.widget.AppCompatImageButton
                 android:id="@+id/btnRecord"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
@@ -131,7 +131,7 @@
             android:layout_height="1dp"
             android:layout_weight="1" />
 
-        <ImageButton
+        <androidx.appcompat.widget.AppCompatImageButton
             android:id="@+id/btnEnter"
             android:layout_width="48dp"
             android:layout_height="48dp"
@@ -140,9 +140,9 @@
             android:contentDescription="@string/return_button"
             android:padding="13dp"
             android:src="@drawable/ic_ime_return_24dp"
-            app:tint="@color/aurora_ink" />
+            app:tint="@color/glass_ink" />
 
-        <ImageButton
+        <androidx.appcompat.widget.AppCompatImageButton
             android:id="@+id/btnMore"
             android:layout_width="48dp"
             android:layout_height="48dp"
@@ -150,6 +150,6 @@
             android:contentDescription="@string/main_cd_menu"
             android:padding="13dp"
             android:src="@drawable/ic_more_vert_24dp"
-            app:tint="@color/aurora_ink" />
+            app:tint="@color/glass_ink" />
     </LinearLayout>
 </LinearLayout>

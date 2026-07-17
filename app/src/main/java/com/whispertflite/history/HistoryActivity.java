@@ -43,6 +43,7 @@ public class HistoryActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         ThemeUtils.applyPalette(this);
+        ThemeUtils.applyGlass(this);
         setContentView(R.layout.activity_history);
         ThemeUtils.setStatusBarAppearance(this);
         db = HistoryDb.get(this);
@@ -67,10 +68,10 @@ public class HistoryActivity extends AppCompatActivity {
         // Frosted top bar: the list scrolls under it, blurred (API 31+) / translucent glass otherwise.
         com.whispertflite.ui.FrostedBlurView blurBar = findViewById(R.id.blurBar);
         blurBar.attach(recycler);
-        int bg = androidx.core.content.ContextCompat.getColor(this, R.color.aurora_bg);
+        int bg = androidx.core.content.ContextCompat.getColor(this, R.color.glass_screen);
         blurBar.setGlass(
                 androidx.core.graphics.ColorUtils.setAlphaComponent(bg, 0xEE),   // frosted veil over the blur
-                androidx.core.content.ContextCompat.getColor(this, R.color.aurora_panel_brd));
+                androidx.core.content.ContextCompat.getColor(this, R.color.glass_card_brd));
         blurBar.post(() -> recycler.setPadding(recycler.getPaddingLeft(), blurBar.getHeight(),
                 recycler.getPaddingRight(), recycler.getPaddingBottom()));
         recycler.addOnScrollListener(new RecyclerView.OnScrollListener() {

@@ -8,13 +8,9 @@
     <color name="windowBackground">#FAFAFA</color>
 
     <!-- Living Signal light surfaces. Night overrides provide the dark glass system. -->
-    <color name="aurora_bg">#F4F7FD</color>
-    <color name="aurora_bg2">#EAF0FA</color>
-    <color name="aurora_ink">#121722</color>
-    <color name="aurora_ink_dim">#5F687A</color>
-    <color name="aurora_panel">#BFFFFFFF</color>
-    <color name="aurora_panel_brd">#E8FFFFFF</color>
-    <color name="aurora_scrim">#66000000</color>
+    <color name="glass_screen">#F4F7FD</color>
+    <color name="glass_screen_alt">#EAF0FA</color>
+    <color name="glass_scrim">#66000000</color>
     <color name="living_bg_mid">#EEF2FA</color>
     <color name="living_backdrop_glow">#2F7D73FF</color>
     <color name="living_glass_pressed">#E5FFFFFF</color>

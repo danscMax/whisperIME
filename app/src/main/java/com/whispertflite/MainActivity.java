@@ -9,7 +9,6 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
-import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -41,7 +40,6 @@ import androidx.transition.TransitionManager;
 
 import com.github.houbb.opencc4j.util.ZhConverterUtil;
 import com.google.android.material.button.MaterialButton;
-import com.google.android.material.color.MaterialColors;
 import com.whispertflite.asr.Recorder;
 import com.whispertflite.asr.RecordBuffer;
 import com.whispertflite.asr.Whisper;
@@ -195,14 +193,15 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         mContext = this;
         ThemeUtils.applyPalette(this);
+        ThemeUtils.applyGlass(this);
         setContentView(R.layout.activity_main);
         ThemeUtils.setStatusBarAppearance(this);
         sp = PreferenceManager.getDefaultSharedPreferences(this);
         checkInputMethodEnabled();
 
         orb = findViewById(R.id.orb);
-        orb.setColors(themeColor(androidx.appcompat.R.attr.colorPrimary),
-                themeColor(com.google.android.material.R.attr.colorPrimaryContainer));
+        int[] orbTint = ThemeUtils.orbColors(this);
+        orb.setColors(orbTint[0], orbTint[1]);
         tvReadyHint = findViewById(R.id.tvReadyHint);
         tvHintTap = findViewById(R.id.tvHintTap);
         tvTimer = findViewById(R.id.tvTimer);
@@ -449,10 +448,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private int themeColor(int attr) {
-        return MaterialColors.getColor(this, attr, Color.GRAY);
-    }
-
     private void checkInputMethodEnabled() {
         InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
         List<InputMethodInfo> enabledInputMethodList = imm.getEnabledInputMethodList();
@@ -637,7 +632,7 @@ public class MainActivity extends AppCompatActivity {
      * keeps the full list by returning all items from the filter and never shrinking the backing list.
      */
     private ArrayAdapter<String> noFilterAdapter(List<String> items) {
-        return new ArrayAdapter<String>(this, R.layout.aurora_menu_item, new ArrayList<>(items)) {
+        return new ArrayAdapter<String>(this, R.layout.menu_item, new ArrayList<>(items)) {
             @Override public android.widget.Filter getFilter() {
                 return new android.widget.Filter() {
                     @Override protected FilterResults performFiltering(CharSequence c) {

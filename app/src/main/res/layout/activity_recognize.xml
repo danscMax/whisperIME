@@ -19,45 +19,30 @@
         android:alpha="0.55"
         android:background="@drawable/dialog_drag_handle" />
 
-    <RelativeLayout
-        android:layout_width="match_parent"
-        android:layout_height="48dp">
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
+        android:orientation="vertical">
 
-        <LinearLayout
+        <TextView
             android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:gravity="center_vertical"
-            android:orientation="vertical">
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/space_grotesk"
+            android:text="@string/dialog_dictate"
+            android:textColor="@color/glass_ink"
+            android:textFontWeight="700"
+            android:textSize="19sp" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:fontFamily="@font/space_grotesk"
-                android:text="@string/dialog_dictate"
-                android:textColor="@color/glass_ink"
-                android:textFontWeight="700"
-                android:textSize="19sp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:fontFamily="@font/space_mono_regular"
-                android:text="@string/main_local_badge"
-                android:textColor="@color/glass_ink_dim"
-                android:textSize="9sp" />
-        </LinearLayout>
-
-        <ImageButton
-            android:id="@+id/btnCancel"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_alignParentEnd="true"
-            android:background="@drawable/living_glass_circle"
-            android:contentDescription="@string/exit_button"
-            android:padding="12dp"
-            android:src="@drawable/ic_cancel_36dp"
-            app:tint="@color/glass_ink" />
-    </RelativeLayout>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:fontFamily="@font/space_mono_regular"
+            android:text="@string/main_local_badge"
+            android:textColor="@color/glass_ink_dim"
+            android:textSize="9sp" />
+    </LinearLayout>
 
     <!-- Status and the live transcription read at the top; the orb is the hero at the very bottom,
          under the thumb — same reach-first logic as the main screen. -->
@@ -73,6 +58,7 @@
             android:id="@+id/dialog_chip"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
             android:background="@drawable/living_glass_pill"
             android:ellipsize="end"
             android:fontFamily="@font/space_mono_regular"
@@ -87,7 +73,7 @@
             android:id="@+id/dialog_status"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
+            android:layout_marginTop="14dp"
             android:fontFamily="@font/space_grotesk"
             android:gravity="center"
             android:text="@string/dialog_tap_to_talk"
@@ -99,33 +85,72 @@
             android:id="@+id/dialog_partial"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="8dp"
             android:ellipsize="end"
             android:fontFamily="@font/space_grotesk"
             android:gravity="center"
             android:lineSpacingMultiplier="1.15"
             android:maxLines="3"
-            android:minHeight="66dp"
+            android:minHeight="52dp"
             android:textColor="@color/glass_ink_dim"
             android:textSize="16sp" />
 
-        <FrameLayout
-            android:layout_width="180dp"
-            android:layout_height="180dp"
-            android:layout_marginTop="6dp">
-
-            <com.whispertflite.ui.LivingSignalView
-                android:id="@+id/orb"
-                android:layout_width="180dp"
-                android:layout_height="180dp" />
+        <!-- Orb at the bottom centre, flanked by keyboard (switch to typing) and close — the
+             thumb reaches the record target, and the buttons fill the sides instead of empty space. -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
             <ImageButton
-                android:id="@+id/btnRecord"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="@android:color/transparent"
-                android:contentDescription="@string/record_button" />
-        </FrameLayout>
+                android:id="@+id/btnKeyboard"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:background="@drawable/glass_circle_btn"
+                android:contentDescription="@string/exit_button"
+                android:padding="14dp"
+                android:src="@drawable/ic_keyboard_36dp"
+                app:tint="@color/glass_ink" />
+
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <FrameLayout
+                android:layout_width="176dp"
+                android:layout_height="176dp">
+
+                <com.whispertflite.ui.LivingSignalView
+                    android:id="@+id/orb"
+                    android:layout_width="176dp"
+                    android:layout_height="176dp" />
+
+                <ImageButton
+                    android:id="@+id/btnRecord"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@android:color/transparent"
+                    android:contentDescription="@string/record_button" />
+            </FrameLayout>
+
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <ImageButton
+                android:id="@+id/btnCancel"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:background="@drawable/glass_circle_btn"
+                android:contentDescription="@string/exit_button"
+                android:padding="15dp"
+                android:src="@drawable/ic_close_24dp"
+                app:tint="@color/glass_ink" />
+        </LinearLayout>
     </LinearLayout>
 
     <LinearLayout

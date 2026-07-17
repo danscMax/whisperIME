@@ -195,9 +195,13 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
 
     private void updateChip() {
         TextView chip = findViewById(R.id.dialog_chip);
-        String modelLabel = selectedTfliteFile.getName();
+        String fileName = selectedTfliteFile.getName();
+        String modelLabel = fileName;
         for (ModelInfo m : ModelRegistry.all()) {
-            if (m.filename.equals(selectedTfliteFile.getName())) {
+            // Match on the basename: gguf models carry a "gguf/…" path in m.filename, while the
+            // selected file reports only its name, so a plain equals never hit and the raw
+            // "ggml-tiny-q5_1.bin" leaked into the chip.
+            if (new File(m.filename).getName().equals(fileName)) {
                 modelLabel = m.displayName;
                 break;
             }

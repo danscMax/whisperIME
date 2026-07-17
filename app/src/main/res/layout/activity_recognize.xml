@@ -59,26 +59,65 @@
             app:tint="@color/glass_ink" />
     </RelativeLayout>
 
+    <!-- Status and the live transcription read at the top; the orb is the hero at the very bottom,
+         under the thumb — same reach-first logic as the main screen. -->
     <LinearLayout
         android:id="@+id/dialog_main_group"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:background="@drawable/living_glass_panel"
+        android:layout_marginTop="6dp"
         android:gravity="center_horizontal"
-        android:orientation="vertical"
-        android:paddingHorizontal="18dp"
-        android:paddingTop="22dp"
-        android:paddingBottom="20dp">
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/dialog_chip"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/living_glass_pill"
+            android:ellipsize="end"
+            android:fontFamily="@font/space_mono_regular"
+            android:letterSpacing="0.03"
+            android:maxLines="1"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="7dp"
+            android:textColor="@color/glass_ink_dim"
+            android:textSize="10sp" />
+
+        <TextView
+            android:id="@+id/dialog_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:fontFamily="@font/space_grotesk"
+            android:gravity="center"
+            android:text="@string/dialog_tap_to_talk"
+            android:textColor="@color/glass_ink"
+            android:textFontWeight="700"
+            android:textSize="22sp" />
+
+        <TextView
+            android:id="@+id/dialog_partial"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:ellipsize="end"
+            android:fontFamily="@font/space_grotesk"
+            android:gravity="center"
+            android:lineSpacingMultiplier="1.15"
+            android:maxLines="3"
+            android:minHeight="66dp"
+            android:textColor="@color/glass_ink_dim"
+            android:textSize="16sp" />
 
         <FrameLayout
-            android:layout_width="136dp"
-            android:layout_height="136dp">
+            android:layout_width="180dp"
+            android:layout_height="180dp"
+            android:layout_marginTop="6dp">
 
             <com.whispertflite.ui.LivingSignalView
                 android:id="@+id/orb"
-                android:layout_width="136dp"
-                android:layout_height="136dp" />
+                android:layout_width="180dp"
+                android:layout_height="180dp" />
 
             <ImageButton
                 android:id="@+id/btnRecord"
@@ -87,45 +126,6 @@
                 android:background="@android:color/transparent"
                 android:contentDescription="@string/record_button" />
         </FrameLayout>
-
-        <TextView
-            android:id="@+id/dialog_status"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:fontFamily="@font/space_grotesk"
-            android:gravity="center"
-            android:text="@string/dialog_tap_to_talk"
-            android:textColor="@color/glass_ink"
-            android:textFontWeight="600"
-            android:textSize="18sp" />
-
-        <TextView
-            android:id="@+id/dialog_partial"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:ellipsize="end"
-            android:gravity="center"
-            android:maxLines="3"
-            android:minHeight="40dp"
-            android:textColor="@color/glass_ink_dim"
-            android:textSize="14sp" />
-
-        <TextView
-            android:id="@+id/dialog_chip"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:background="@drawable/living_glass_pill"
-            android:ellipsize="end"
-            android:fontFamily="@font/space_mono_regular"
-            android:letterSpacing="0.03"
-            android:maxLines="1"
-            android:paddingHorizontal="12dp"
-            android:paddingVertical="6dp"
-            android:textColor="@color/glass_ink_dim"
-            android:textSize="10sp" />
     </LinearLayout>
 
     <LinearLayout

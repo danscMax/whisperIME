@@ -85,7 +85,6 @@ public class MainActivity extends AppCompatActivity {
     private com.google.android.material.chip.Chip translate;
     private LivingSignalView orb;
     private TextView tvReadyHint;
-    private TextView tvHintTap;
     private TextView tvTimer;
     private TextView perfChip;
     private LinearLayout layoutRecording;
@@ -201,7 +200,6 @@ public class MainActivity extends AppCompatActivity {
         int[] orbTint = ThemeUtils.orbColors(this);
         orb.setColors(orbTint[0], orbTint[1]);
         tvReadyHint = findViewById(R.id.tvReadyHint);
-        tvHintTap = findViewById(R.id.tvHintTap);
         tvTimer = findViewById(R.id.tvTimer);
         perfChip = findViewById(R.id.perf_chip);
         layoutRecording = findViewById(R.id.layout_recording);
@@ -372,7 +370,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showOverflowMenu(View anchor) {
-        PopupMenu menu = new PopupMenu(this, anchor);
+        // Frosted glass menu sheet instead of the flat Material popup, to match the dropdowns.
+        PopupMenu menu = new PopupMenu(
+                new android.view.ContextThemeWrapper(this, R.style.ThemeOverlay_Glass_Menu), anchor);
         menu.getMenu().add(0, 2, 0, R.string.info);
         android.view.MenuItem item = menu.getMenu().add(0, 1, 1, R.string.settings_simple_chinese);
         item.setCheckable(true);
@@ -414,14 +414,6 @@ public class MainActivity extends AppCompatActivity {
         boolean empty = tvResult.getText().length() == 0;
         if (tvReadyHint != null)
             tvReadyHint.setVisibility(state == UiState.READY && empty ? View.VISIBLE : View.GONE);
-        if (tvHintTap != null) {
-            tvHintTap.setVisibility(View.VISIBLE);
-            tvHintTap.setText(state == UiState.RECORDING ? R.string.main_state_listening
-                    : state == UiState.PROCESSING ? R.string.main_state_processing
-                    : state == UiState.RESULT ? R.string.main_state_result
-                    : state == UiState.ERROR ? R.string.main_state_error
-                    : R.string.main_state_ready);
-        }
         dockStatus.setVisibility(result ? View.GONE : View.VISIBLE);
         dockStatus.setText(state == UiState.RECORDING ? R.string.main_state_listening
                 : state == UiState.PROCESSING ? R.string.main_state_processing

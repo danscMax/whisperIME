@@ -58,6 +58,22 @@
         <item name="android:letterSpacing">-0.02</item>
     </style>
 
+    <!-- Overflow / context PopupMenu on the glass: the frosted menu sheet + glass ink, matching the
+         dropdown popups instead of the flat Material surface. -->
+    <style name="ThemeOverlay.Glass.Menu" parent="">
+        <item name="android:popupMenuStyle">@style/Widget.Glass.PopupMenu</item>
+        <item name="popupMenuStyle">@style/Widget.Glass.PopupMenu</item>
+        <item name="android:textColorPrimary">@color/glass_ink</item>
+        <item name="android:textColorSecondary">@color/glass_ink_dim</item>
+        <item name="colorControlNormal">@color/glass_ink_dim</item>
+        <item name="colorControlActivated">@color/glass_warm</item>
+    </style>
+
+    <style name="Widget.Glass.PopupMenu" parent="Widget.Material3.PopupMenu">
+        <item name="android:popupBackground">@drawable/menu_sheet</item>
+        <item name="android:popupElevation">10dp</item>
+    </style>
+
     <!-- Label sitting above a glass pill, in the same mono voice as the section headers. -->
     <style name="TextAppearance.LivingSignal.FieldLabel" parent="">
         <item name="android:fontFamily">@font/space_mono_regular</item>

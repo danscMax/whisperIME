@@ -50,10 +50,32 @@
                     android:textSize="9sp" />
             </LinearLayout>
 
+            <!-- Nav lives in the header so the bottom belongs entirely to the orb — the thumb never
+                 reaches past a menu bar to hit the record target. -->
+            <ImageButton
+                android:id="@+id/btnHistory"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/history_title"
+                android:src="@drawable/ic_history_24dp"
+                app:tint="@color/glass_ink" />
+
+            <ImageButton
+                android:id="@+id/btnSettings"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_marginStart="2dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/settings_title"
+                android:src="@drawable/ic_settings_24dp"
+                app:tint="@color/glass_ink" />
+
             <ImageButton
                 android:id="@+id/btnOverflow"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_marginStart="2dp"
                 android:background="@drawable/living_glass_pill"
                 android:contentDescription="@string/main_cd_menu"
                 android:src="@drawable/ic_more_vert_24dp"
@@ -265,14 +287,13 @@
             </LinearLayout>
         </FrameLayout>
 
-        <!-- State line + orb sit at the bottom, in the thumb's reach — the record target should
-             never need a stretch. Recording timer and READY hint are mutually exclusive states. -->
+        <!-- Recording timer, its own line above the status so both can show while recording. -->
         <LinearLayout
             android:id="@+id/layout_recording"
             android:layout_width="wrap_content"
-            android:layout_height="22dp"
+            android:layout_height="20dp"
             android:layout_gravity="center_horizontal"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="6dp"
             android:gravity="center"
             android:orientation="horizontal"
             android:visibility="gone">
@@ -293,73 +314,29 @@
                 android:textSize="12sp" />
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/tvHintTap"
-            android:layout_width="wrap_content"
-            android:layout_height="22dp"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginTop="8dp"
-            android:fontFamily="@font/space_mono_regular"
-            android:gravity="center"
-            android:letterSpacing="0.05"
-            android:text="@string/main_state_ready"
-            android:textAllCaps="true"
-            android:textColor="@color/glass_ink_dim"
-            android:textSize="10sp" />
-
+        <!-- Status text and result actions share one fixed-height slot so swapping them never
+             nudges the orb below. -->
         <FrameLayout
-            android:layout_width="168dp"
-            android:layout_height="168dp"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginTop="4dp"
-            android:layout_marginBottom="6dp">
-
-            <com.whispertflite.ui.LivingSignalView
-                android:id="@+id/orb"
-                android:layout_width="168dp"
-                android:layout_height="168dp" />
-
-            <ImageButton
-                android:id="@+id/btnRecord"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="@android:color/transparent"
-                android:contentDescription="@string/main_cd_record" />
-        </FrameLayout>
-
-        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="64dp"
-            android:layout_marginTop="4dp"
-            android:background="@drawable/living_glass_dock"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingHorizontal="8dp">
-
-            <ImageButton
-                android:id="@+id/btnHistory"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/history_title"
-                android:src="@drawable/ic_history_24dp"
-                app:tint="@color/glass_ink" />
+            android:layout_height="48dp"
+            android:layout_marginTop="4dp">
 
             <TextView
                 android:id="@+id/dockStatus"
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
+                android:layout_gravity="center"
                 android:fontFamily="@font/space_grotesk"
                 android:gravity="center"
                 android:text="@string/main_hold_signal"
                 android:textColor="@color/glass_ink_dim"
-                android:textSize="12sp" />
+                android:textSize="13sp" />
 
             <LinearLayout
                 android:id="@+id/layout_actions"
                 android:layout_width="wrap_content"
                 android:layout_height="match_parent"
+                android:layout_gravity="center"
                 android:gravity="center"
                 android:orientation="horizontal"
                 android:visibility="gone">
@@ -377,6 +354,7 @@
                     android:id="@+id/btnSpeak"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
+                    android:layout_marginStart="12dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/main_cd_speak"
                     android:src="@drawable/ic_volume_up_24dp"
@@ -386,20 +364,33 @@
                     android:id="@+id/btnShare"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
+                    android:layout_marginStart="12dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/main_cd_share"
                     android:src="@drawable/ic_share_24dp"
                     app:tint="@color/glass_ink" />
             </LinearLayout>
+        </FrameLayout>
+
+        <!-- The orb is the very last element: the thumb lands on the record target at the bottom
+             edge, never reaching past a menu bar. -->
+        <FrameLayout
+            android:layout_width="184dp"
+            android:layout_height="184dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="2dp">
+
+            <com.whispertflite.ui.LivingSignalView
+                android:id="@+id/orb"
+                android:layout_width="184dp"
+                android:layout_height="184dp" />
 
             <ImageButton
-                android:id="@+id/btnSettings"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/settings_title"
-                android:src="@drawable/ic_settings_24dp"
-                app:tint="@color/glass_ink" />
-        </LinearLayout>
+                android:id="@+id/btnRecord"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@android:color/transparent"
+                android:contentDescription="@string/main_cd_record" />
+        </FrameLayout>
     </LinearLayout>
 </FrameLayout>

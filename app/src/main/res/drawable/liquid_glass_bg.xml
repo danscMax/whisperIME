@@ -1,21 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Warm liquid-glass backdrop: cool sky top-left fading to warm peach bottom-right. -->
+<!-- Warm liquid-glass backdrop: cool sky top-left fading to warm peach bottom-right.
+     Colours live in values/colors_glass.xml so the same sweep works after dark. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <shape android:shape="rectangle">
-            <gradient android:angle="145" android:startColor="#D7EAF1" android:centerColor="#ECE6E4" android:endColor="#F8D6BB" />
+            <gradient android:angle="145"
+                android:startColor="@color/glass_bg_top"
+                android:centerColor="@color/glass_bg_mid"
+                android:endColor="@color/glass_bg_bottom" />
         </shape>
     </item>
     <item android:gravity="top|left" android:width="560dp" android:height="560dp">
         <shape android:shape="oval">
             <gradient android:type="radial" android:centerX="0.28" android:centerY="0.22" android:gradientRadius="300dp"
-                android:startColor="#7FC7E0F0" android:endColor="#00C7E0F0" />
+                android:startColor="@color/glass_bloom_cool" android:endColor="@color/glass_bloom_cool_out" />
         </shape>
     </item>
     <item android:gravity="bottom|right" android:width="620dp" android:height="620dp">
         <shape android:shape="oval">
             <gradient android:type="radial" android:centerX="0.72" android:centerY="0.78" android:gradientRadius="320dp"
-                android:startColor="#66FBBE8E" android:endColor="#00FBBE8E" />
+                android:startColor="@color/glass_bloom_warm" android:endColor="@color/glass_bloom_warm_out" />
         </shape>
     </item>
 </layer-list>

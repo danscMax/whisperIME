@@ -27,8 +27,11 @@
     <!-- Outline for ghost controls (ink at 20%) -->
     <color name="glass_outline">#33283246</color>
 
-    <!-- Warm accent = "on / active" (matches the warm glow of the active card) -->
+    <!-- Warm accent = "on / active" (matches the warm glow of the active card).
+         glass_warm and glass_on_warm are the same in both themes on purpose: the accent is the
+         app's identity, so whatever sits on it must not flip with the night. -->
     <color name="glass_warm">#F5793B</color>
+    <color name="glass_on_warm">#FFFFFF</color>
     <color name="glass_warm_bg">#D9FFE1C2</color>
     <color name="glass_warm_ink">#8A4A18</color>
 
@@ -47,5 +50,34 @@
     <color name="glass_card_active_brd">#C0FFD3A6</color>
     <color name="glass_shadow">#FF6E86AA</color>
     <color name="glass_shadow_active">#FFF5924A</color>
+
+    <!-- Icon tile behind a model's glyph; the active one inverts against its card -->
+    <color name="glass_tile">#F2FFFFFF</color>
     <color name="glass_tile_ink">#2A2F3C</color>
+    <color name="glass_tile_active_top">#39404F</color>
+    <color name="glass_tile_active_bottom">#242A36</color>
+
+    <!-- Backdrop: cool sky top-left fading to warm peach bottom-right, plus two blooms -->
+    <color name="glass_bg_top">#D7EAF1</color>
+    <color name="glass_bg_mid">#ECE6E4</color>
+    <color name="glass_bg_bottom">#F8D6BB</color>
+    <color name="glass_bloom_cool">#7FC7E0F0</color>
+    <color name="glass_bloom_cool_out">#00C7E0F0</color>
+    <color name="glass_bloom_warm">#66FBBE8E</color>
+    <color name="glass_bloom_warm_out">#00FBBE8E</color>
+
+    <!-- Sheen laid over a card: iridescent on the frosted ones, amber on the active one -->
+    <color name="glass_sheen_a">#3CFFFFFF</color>
+    <color name="glass_sheen_b">#12FFFFFF</color>
+    <color name="glass_sheen_c">#20D8ECF6</color>
+    <color name="glass_sheen_warm_a">#66FFE7CE</color>
+    <color name="glass_sheen_warm_b">#4DFFD3A6</color>
+    <color name="glass_sheen_warm_c">#59FFC08A</color>
+    <!-- Frosted panel (footers, config sheets) -->
+    <color name="glass_panel">#D6FFFFFF</color>
+    <color name="glass_panel_brd">#80FFFFFF</color>
+    <color name="glass_iris_a">#2E6FA8FF</color>
+    <color name="glass_iris_b">#2270E0B0</color>
+    <color name="glass_iris_c">#2CFF9AD0</color>
+    <color name="glass_beam">#3DFFFFFF</color>
 </resources>

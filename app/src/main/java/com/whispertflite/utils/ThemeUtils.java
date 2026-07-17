@@ -4,10 +4,10 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
-import android.os.Build;
-import android.view.WindowInsetsController;
 
 import androidx.appcompat.app.AppCompatDelegate;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.preference.PreferenceManager;
 
 import com.google.android.material.color.DynamicColors;
@@ -68,38 +68,16 @@ public class ThemeUtils {
     }
 
     /**
-     * Dark system-bar icons, for screens whose surface is light in both themes (the warm glass).
-     * Uses the androidx controller so it also works below API 35, unlike
-     * {@link #setStatusBarAppearance}.
+     * Match the system-bar icons to the surface under them: dark icons on the light glass, light
+     * icons after dark. The androidx controller covers every API this app runs on; the platform
+     * one only exists from 30 and was previously gated to 35+, leaving the bars unset below that.
      */
-    public static void setLightSystemBars(Activity activity) {
-        androidx.core.view.WindowInsetsControllerCompat c =
-                androidx.core.view.WindowCompat.getInsetsController(
-                        activity.getWindow(), activity.getWindow().getDecorView());
-        c.setAppearanceLightStatusBars(true);
-        c.setAppearanceLightNavigationBars(true);
-    }
-
-    public static void setStatusBarAppearance(Activity activity){
-        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            int nightModeFlags = activity.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
-            boolean isDarkMode = (nightModeFlags == Configuration.UI_MODE_NIGHT_YES);
-            WindowInsetsController insetsController = activity.getWindow().getInsetsController();
-            if (insetsController != null) {
-                if (isDarkMode) {
-                    // Dark mode: remove light status bar appearance (use light icons)
-                    insetsController.setSystemBarsAppearance(
-                            0,
-                            WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
-                    );
-                } else {
-                    // Light mode: enable light status bar appearance (dark icons)
-                    insetsController.setSystemBarsAppearance(
-                            WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS,
-                            WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
-                    );
-                }
-            }
-        }
+    public static void setStatusBarAppearance(Activity activity) {
+        boolean night = (activity.getResources().getConfiguration().uiMode
+                & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+        WindowInsetsControllerCompat c = WindowCompat.getInsetsController(
+                activity.getWindow(), activity.getWindow().getDecorView());
+        c.setAppearanceLightStatusBars(!night);
+        c.setAppearanceLightNavigationBars(!night);
     }
 }

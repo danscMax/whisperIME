@@ -54,7 +54,7 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
         // came out light-on-dark.
         ThemeUtils.applyGlass(this);
         setContentView(R.layout.activity_model_catalog);
-        ThemeUtils.setLightSystemBars(this);
+        ThemeUtils.setStatusBarAppearance(this);
 
         manager = ModelDownloadManager.get(this);
         prefs = PreferenceManager.getDefaultSharedPreferences(this);
@@ -242,7 +242,7 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
             // Warm liquid glass: the active model glows warm (dark icon tile + warm sheen + warm shadow),
             // the rest are light frosted cards with a dark-on-light icon.
             boolean active = state == ModelState.ACTIVE;
-            h.icon.setBackgroundResource(active ? R.drawable.icon_circle_dark : R.drawable.icon_circle_light);
+            h.icon.setBackgroundResource(active ? R.drawable.icon_tile_active : R.drawable.icon_tile);
             h.icon.setImageTintList(ColorStateList.valueOf(
                     color(active ? R.color.glass_on_solid : R.color.glass_tile_ink)));
             h.cardSheen.setBackgroundResource(active ? R.drawable.card_sheen_warm : R.drawable.card_sheen_glass);

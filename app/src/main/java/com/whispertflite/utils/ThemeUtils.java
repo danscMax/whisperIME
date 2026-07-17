@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
+import android.graphics.Color;
 
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.view.WindowCompat;
@@ -11,6 +12,7 @@ import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.preference.PreferenceManager;
 
 import com.google.android.material.color.DynamicColors;
+import com.google.android.material.color.MaterialColors;
 import com.whispertflite.R;
 
 public class ThemeUtils {
@@ -62,8 +64,9 @@ public class ThemeUtils {
         // follow the system, not the app's preference.
         Context c = paletteContext(nightContext(context));
         return new int[]{
-                resolveColor(c, androidx.appcompat.R.attr.colorPrimary),
-                resolveColor(c, com.google.android.material.R.attr.colorPrimaryContainer)};
+                MaterialColors.getColor(c, androidx.appcompat.R.attr.colorPrimary, Color.GRAY),
+                MaterialColors.getColor(c, com.google.android.material.R.attr.colorPrimaryContainer,
+                        Color.GRAY)};
     }
 
     /**
@@ -72,9 +75,7 @@ public class ThemeUtils {
      * so the preference has to be turned into a real configuration by hand.
      */
     public static Context serviceContext(Context service) {
-        Context themed = new androidx.appcompat.view.ContextThemeWrapper(
-                nightContext(service), R.style.Theme_Whisper_NoActionBar);
-        themed = paletteContext(themed);
+        Context themed = paletteContext(nightContext(service));
         themed.getTheme().applyStyle(R.style.ThemeOverlay_Whisper_Glass, true);
         return themed;
     }
@@ -94,33 +95,39 @@ public class ThemeUtils {
         return context.createConfigurationContext(config);
     }
 
-    /** What the UI is built from; compare across reads to notice the user changed it. */
+    /**
+     * What the UI is built from, for spotting that the user changed it. Only the app's own
+     * preferences: a change in the *system* night mode arrives as a configuration change, which
+     * rebuilds views on its own.
+     */
     public static String appearanceSignature(Context context) {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
         return sp.getString("nightMode", "system") + "/" + sp.getString("palette", "teal");
     }
 
+    /**
+     * A context wearing the palette and nothing else of the caller's. It must never hand back the
+     * caller's own theme: wrapContextIfAvailable is a no-op below API 31, and the callers have
+     * already stamped the glass over colorPrimary — the orb would come back ink.
+     */
     private static Context paletteContext(Context context) {
+        Context base = new androidx.appcompat.view.ContextThemeWrapper(
+                context, R.style.Theme_Whisper_NoActionBar);
         String palette = paletteKey(context);
         if ("dynamic".equals(palette)) {
-            return DynamicColors.wrapContextIfAvailable(context);
+            return DynamicColors.wrapContextIfAvailable(base);
         }
-        return new androidx.appcompat.view.ContextThemeWrapper(context, paletteOverlay(palette));
-    }
-
-    private static int resolveColor(Context c, int attr) {
-        android.util.TypedValue tv = new android.util.TypedValue();
-        c.getTheme().resolveAttribute(attr, tv, true);
-        return tv.data;
+        base.getTheme().applyStyle(paletteOverlay(palette), true);
+        return base;
     }
 
     /**
      * Apply the night mode chosen in preferences ("nightMode": system|light|dark).
      *
-     * <p>Call this from {@link android.app.Application#onCreate()}. Calling it from an activity's
-     * onCreate is too late for that activity's base context: the activity itself repaints, but
-     * windows inflated outside it (exposed-dropdown popups, menus) keep resolving -night resources
-     * against the *system* configuration, so their text comes out inverted and unreadable.
+     * <p>Call this from {@link android.app.Application#onCreate()} at startup, and again from the
+     * settings screen when the user picks a new mode. Not from an activity's own onCreate: that is
+     * too late for its base context, and windows inflated outside it (exposed-dropdown popups,
+     * menus) then resolve -night resources against the system configuration instead.
      */
     public static void applyNightMode(Context context) {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);

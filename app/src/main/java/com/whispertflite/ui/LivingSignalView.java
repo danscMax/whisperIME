@@ -84,15 +84,6 @@ public class LivingSignalView extends TextureView implements TextureView.Surface
         accentValid = true;
     }
 
-    /** Interpolate hue along the shortest arc on the colour wheel. */
-    private static float lerpHue(float a, float b, float t) {
-        float d = b - a;
-        if (d > 180f) d -= 360f; else if (d < -180f) d += 360f;
-        float h = a + d * t;
-        if (h < 0f) h += 360f; else if (h >= 360f) h -= 360f;
-        return h;
-    }
-
     // ----- TextureView lifecycle -----
 
     @Override
@@ -180,14 +171,17 @@ public class LivingSignalView extends TextureView implements TextureView.Surface
                 case READY:
                 default:         speed = 0.26f;                targetAct = 0.12f;                 pal = PAL_COOL; tint = 0.32f; break;
             }
-            // Recolour the cloud toward the accent HUE (keep each tone's brightness) so it follows the
-            // palette without going muddy. ERROR keeps its semantic warm palette (tint == 0).
+            // Take the palette's hue outright, keeping each cloud tone's airy saturation/value, so
+            // the orb reads as the chosen colour. A partial blend toward the hue looked like the
+            // palette barely mattered on cool seeds and swung through purple on the warm one, since a
+            // hue halfway between two colours is a third colour, not a hint of the target. ERROR keeps
+            // its semantic warm-red (gate is tint == 0).
             if (accentValid && tint > 0f) {
                 for (int k = 0; k < 4; k++) {
                     int col = android.graphics.Color.rgb(
                             Math.round(pal[k * 3] * 255f), Math.round(pal[k * 3 + 1] * 255f), Math.round(pal[k * 3 + 2] * 255f));
                     android.graphics.Color.colorToHSV(col, hsv);
-                    hsv[0] = lerpHue(hsv[0], accentHue, tint);   // hue only — keep the cloud's airy S/V
+                    hsv[0] = accentHue;   // hue from the palette; keep the cloud's airy S/V
                     int out = android.graphics.Color.HSVToColor(hsv);
                     tinted[k * 3] = android.graphics.Color.red(out) / 255f;
                     tinted[k * 3 + 1] = android.graphics.Color.green(out) / 255f;

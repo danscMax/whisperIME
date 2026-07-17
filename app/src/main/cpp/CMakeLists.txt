@@ -20,6 +20,24 @@ set(GGML_OPENMP            OFF CACHE BOOL "" FORCE)  # NDK has no libgomp; whisp
 set(GGML_NATIVE            OFF CACHE BOOL "" FORCE)  # cross-compile: never probe host CPU
 set(GGML_CCACHE            OFF CACHE BOOL "" FORCE)
 
+# Runtime CPU dispatch. Without this ggml compiles a single baseline-ARMv8.0 CPU backend: the
+# int8-dotprod and fp16 matmul kernels are #ifdef-gated on CPU features and get compiled out, so
+# every Q5/F16 matmul runs the scalar fallback while TFLite (ruy) picks dotprod at runtime — that
+# is the whole reason whisper.cpp was slower. ALL_VARIANTS builds one .so per feature tier
+# (android_armv8.0, android_armv8.2+dotprod, +fp16, +i8mm, ...) and the backend registry dlopen's
+# and scores the best one for the actual device — fast on modern SoCs, still runs on pre-2017 ARM.
+# Requires shared libs + backend-DL; the backends are loaded from the app's lib dir by WhisperCpp
+# (get_executable_path() points at /system/bin on Android, so the default search never finds them).
+#
+# 64-bit only: the ALL_VARIANTS Android backends are aarch64 feature tiers and won't compile on the
+# 32-bit armeabi-v7a target (armv8 intrinsics on an armv7 march). armv7 has no dotprod anyway, so it
+# keeps the single static backend. WhisperCpp's load-from-path is a harmless no-op there.
+if(NOT ANDROID_ABI STREQUAL "armeabi-v7a")
+    set(BUILD_SHARED_LIBS      ON  CACHE BOOL "" FORCE)
+    set(GGML_BACKEND_DL        ON  CACHE BOOL "" FORCE)
+    set(GGML_CPU_ALL_VARIANTS  ON  CACHE BOOL "" FORCE)
+endif()
+
 add_subdirectory(${WHISPER_DIR} ${CMAKE_CURRENT_BINARY_DIR}/whisper.cpp)
 
 add_library(whisper_jni SHARED whisper_jni.cpp)

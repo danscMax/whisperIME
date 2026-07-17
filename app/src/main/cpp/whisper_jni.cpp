@@ -4,19 +4,53 @@
 #include <thread>
 #include <algorithm>
 #include <atomic>
+#include <mutex>
+#include <dlfcn.h>
 #include <unistd.h>
 #include <android/log.h>
 
 #include "whisper.h"
+#include "ggml-backend.h"
 
 #define LOG_TAG "whisper_jni"
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  LOG_TAG, __VA_ARGS__)
 
 // Set by nativeCancel(); polled by whisper_full via the abort callback to stop a slow run early.
 static std::atomic<bool> g_cancel{false};
 
 static bool abort_callback(void *) {
     return g_cancel.load();
+}
+
+// The CPU backend is built as feature-tiered variant .so (GGML_CPU_ALL_VARIANTS) that the ggml
+// registry dlopen's and scores at runtime. Its default search — get_executable_path() — is
+// /system/bin on Android, never the app's lib dir, so nothing loads unless we point it there.
+// dladdr on our own symbol yields the path to libwhisper_jni.so, whose directory *is* the app's
+// nativeLibraryDir where every bundled variant sits — no Context plumbing needed. This only holds
+// with android:extractNativeLibs="true" in the manifest: otherwise the variant .so stay compressed
+// inside the APK (mapped, not on disk) and a directory scan finds nothing. Runs once.
+static void load_backends_once() {
+    static std::once_flag flag;
+    std::call_once(flag, [] {
+        Dl_info info;
+        if (dladdr(reinterpret_cast<void *>(&abort_callback), &info) && info.dli_fname) {
+            std::string dir(info.dli_fname);
+            auto slash = dir.find_last_of('/');
+            if (slash != std::string::npos) {
+                dir.resize(slash);
+                ggml_backend_load_all_from_path(dir.c_str());
+            }
+        }
+        LOGI("ggml backends registered: %zu", ggml_backend_reg_count());
+    });
+}
+
+// True once a CPU backend device is available. whisper_init calls ggml_backend_dev_backend_reg on
+// the CPU device and ggml_abort()s (uncatchable SIGABRT) if there is none, so gate on this first
+// and surface a catchable error instead of taking the whole process down.
+static bool cpu_backend_available() {
+    return ggml_backend_dev_by_type(GGML_BACKEND_DEVICE_TYPE_CPU) != nullptr;
 }
 
 static void throw_java(JNIEnv *env, const char *msg) {
@@ -35,6 +69,14 @@ Java_com_whispertflite_engine_WhisperCpp_nativeInit(JNIEnv *env, jclass, jstring
     const char *path = env->GetStringUTFChars(modelPath, nullptr);
     if (path == nullptr) {
         throw_java(env, "failed to read modelPath");
+        return 0;
+    }
+
+    load_backends_once();  // register the CPU backend variants before the first model load
+    if (!cpu_backend_available()) {
+        env->ReleaseStringUTFChars(modelPath, path);
+        LOGE("no CPU backend registered; refusing to init (would ggml_abort)");
+        throw_java(env, "whisper.cpp CPU backend unavailable");
         return 0;
     }
 

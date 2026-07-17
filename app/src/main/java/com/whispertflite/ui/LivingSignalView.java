@@ -3,6 +3,7 @@ package com.whispertflite.ui;
 import android.content.Context;
 import android.graphics.SurfaceTexture;
 import android.opengl.GLES20;
+import android.provider.Settings;
 import android.util.AttributeSet;
 import android.view.TextureView;
 
@@ -144,8 +145,27 @@ public class LivingSignalView extends TextureView implements TextureView.Surface
         public void run() {
             if (!initEGL()) return;
             initGL();
+            // Respect the system "Remove animations" setting: hold one static frame per state instead
+            // of the ~80 fps loop — saves battery and honours the a11y/reduced-motion preference.
+            boolean reduced;
+            try {
+                reduced = Settings.Global.getFloat(getContext().getContentResolver(),
+                        Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f;
+            } catch (Exception e) {
+                reduced = false;
+            }
+            SignalState lastStatic = null;
             long last = System.nanoTime();
             while (running) {
+                if (reduced) {
+                    if (state != lastStatic) {
+                        drawFrame(0.2f);   // one settled frame so activity reaches the state's target
+                        if (!egl.eglSwapBuffers(display, eglSurface)) break;
+                        lastStatic = state;
+                    }
+                    try { Thread.sleep(100); } catch (InterruptedException e) { break; }
+                    continue;
+                }
                 long now = System.nanoTime();
                 float dt = Math.min((now - last) / 1e9f, 0.05f);
                 last = now;

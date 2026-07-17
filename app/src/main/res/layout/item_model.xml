@@ -121,8 +121,8 @@
                     <ImageButton
                         android:id="@+id/cancelButton"
                         style="@style/Widget.Material3.Button.IconButton"
-                        android:layout_width="40dp"
-                        android:layout_height="40dp"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
                         android:layout_marginStart="4dp"
                         android:contentDescription="@string/catalog_cancel"
                         android:src="@drawable/ic_cancel_36dp"

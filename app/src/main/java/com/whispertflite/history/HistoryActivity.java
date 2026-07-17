@@ -20,6 +20,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.PopupMenu;
+import androidx.core.view.ViewCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -185,6 +186,15 @@ public class HistoryActivity extends AppCompatActivity {
                 menu.show();
                 return true;
             });
+
+            // TalkBack / switch access: expose copy, share and delete as first-class custom actions —
+            // the long-press PopupMenu above is invisible to screen readers.
+            ViewCompat.addAccessibilityAction(h.itemView,
+                    getString(R.string.copy_to_clipboard), (view, a) -> { copy(e.text); return true; });
+            ViewCompat.addAccessibilityAction(h.itemView,
+                    getString(R.string.history_share), (view, a) -> { share(e.text); return true; });
+            ViewCompat.addAccessibilityAction(h.itemView,
+                    getString(R.string.history_delete), (view, a) -> { db.delete(e.id); reload(); return true; });
         }
 
         @Override

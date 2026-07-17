@@ -47,14 +47,14 @@
                     android:text="@string/main_local_badge"
                     android:textAllCaps="true"
                     android:textColor="@color/glass_ink_dim"
-                    android:textSize="9sp" />
+                    android:textSize="11sp" />
             </LinearLayout>
 
             <!-- Nav grouped into one frosted pill so the three icons read as a single control, and
                  kept in the header so the bottom belongs entirely to the orb. -->
             <LinearLayout
                 android:layout_width="wrap_content"
-                android:layout_height="46dp"
+                android:layout_height="48dp"
                 android:background="@drawable/glass_pill_bar"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
@@ -62,11 +62,11 @@
 
                 <ImageButton
                     android:id="@+id/btnHistory"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/history_title"
-                    android:padding="8dp"
+                    android:padding="12dp"
                     android:src="@drawable/ic_history_24dp"
                     app:tint="@color/glass_ink" />
 
@@ -78,11 +78,11 @@
 
                 <ImageButton
                     android:id="@+id/btnSettings"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/settings_title"
-                    android:padding="8dp"
+                    android:padding="12dp"
                     android:src="@drawable/ic_settings_24dp"
                     app:tint="@color/glass_ink" />
 
@@ -94,11 +94,11 @@
 
                 <ImageButton
                     android:id="@+id/btnOverflow"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/main_cd_menu"
-                    android:padding="8dp"
+                    android:padding="12dp"
                     android:src="@drawable/ic_more_vert_24dp"
                     app:tint="@color/glass_ink" />
             </LinearLayout>
@@ -179,7 +179,7 @@
                     android:paddingVertical="5dp"
                     android:text="@string/main_badge_tflite"
                     android:textColor="@color/glass_ink"
-                    android:textSize="9sp" />
+                    android:textSize="11sp" />
             </LinearLayout>
 
             <com.google.android.material.textfield.TextInputLayout

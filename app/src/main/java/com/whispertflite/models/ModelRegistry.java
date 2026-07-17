@@ -11,9 +11,6 @@ public final class ModelRegistry {
 
     private ModelRegistry() {}
 
-    /** whisper.cpp engine is wired (Task 3.3): GGUF models are selectable and usable. */
-    public static final boolean WHISPER_CPP_READY = true;
-
     // Base URLs.
     private static final String TFLITE_BASE =
             "https://huggingface.co/DocWolle/whisper_tflite_models/resolve/main/";

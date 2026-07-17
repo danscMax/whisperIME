@@ -209,10 +209,14 @@ public class MainActivity extends AppCompatActivity {
         btnContext = findViewById(R.id.btnContext);
         dockStatus = findViewById(R.id.dockStatus);
         btnContext.setOnClickListener(v -> {
+            boolean opening = contextPanel.getVisibility() != View.VISIBLE;
             TransitionManager.beginDelayedTransition((ViewGroup) contextPanel.getParent(),
                     new Fade().setDuration(180));
-            contextPanel.setVisibility(contextPanel.getVisibility() == View.VISIBLE
-                    ? View.GONE : View.VISIBLE);
+            contextPanel.setVisibility(opening ? View.VISIBLE : View.GONE);
+            // Flip the chevron so the button reflects the panel state (MaterialButton has no
+            // icon-rotation API — swap the up/down glyph instead).
+            btnContext.setIconResource(opening ? R.drawable.ic_expand_less_24dp
+                    : R.drawable.ic_expand_more_24dp);
         });
 
         append = findViewById(R.id.mode_append);
@@ -292,7 +296,7 @@ public class MainActivity extends AppCompatActivity {
                 if (mWhisper == null) {
                     Toast.makeText(this, R.string.main_model_loading, Toast.LENGTH_SHORT).show();
                 } else if (!mWhisper.isInProgress()) {
-                    if (sp.getBoolean("hapticFeedback", true)) HapticFeedback.vibrate(this);
+                    HapticFeedback.vibrate(this);
                     startRecording();
                 } else (Toast.makeText(this,getString(R.string.please_wait),Toast.LENGTH_SHORT)).show();
             } else if (event.getAction() == MotionEvent.ACTION_UP
@@ -349,7 +353,7 @@ public class MainActivity extends AppCompatActivity {
                 if (message.equals(Recorder.MSG_RECORDING)) {
                     if (!append.isChecked()) runOnUiThread(() -> tvResult.setText(""));
                 } else if (message.equals(Recorder.MSG_RECORDING_DONE) || message.equals(Recorder.MSG_RECORDING_ERROR)) {
-                    if (sp.getBoolean("hapticFeedback", true)) HapticFeedback.vibrate(mContext);
+                    HapticFeedback.vibrate(mContext);
                     recordingStopped = true;
                     recordDurationMs = System.currentTimeMillis() - recordStartMs;
                     // Queued chunks may still be transcribing: PROCESSING until the queue drains,

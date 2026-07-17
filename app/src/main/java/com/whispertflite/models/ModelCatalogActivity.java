@@ -154,10 +154,6 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
     // --- actions ---
 
     private void use(ModelInfo model) {
-        if (model.engine == Engine.WHISPER_CPP && !ModelRegistry.WHISPER_CPP_READY) {
-            Snackbar.make(storageUsed, R.string.catalog_engine_soon_hint, Snackbar.LENGTH_LONG).show();
-            return;
-        }
         prefs.edit().putString(ModelDownloadManager.PREF_SELECTED_MODEL, model.id).apply();
         refresh();
     }
@@ -254,15 +250,11 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
                         color(active ? R.color.glass_shadow_active : R.color.glass_shadow));
             }
 
-            // status chip: Active (warm, echoing the card), or "engine soon" for not-yet-wired gguf
-            boolean soon = m.engine == Engine.WHISPER_CPP && !ModelRegistry.WHISPER_CPP_READY;
-            h.statusChip.setVisibility(active || soon ? View.VISIBLE : View.GONE);
+            // status chip: shown only for the active model (warm, echoing the card)
+            h.statusChip.setVisibility(active ? View.VISIBLE : View.GONE);
             if (active) {
                 h.statusChip.setText(R.string.catalog_active);
                 tint(h.statusChip, R.color.glass_warm_bg, R.color.glass_warm_ink);
-            } else if (soon) {
-                h.statusChip.setText(R.string.catalog_engine_soon);
-                tint(h.statusChip, R.color.glass_pill, R.color.glass_ink_dim);
             }
 
             boolean downloading = state == ModelState.DOWNLOADING;

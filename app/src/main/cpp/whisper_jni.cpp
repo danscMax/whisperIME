@@ -42,7 +42,14 @@ static void load_backends_once() {
                 ggml_backend_load_all_from_path(dir.c_str());
             }
         }
-        LOGI("ggml backends registered: %zu", ggml_backend_reg_count());
+        // Log which CPU variant the registry scored highest — the whole point of the dispatch is
+        // that this is a feature-accelerated tier (dotprod/fp16 on ARM, AVX2 on x86), not baseline.
+        // Also a field diagnostic: it tells us the active kernel set on any user's device.
+        ggml_backend_dev_t cpu = ggml_backend_dev_by_type(GGML_BACKEND_DEVICE_TYPE_CPU);
+        LOGI("ggml backends registered: %zu; CPU device: %s (%s)",
+             ggml_backend_reg_count(),
+             cpu ? ggml_backend_dev_name(cpu) : "none",
+             cpu ? ggml_backend_dev_description(cpu) : "-");
     });
 }
 

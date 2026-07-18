@@ -41,6 +41,7 @@ public class SettingsActivity extends AppCompatActivity {
 
         buildPaletteRow();
         buildThemeToggle();
+        buildOrbToggle();
 
         // simpleChinese is an existing upstream key; hapticFeedback/speakResult are new
         // settings keys consumed when MainActivity is rewired in Task 1.3.
@@ -100,6 +101,17 @@ public class SettingsActivity extends AppCompatActivity {
             g.setStroke(dp(3), ContextCompat.getColor(this, R.color.glass_ink));
         }
         return g;
+    }
+
+    private void buildOrbToggle() {
+        MaterialButtonToggleGroup group = findViewById(R.id.orb_group);
+        group.check(sp.getInt("orbStyle", 0) == 1 ? R.id.orb_plasma : R.id.orb_cloud);
+        group.addOnButtonCheckedListener((g, id, isChecked) -> {
+            if (!isChecked) return;
+            int s = id == R.id.orb_plasma ? 1 : 0;
+            if (s == sp.getInt("orbStyle", 0)) return;
+            sp.edit().putInt("orbStyle", s).apply();   // orbs re-read this on resume (LivingSignalView.refreshStyle)
+        });
     }
 
     private void buildThemeToggle() {

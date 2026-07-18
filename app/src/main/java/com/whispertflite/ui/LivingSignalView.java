@@ -41,6 +41,9 @@ public class LivingSignalView extends TextureView implements TextureView.Surface
     // airy brightness (blending toward raw palette colours would darken it, esp. in dark theme).
     private volatile float accentHue;
     private volatile boolean accentValid;
+    // Orb visual style: 0 = living cloud (default), 1 = plasma/plexus energy ball. Read from the
+    // "orbStyle" pref so every orb (main, IME, provider, onboarding) shares the user's choice.
+    private volatile int orbStyle;
     private RenderThread thread;
 
     public LivingSignalView(Context context) {
@@ -78,6 +81,18 @@ public class LivingSignalView extends TextureView implements TextureView.Surface
         state = SignalState.READY;
     }
 
+    /** Re-read the orb-style pref; if it changed, the render thread recompiles to the new shader so a
+     *  choice made in Settings takes effect when the screen resumes, without a restart. */
+    public void refreshStyle() {
+        int s = androidx.preference.PreferenceManager
+                .getDefaultSharedPreferences(getContext()).getInt("orbStyle", 0);
+        if (s != orbStyle) {
+            orbStyle = s;
+            RenderThread rt = thread;
+            if (rt != null) rt.styleDirty = true;
+        }
+    }
+
     /** Recolour the cloud toward the app palette's hue (colorPrimary) so the orb follows the palette. */
     public void setColors(int bright, int soft) {
         float[] hsv = new float[3];
@@ -90,6 +105,8 @@ public class LivingSignalView extends TextureView implements TextureView.Surface
 
     @Override
     public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+        orbStyle = androidx.preference.PreferenceManager
+                .getDefaultSharedPreferences(getContext()).getInt("orbStyle", 0);
         running = true;
         thread = new RenderThread(surface, width, height);
         thread.start();
@@ -120,6 +137,7 @@ public class LivingSignalView extends TextureView implements TextureView.Surface
         private final SurfaceTexture surface;
         private volatile int width, height;
         private volatile boolean sizeDirty;
+        private volatile boolean styleDirty;   // set when the orb style changed → recompile the shader
 
         RenderThread(SurfaceTexture surface, int w, int h) {
             this.surface = surface;
@@ -184,6 +202,7 @@ public class LivingSignalView extends TextureView implements TextureView.Surface
         }
 
         private void drawFrame(float dt) {
+            if (styleDirty) { GLES20.glDeleteProgram(program); initGL(); styleDirty = false; }
             if (sizeDirty) { GLES20.glViewport(0, 0, width, height); sizeDirty = false; }
 
             // smooth audio level (fast attack, slow decay) + per-state flow speed / activity
@@ -240,7 +259,7 @@ public class LivingSignalView extends TextureView implements TextureView.Surface
             // premultiplied-alpha blending (matches setOpaque(false) compositing)
             GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE_MINUS_SRC_ALPHA);
 
-            program = link(VERT, FRAG);
+            program = link(VERT, orbStyle == 1 ? FRAG_PLASMA : FRAG);
             GLES20.glUseProgram(program);
             uRes = GLES20.glGetUniformLocation(program, "u_resolution");
             uTime = GLES20.glGetUniformLocation(program, "u_time");
@@ -371,5 +390,48 @@ public class LivingSignalView extends TextureView implements TextureView.Surface
             "  col=mix(col,u_milk,(1.0-up)*smoothstep(0.58,0.9,broad)*0.18);\n" +
             "  col+=(noise(gl_FragCoord.xy*0.64)-0.5)/255.0;\n" +
             "  gl_FragColor=vec4(col*edge, edge);\n" +   // premultiplied alpha
+            "}\n";
+
+    // Plasma / plexus energy-ball style (selectable). Same uniforms as FRAG: u_milk = brightest
+    // (core, nodes, corona), u_upper = body blue, u_lower = mid, u_deep = rim. u_activity energises
+    // the network. A drifting grid of nodes is linked to its neighbours (a "plexus"), over a blue
+    // sphere with a bright stretched core and a glowing rim corona that spills just past the disk.
+    private static final String FRAG_PLASMA =
+            "precision highp float;\n" +
+            "uniform vec2 u_resolution; uniform float u_time, u_activity;\n" +
+            "uniform vec3 u_deep, u_upper, u_lower, u_milk;\n" +
+            "float hash(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }\n" +
+            "vec2 hash2(vec2 p){ float n=hash(p); return vec2(n, hash(p+n+17.1)); }\n" +
+            "float seg(vec2 p, vec2 a, vec2 b){ vec2 pa=p-a, ba=b-a; float h=clamp(dot(pa,ba)/max(dot(ba,ba),1e-4),0.0,1.0); return length(pa-ba*h); }\n" +
+            "void main(){\n" +
+            "  vec2 uv=gl_FragCoord.xy/u_resolution; vec2 c=uv-0.5;\n" +
+            "  float aspect=u_resolution.x/max(u_resolution.y,1.0);\n" +
+            "  vec2 cc=vec2(c.x*aspect, c.y); float rad=length(cc);\n" +
+            "  if(rad>0.6) discard;\n" +
+            "  float t=u_time; float energy=0.55+u_activity*1.5;\n" +
+            "  float body=1.0-smoothstep(0.0,0.5,rad);\n" +
+            "  vec3 col=mix(u_deep,u_upper,body);\n" +
+            "  float core=exp(-pow(length(vec2(cc.x,cc.y*2.3))*4.4,2.0));\n" +
+            "  col=mix(col,u_milk,clamp(core*1.15,0.0,1.0));\n" +
+            "  float disk=1.0-smoothstep(0.47,0.5,rad);\n" +
+            "  float grid=7.0; vec2 gp=cc*grid; vec2 gi=floor(gp);\n" +
+            "  vec2 p0=gi+0.5+0.42*sin(t*0.55+hash2(gi)*6.2831);\n" +
+            "  float net=0.0, dots=0.0;\n" +
+            "  for(int y=-1;y<=1;y++){ for(int x=-1;x<=1;x++){\n" +
+            "    vec2 gn=gi+vec2(float(x),float(y));\n" +
+            "    vec2 pn=gn+0.5+0.42*sin(t*0.55+hash2(gn)*6.2831);\n" +
+            "    float d=length(gp-pn); dots+=smoothstep(0.14,0.0,d);\n" +
+            "    if(x!=0||y!=0){ float ls=seg(gp,p0,pn);\n" +
+            "      net+=smoothstep(0.045,0.0,ls)*smoothstep(1.5,0.5,length(p0-pn)); }\n" +
+            "  }}\n" +
+            "  float netB=(net*0.85+dots*1.25)*(0.32+body*0.95)*energy;\n" +
+            "  col=mix(col,u_milk,clamp(netB,0.0,0.92)); col*=disk;\n" +
+            "  float ring=exp(-pow((rad-0.49)*38.0,2.0));\n" +
+            "  float outer=smoothstep(0.6,0.49,rad)*(1.0-disk);\n" +
+            "  vec3 rimCol=mix(u_lower,u_milk,0.55);\n" +
+            "  col+=rimCol*(ring*1.15+outer*0.55)*(0.85+u_activity*0.7);\n" +
+            "  float alpha=clamp(disk+ring*0.9+outer*0.55,0.0,1.0);\n" +
+            "  col+=(hash(gl_FragCoord.xy*0.7)-0.5)/255.0;\n" +
+            "  gl_FragColor=vec4(col*alpha, alpha);\n" +
             "}\n";
 }

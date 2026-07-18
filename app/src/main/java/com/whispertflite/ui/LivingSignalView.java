@@ -171,7 +171,13 @@ public class LivingSignalView extends TextureView implements TextureView.Surface
                 last = now;
                 drawFrame(dt);
                 if (!egl.eglSwapBuffers(display, eglSurface)) break;
-                try { Thread.sleep(12); } catch (InterruptedException e) { break; }
+                // The calm states (READY/ERROR) drift slowly, so 30 fps looks identical there and is
+                // far easier on the battery than running the full ~80 fps whenever the orb is on
+                // screen; only the active states need every frame. dt-based stepping keeps the motion
+                // speed the same either way.
+                boolean active = state == SignalState.LISTENING || state == SignalState.PROCESSING
+                        || state == SignalState.RESULT;
+                try { Thread.sleep(active ? 12 : 33); } catch (InterruptedException e) { break; }
             }
             releaseEGL();
         }

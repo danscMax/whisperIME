@@ -188,19 +188,13 @@ public class Recorder {
         AudioMath.normalizeInPlace(pcm);
     }
 
-    /** Start Bluetooth SCO only when a Bluetooth input device is actually connected. */
+    /**
+     * Deliberately does NOT force Bluetooth SCO (A10). SCO is a narrowband (8/16 kHz telephone-band)
+     * link that noticeably degrades dictation, and forcing it also overrode the VOICE_RECOGNITION
+     * source's own capture-device routing. We let the platform choose the input device instead. Kept as
+     * a hook returning false so the SCO-teardown call sites remain harmless no-ops.
+     */
     private boolean maybeStartSco(AudioManager audioManager) {
-        try {
-            for (android.media.AudioDeviceInfo d : audioManager.getDevices(AudioManager.GET_DEVICES_INPUTS)) {
-                if (d.getType() == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO) {
-                    audioManager.startBluetoothSco();
-                    audioManager.setBluetoothScoOn(true);
-                    return true;
-                }
-            }
-        } catch (Exception e) {
-            Log.w(TAG, "Bluetooth SCO start failed", e);   // diagnosable instead of silently swallowed (C14)
-        }
         return false;
     }
 

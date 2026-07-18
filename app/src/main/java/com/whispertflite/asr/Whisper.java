@@ -55,10 +55,24 @@ public class Whisper {
     private volatile boolean taskAvailable = false;
 
     // Chunked mode: chunks (16-bit PCM @16k) are queued and transcribed sequentially on the worker.
-    private final BlockingQueue<byte[]> chunkQueue = new LinkedBlockingQueue<>();
+    // Bounded so a model that can't keep up on a very long dictation can't grow the queue without limit
+    // and OOM — 64 chunks is minutes of backlog; past that we drop with a log rather than crash (C6).
+    private static final int MAX_QUEUED_CHUNKS = 64;
+    private final BlockingQueue<byte[]> chunkQueue = new LinkedBlockingQueue<>(MAX_QUEUED_CHUNKS);
     private volatile boolean chunkMode = false;
 
     private final Thread mWorker;
+
+    // Watchdog: a native whisper_full that hangs (or whose cancel was lost) holds synchronized(engine)
+    // forever, which also wedges unloadModel(). Force a cancel after a generous hard cap (C7). base·Q5
+    // warm is ~1 s; even a large model on long audio stays well under 2 min, so this only trips on a hang.
+    private static final long TRANSCRIBE_TIMEOUT_MS = 120_000;
+    private static final java.util.concurrent.ScheduledExecutorService WATCHDOG =
+            java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "whisper-watchdog");
+                t.setDaemon(true);
+                return t;
+            });
 
     public Whisper(Context context) {
         this.mContext = context.getApplicationContext();
@@ -185,7 +199,11 @@ public class Whisper {
     public void enqueueChunk(byte[] pcm16k) {
         chunkMode = true;
         mInProgress.set(true);
-        chunkQueue.offer(pcm16k);
+        if (!chunkQueue.offer(pcm16k)) {
+            // Queue full: the model is hopelessly behind. Dropping this chunk loses a little audio but
+            // avoids unbounded growth / OOM on a runaway-long dictation (C6).
+            Log.w(TAG, "chunk queue full (" + chunkQueue.size() + ") — dropping a chunk; model behind");
+        }
         taskLock.lock();
         try {
             taskAvailable = true;
@@ -244,8 +262,17 @@ public class Whisper {
                 sendUpdate(MSG_PROCESSING);
 
                 WhisperResult whisperResult;
-                synchronized (engine) {
-                    whisperResult = engine.transcribe(pcm, mAction, mLangToken);
+                // Arm the watchdog around the native run: if it overruns the cap, cancel() sets the
+                // abort flag and whisper_full bails, freeing the lock instead of hanging forever (C7).
+                final AsrEngine watched = engine;
+                java.util.concurrent.ScheduledFuture<?> watchdog = WATCHDOG.schedule(
+                        watched::cancel, TRANSCRIBE_TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS);
+                try {
+                    synchronized (engine) {
+                        whisperResult = engine.transcribe(pcm, mAction, mLangToken);
+                    }
+                } finally {
+                    watchdog.cancel(false);
                 }
                 sendResult(whisperResult);
 

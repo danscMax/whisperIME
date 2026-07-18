@@ -407,30 +407,37 @@ public class LivingSignalView extends TextureView implements TextureView.Surface
             "  vec2 uv=gl_FragCoord.xy/u_resolution; vec2 c=uv-0.5;\n" +
             "  float aspect=u_resolution.x/max(u_resolution.y,1.0);\n" +
             "  vec2 cc=vec2(c.x*aspect, c.y); float rad=length(cc);\n" +
-            "  if(rad>0.6) discard;\n" +
-            "  float t=u_time; float energy=0.55+u_activity*1.5;\n" +
-            "  float body=1.0-smoothstep(0.0,0.5,rad);\n" +
-            "  vec3 col=mix(u_deep,u_upper,body);\n" +
-            "  float core=exp(-pow(length(vec2(cc.x,cc.y*2.3))*4.4,2.0));\n" +
-            "  col=mix(col,u_milk,clamp(core*1.15,0.0,1.0));\n" +
-            "  float disk=1.0-smoothstep(0.47,0.5,rad);\n" +
-            "  float grid=7.0; vec2 gp=cc*grid; vec2 gi=floor(gp);\n" +
-            "  vec2 p0=gi+0.5+0.42*sin(t*0.55+hash2(gi)*6.2831);\n" +
+            "  if(rad>0.52) discard;\n" +
+            "  float t=u_time; float energy=0.6+u_activity*1.5;\n" +
+            // fixed electric-blue palette (independent of the app palette, matching the plasma reference)
+            "  vec3 cDeep=vec3(0.05,0.15,0.60), cBody=vec3(0.22,0.42,0.98), cBright=vec3(0.82,0.91,1.0);\n" +
+            "  float body=1.0-smoothstep(0.0,0.42,rad);\n" +
+            "  vec3 col=mix(cDeep,cBody,body);\n" +
+            // bright horizontally-stretched core (lens-flare-like)
+            "  float core=exp(-pow(length(vec2(cc.x*0.85,cc.y*2.0))*4.2,2.0));\n" +
+            "  col=mix(col,cBright,clamp(core*1.3,0.0,1.0));\n" +
+            "  float disk=1.0-smoothstep(0.40,0.44,rad);\n" +
+            // denser plexus: 10-cell grid, thinner brighter links + nodes
+            "  float grid=10.0; vec2 gp=cc*grid; vec2 gi=floor(gp);\n" +
+            "  vec2 p0=gi+0.5+0.4*sin(t*0.5+hash2(gi)*6.2831);\n" +
             "  float net=0.0, dots=0.0;\n" +
             "  for(int y=-1;y<=1;y++){ for(int x=-1;x<=1;x++){\n" +
             "    vec2 gn=gi+vec2(float(x),float(y));\n" +
-            "    vec2 pn=gn+0.5+0.42*sin(t*0.55+hash2(gn)*6.2831);\n" +
-            "    float d=length(gp-pn); dots+=smoothstep(0.14,0.0,d);\n" +
+            "    vec2 pn=gn+0.5+0.4*sin(t*0.5+hash2(gn)*6.2831);\n" +
+            "    float d=length(gp-pn); dots+=smoothstep(0.10,0.0,d);\n" +
             "    if(x!=0||y!=0){ float ls=seg(gp,p0,pn);\n" +
-            "      net+=smoothstep(0.045,0.0,ls)*smoothstep(1.5,0.5,length(p0-pn)); }\n" +
+            "      net+=smoothstep(0.032,0.0,ls)*smoothstep(1.5,0.5,length(p0-pn)); }\n" +
             "  }}\n" +
-            "  float netB=(net*0.85+dots*1.25)*(0.32+body*0.95)*energy;\n" +
-            "  col=mix(col,u_milk,clamp(netB,0.0,0.92)); col*=disk;\n" +
-            "  float ring=exp(-pow((rad-0.49)*38.0,2.0));\n" +
-            "  float outer=smoothstep(0.6,0.49,rad)*(1.0-disk);\n" +
-            "  vec3 rimCol=mix(u_lower,u_milk,0.55);\n" +
-            "  col+=rimCol*(ring*1.15+outer*0.55)*(0.85+u_activity*0.7);\n" +
-            "  float alpha=clamp(disk+ring*0.9+outer*0.55,0.0,1.0);\n" +
+            "  float netB=(net*0.95+dots*1.35)*(0.4+body*0.9)*energy;\n" +
+            "  col=mix(col,cBright,clamp(netB,0.0,0.95)); col*=disk;\n" +
+            // diffuse, slightly wispy corona around the (smaller) sphere, spilling out to the view edge
+            "  float ang=atan(cc.y,cc.x);\n" +
+            "  float wob=0.55+0.45*sin(ang*7.0+t*0.55)*sin(ang*3.0-t*0.4);\n" +
+            "  float ring=exp(-pow((rad-0.43)*34.0,2.0));\n" +
+            "  float halo=smoothstep(0.52,0.42,rad)*wob;\n" +
+            "  vec3 rimCol=vec3(0.72,0.87,1.0);\n" +
+            "  col+=rimCol*(ring*1.25+halo*0.75*(1.0-disk))*(0.9+u_activity*0.6);\n" +
+            "  float alpha=clamp(disk+ring*0.95+halo*0.55*(1.0-disk),0.0,1.0);\n" +
             "  col+=(hash(gl_FragCoord.xy*0.7)-0.5)/255.0;\n" +
             "  gl_FragColor=vec4(col*alpha, alpha);\n" +
             "}\n";

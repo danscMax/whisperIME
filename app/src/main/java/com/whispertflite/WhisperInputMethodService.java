@@ -386,7 +386,18 @@ public class WhisperInputMethodService extends InputMethodService {
                 ? new File(sdcardDataFolder, ModelRegistry.vocabFor(selectedModel)) : null;
 
         mWhisper = new Whisper(this);
-        mWhisper.loadModel(modelFile, vocabFile, isMultilingual);
+        if (!mWhisper.loadModel(modelFile, vocabFile, isMultilingual)) {
+            // Load failed: tear down and leave loadedModelId null so the next input view retries
+            // instead of treating a dead engine as "loaded" and no-opping (C2); tell the user (C4/C13).
+            Log.e(TAG, "Model load failed: " + selectedModel.id);
+            deinitModel();
+            handler.post(() -> {
+                tvStatus.setText(getString(R.string.error_model_load));
+                tvStatus.setVisibility(View.VISIBLE);
+                idleGroup.setVisibility(View.GONE);
+            });
+            return;
+        }
         loadedModelId = selectedModel.id;
         Log.d(TAG, "Initialized: " + selectedModel.id + " (" + selectedModel.engine + ")");
         mWhisper.setListener(new Whisper.WhisperListener() {
@@ -396,6 +407,16 @@ public class WhisperInputMethodService extends InputMethodService {
                     if (recordingStopped) handler.post(() -> applyState(UiState.PROCESSING));
                 } else if (message.equals(Whisper.MSG_PROCESSING_DONE)) {
                     if (recordingStopped && !mWhisper.isInProgress()) handler.post(() -> finalizeIme());
+                } else if (message.startsWith(Whisper.MSG_TRANSCRIBE_FAILED)
+                        || message.startsWith(Whisper.MSG_LOAD_FAILED)
+                        || message.equals(Whisper.MSG_ENGINE_NOT_INIT)) {
+                    // Surface a failed run instead of leaving the strip stuck in PROCESSING (C4).
+                    handler.post(() -> {
+                        applyState(UiState.IDLE);
+                        tvStatus.setText(getString(R.string.error_transcription));
+                        tvStatus.setVisibility(View.VISIBLE);
+                        idleGroup.setVisibility(View.GONE);
+                    });
                 }
             }
 

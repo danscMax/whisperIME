@@ -132,7 +132,7 @@ public class ModelDownloadManager {
                 if (model.engine == ModelInfo.Engine.TFLITE) {
                     ensureVocab(ModelRegistry.vocabFor(model));
                 }
-                runDownload(model);
+                runWithRetry(model);
             } catch (IOException e) {
                 Log.w(TAG, "download failed: " + model.id, e);
                 emitError(model.id, e.getMessage() == null ? "io_error" : e.getMessage());
@@ -150,6 +150,39 @@ public class ModelDownloadManager {
     }
 
     // --- internals ---
+
+    /**
+     * Retry a download that dies with a transient network error (dropped connection, read timeout).
+     * Resume is already supported (HTTP Range + .part), so each retry continues where the last stopped
+     * instead of re-downloading. Backs off exponentially; respects cancellation between attempts (C9).
+     * Non-throwing outcomes (user cancel, Wi-Fi-lost, "incomplete") return from runDownload and are NOT
+     * retried here — only thrown IOExceptions are.
+     */
+    private void runWithRetry(ModelInfo model) throws IOException {
+        final int maxAttempts = 3;
+        long backoffMs = 2000;
+        IOException last = null;
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            if (Boolean.TRUE.equals(active.get(model.id))) return; // cancelled between attempts
+            try {
+                runDownload(model);
+                return;
+            } catch (IOException e) {
+                last = e;
+                Log.w(TAG, "download attempt " + attempt + "/" + maxAttempts + " failed: " + model.id, e);
+                if (attempt < maxAttempts) {
+                    try {
+                        Thread.sleep(backoffMs);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                    backoffMs *= 2;
+                }
+            }
+        }
+        if (last != null) throw last; // exhausted retries: surface to the caller's error path
+    }
 
     private void runDownload(ModelInfo model) throws IOException {
         File target = targetFile(model);
@@ -200,6 +233,12 @@ public class ModelDownloadManager {
                 windowBytes += len;
                 long now = System.currentTimeMillis();
                 if (now - lastEmit >= PROGRESS_INTERVAL_MS) {
+                    // Wi-Fi-only can flip to metered mid-transfer (Wi-Fi→cellular handover); stop before
+                    // burning the user's mobile data on a 500 MB model. .part is kept for later resume (C8).
+                    if (isWifiOnly() && !isOnWifi()) {
+                        emitError(model.id, ERR_WIFI);
+                        return;
+                    }
                     long elapsed = Math.max(1, now - windowStart);
                     long bps = windowBytes * 1000 / elapsed;
                     emitProgress(model.id, done, total, bps);

@@ -197,7 +197,9 @@ public class Recorder {
                     return true;
                 }
             }
-        } catch (Exception ignored) { }
+        } catch (Exception e) {
+            Log.w(TAG, "Bluetooth SCO start failed", e);   // diagnosable instead of silently swallowed (C14)
+        }
         return false;
     }
 
@@ -217,7 +219,9 @@ public class Recorder {
                         android.media.audiofx.NoiseSuppressor.create(audioRecord.getAudioSessionId());
                 if (ns != null) { ns.setEnabled(true); mEffects.add(ns); }
             }
-        } catch (Exception ignored) { }
+        } catch (Exception e) {
+            Log.w(TAG, "Attaching AGC/NoiseSuppressor failed", e);   // diagnosable, not swallowed (C14)
+        }
     }
 
     /** Release the AGC/noise-suppression effects created for the just-finished record session. */

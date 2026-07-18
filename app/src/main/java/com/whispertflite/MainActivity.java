@@ -96,6 +96,9 @@ public class MainActivity extends AppCompatActivity {
 
     private Recorder mRecorder = null;
     private Whisper mWhisper = null;
+    // Set when a chunk/run reports an engine failure (vs genuine silence) so finishToResult can tell
+    // the user it failed instead of silently showing the "nothing heard" state (C4/C5).
+    private boolean transcriptionFailed = false;
 
     private File sdcardDataFolder = null;
     private ModelInfo selectedModel = null;
@@ -281,6 +284,14 @@ public class MainActivity extends AppCompatActivity {
             if (currentDownloadedModels == null || pos >= currentDownloadedModels.size()) return;
             ModelInfo picked = currentDownloadedModels.get(pos);
             if (picked.id.equals(selectedModel.id)) return;
+            // A switch tears down the engine; doing it mid-recording drops in-flight chunks into a
+            // shutting-down instance. Refuse until idle and restore the visible selection (C10).
+            if ((mRecorder != null && mRecorder.isInProgress())
+                    || (mWhisper != null && mWhisper.isInProgress())) {
+                Toast.makeText(this, R.string.please_wait, Toast.LENGTH_SHORT).show();
+                setModelDropdown(currentDownloadedModels, selectedModel);
+                return;
+            }
             selectedModel = picked;
             sp.edit().putString("selectedModelId", selectedModel.id).apply();
             updateEngineBadge();
@@ -494,7 +505,13 @@ public class MainActivity extends AppCompatActivity {
         // Build fully into a local, then publish: initModel runs on a background thread and can race
         // with deinitModel() (activity recreate for night mode / model switch) nulling the field.
         Whisper whisper = new Whisper(this);
-        whisper.loadModel(modelFile, vocabFile, isMultilingualModel);
+        if (!whisper.loadModel(modelFile, vocabFile, isMultilingualModel)) {
+            // Load failed — free the half-built instance and leave mWhisper null so a later switch/
+            // resume retries instead of no-opping a "loaded" dead engine (C2); tell the user (C13).
+            whisper.shutdown();
+            runOnUiThread(() -> Toast.makeText(this, R.string.error_model_load, Toast.LENGTH_LONG).show());
+            return;
+        }
         Log.d(TAG, "Initialized: " + selectedModel.id + " (" + selectedModel.engine + ")");
         whisper.setListener(new Whisper.WhisperListener() {
             @Override
@@ -511,6 +528,10 @@ public class MainActivity extends AppCompatActivity {
                     if (recordingStopped && !mWhisper.isInProgress()) {
                         runOnUiThread(MainActivity.this::finishToResult);
                     }
+                } else if (message.startsWith(Whisper.MSG_TRANSCRIBE_FAILED)
+                        || message.startsWith(Whisper.MSG_LOAD_FAILED)
+                        || message.equals(Whisper.MSG_ENGINE_NOT_INIT)) {
+                    transcriptionFailed = true;   // finishToResult reports it instead of "no speech" (C4/C5)
                 }
             }
 
@@ -519,6 +540,7 @@ public class MainActivity extends AppCompatActivity {
                 long timeTaken = System.currentTimeMillis() - startTime;
                 Log.d(TAG, "Result: " + whisperResult.getResult() + " " + whisperResult.getLanguage() + " " + (whisperResult.getTask() == Whisper.Action.TRANSCRIBE ? "transcribing" : "translating"));
 
+                if (whisperResult.isError()) { transcriptionFailed = true; return; } // engine failure, not silence (C5)
                 String raw = whisperResult.getResult();
                 if (raw == null || raw.trim().isEmpty()) return; // empty chunk: skip; completion handled on drain
 
@@ -722,6 +744,7 @@ public class MainActivity extends AppCompatActivity {
         }
         recordingStopped = false;
         resultFinalized = false;
+        transcriptionFailed = false;
         lastLanguage = "";
         // Flags apply to every chunk of this session.
         mWhisper.setAction(translate.isChecked() ? Whisper.ACTION_TRANSLATE : Whisper.ACTION_TRANSCRIBE);
@@ -737,6 +760,10 @@ public class MainActivity extends AppCompatActivity {
         tilModel.setEnabled(true);
         String text = tvResult.getText().toString().trim();
         if (text.isEmpty()) {
+            // Distinguish an engine failure from genuine silence so the user isn't left guessing (C5).
+            if (transcriptionFailed) {
+                Toast.makeText(mContext, R.string.error_transcription, Toast.LENGTH_LONG).show();
+            }
             applyState(UiState.ERROR);
             return;
         }

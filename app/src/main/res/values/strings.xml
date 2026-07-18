@@ -37,6 +37,8 @@
     <string name="tts_initialization_failed">TTS: Initialization failed</string>
     <string name="auto_button">automatic mode</string>
     <string name="error_no_input">No voice input received</string>
+    <string name="error_model_load">Couldn\'t load the model — it may be too large for this device</string>
+    <string name="error_transcription">Transcription failed</string>
     <string name="auto_lang">Detect language</string>
     <string name="history_title">History</string>
     <string name="history_search_hint">Search transcriptions</string>

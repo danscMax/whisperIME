@@ -57,7 +57,10 @@ public final class WhisperCppEngine implements AsrEngine {
 
     @Override
     public WhisperResult transcribe(byte[] pcm16k, Whisper.Action action, int langToken) {
-        if (ctxPtr == 0 || pcm16k == null) {
+        if (ctxPtr == 0) {
+            return WhisperResult.error(action);   // engine not loaded — surface, don't treat as silence
+        }
+        if (pcm16k == null) {
             return new WhisperResult("", "", action);
         }
         float[] samples = pcm16ToFloat(pcm16k);
@@ -72,7 +75,7 @@ public final class WhisperCppEngine implements AsrEngine {
         try {
             text = WhisperCpp.nativeTranscribe(ctxPtr, samples, lang, translate);
         } catch (RuntimeException e) {
-            return new WhisperResult("", "", action);
+            return WhisperResult.error(action);   // native run crashed mid-phrase — surface, not silence
         }
         // On "auto", read back whisper's detected language so downstream zh simplified/traditional
         // conversion still fires; otherwise the requested code is authoritative.

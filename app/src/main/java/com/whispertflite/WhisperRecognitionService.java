@@ -3,6 +3,7 @@ package com.whispertflite;
 import static android.speech.SpeechRecognizer.ERROR_CLIENT;
 import static android.speech.SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS;
 import static android.speech.SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE;
+import static android.speech.SpeechRecognizer.ERROR_NO_MATCH;
 import static com.whispertflite.MainActivity.ENGLISH_ONLY_MODEL_EXTENSION;
 import static com.whispertflite.MainActivity.ENGLISH_ONLY_VOCAB_FILE;
 import static com.whispertflite.MainActivity.MULTILINGUAL_VOCAB_FILE;
@@ -43,6 +44,9 @@ public class WhisperRecognitionService extends RecognitionService {
     private File sdcardDataFolder = null;
     private File selectedTfliteFile = null;
     private boolean recognitionCancelled = false;
+    // Guards the SpeechRecognizer contract: exactly one terminal callback (results OR error) per
+    // utterance. Without it an empty/failed run never calls back and the client hangs forever (C1).
+    private boolean resultDelivered = false;
     private SharedPreferences sp = null;
 
     @Override
@@ -76,9 +80,7 @@ public class WhisperRecognitionService extends RecognitionService {
             } catch (RemoteException e) {
                 throw new RuntimeException(e);
             }
-        } else {
-            ensureModel(selectedTfliteFile, callback, langToken);
-
+        } else if (ensureModel(selectedTfliteFile, callback, langToken)) {
             // Reuse one Recorder across requests (its worker thread is expensive and was leaked when
             // a fresh one was created per request); rebind the listener to this request's callback.
             if (mRecorder == null) mRecorder = new Recorder(this);
@@ -98,11 +100,7 @@ public class WhisperRecognitionService extends RecognitionService {
                     }
                     startTranscription();
                 } else if (message.equals(Recorder.MSG_RECORDING_ERROR)) {
-                    try {
-                        callback.error(ERROR_CLIENT);
-                    } catch (RemoteException e) {
-                        throw new RuntimeException(e);
-                    }
+                    deliverError(callback, ERROR_CLIENT);
                 }
             });
 
@@ -142,14 +140,20 @@ public class WhisperRecognitionService extends RecognitionService {
     // Load the model only when it's not already loaded (or the selection changed), then (re)bind the
     // current request's callback. Keeping the native context warm across utterances avoids reloading
     // hundreds of MB per request; the listener is rebound each time so results reach the live callback.
-    private void ensureModel(File modelFile, Callback callback, int langToken) {
+    private boolean ensureModel(File modelFile, Callback callback, int langToken) {
         if (mWhisper == null || !modelFile.getAbsolutePath().equals(loadedModelPath)) {
             deinitModel();
             boolean isMultilingualModel = !(modelFile.getName().endsWith(ENGLISH_ONLY_MODEL_EXTENSION));
             String vocabFileName = isMultilingualModel ? MULTILINGUAL_VOCAB_FILE : ENGLISH_ONLY_VOCAB_FILE;
             File vocabFile = new File(sdcardDataFolder, vocabFileName);
             mWhisper = new Whisper(this);
-            mWhisper.loadModel(modelFile, vocabFile, isMultilingualModel);
+            if (!mWhisper.loadModel(modelFile, vocabFile, isMultilingualModel)) {
+                // Load failed — don't mark the path loaded (C2); tell the client instead of recording
+                // into a dead engine and hanging (C4/C13).
+                deinitModel();
+                deliverError(callback, ERROR_CLIENT);
+                return false;
+            }
             loadedModelPath = modelFile.getAbsolutePath();
             Log.d(TAG, "Loaded: " + modelFile.getName());
         }
@@ -157,35 +161,62 @@ public class WhisperRecognitionService extends RecognitionService {
         Log.d(TAG, "Language token " + langToken);
         mWhisper.setListener(new Whisper.WhisperListener() {
             @Override
-            public void onUpdateReceived(String message) { }
+            public void onUpdateReceived(String message) {
+                // Route a failure update to a terminal error so the client never waits forever (C1/C4).
+                if (message.startsWith(Whisper.MSG_TRANSCRIBE_FAILED)
+                        || message.startsWith(Whisper.MSG_LOAD_FAILED)
+                        || message.equals(Whisper.MSG_ENGINE_NOT_INIT)) {
+                    deliverError(callback, ERROR_CLIENT);
+                }
+            }
 
             @Override
             public void onResultReceived(WhisperResult whisperResult) {
-                if (whisperResult.getResult().trim().length() > 0){
-                    Log.d(TAG, whisperResult.getResult().trim());
-                    try {
-                        callback.endOfSpeech();
-                        Bundle results = new Bundle();
-                        ArrayList<String> resultList = new ArrayList<>();
+                String trimmed = whisperResult.getResult().trim();
+                if (trimmed.isEmpty()) {
+                    // Empty (silence) or failed run — fire the REQUIRED terminal callback the old code
+                    // omitted, which left the client's SpeechRecognizer waiting forever (C1/C5).
+                    deliverError(callback, whisperResult.isError() ? ERROR_CLIENT : ERROR_NO_MATCH);
+                    return;
+                }
+                if (resultDelivered) return;
+                resultDelivered = true;
+                Log.d(TAG, trimmed);
+                try {
+                    callback.endOfSpeech();
+                    Bundle results = new Bundle();
+                    ArrayList<String> resultList = new ArrayList<>();
 
-                        String result = whisperResult.getResult();
-                        if (whisperResult.getLanguage().equals("zh")){
-                            boolean simpleChinese = sp.getBoolean("RecognitionServiceSimpleChinese",false);
-                            result = simpleChinese ? ZhConverterUtil.toSimple(result) : ZhConverterUtil.toTraditional(result);
-                        }
-
-                        resultList.add(result.trim());
-                        results.putStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION, resultList);
-                        callback.results(results);
-                    } catch (RemoteException e) {
-                        throw new RuntimeException(e);
+                    String result = whisperResult.getResult();
+                    if (whisperResult.getLanguage().equals("zh")){
+                        boolean simpleChinese = sp.getBoolean("RecognitionServiceSimpleChinese",false);
+                        result = simpleChinese ? ZhConverterUtil.toSimple(result) : ZhConverterUtil.toTraditional(result);
                     }
+
+                    resultList.add(result.trim());
+                    results.putStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION, resultList);
+                    callback.results(results);
+                } catch (RemoteException e) {
+                    throw new RuntimeException(e);
                 }
             }
         });
+        return true;
+    }
+
+    /** Fire a single terminal error callback, honouring the one-terminal-callback contract (C1). */
+    private void deliverError(Callback callback, int errorCode) {
+        if (resultDelivered) return;
+        resultDelivered = true;
+        try {
+            callback.error(errorCode);
+        } catch (RemoteException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void startRecording() {
+        resultDelivered = false;   // new utterance — re-arm the one-terminal-callback guard (C1)
         mRecorder.initVad();
         mRecorder.start();
         recognitionCancelled = false;

@@ -164,7 +164,11 @@ Java_com_whispertflite_engine_WhisperCpp_nativeTranscribe(JNIEnv *env, jclass, j
     int cores = (int) sysconf(_SC_NPROCESSORS_ONLN);
     if (cores <= 0) cores = (int) std::thread::hardware_concurrency();
     if (cores <= 0) cores = 4;
-    wparams.n_threads       = std::max(2, std::min(8, cores - 1)); // leave one core for UI/audio
+    // Leave TWO cores free and cap at 6. ggml is built without OpenMP (NDK has no libgomp) and uses its
+    // own SPIN-WAIT thread barrier, so if n_threads exceeds the cores the OS actually gives a foreground
+    // app, one worker gets descheduled and the rest busy-wait on the barrier — measured ~50x slowdown at
+    // 7-8 threads vs the ~180 ms optimum at 6 on an 8-core device. cores-1 landed exactly in that pit.
+    wparams.n_threads       = std::max(2, std::min(6, cores - 2));
     wparams.translate       = translate == JNI_TRUE;
     wparams.language        = langC; // null => auto-detect
     wparams.print_progress  = false;

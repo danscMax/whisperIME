@@ -39,6 +39,12 @@ android {
         viewBinding = true
     }
 
+    // Generate a locale-config from the values-* folders so Android 13+ shows this app in the
+    // system per-app language picker (a Russian user on an English phone can force the app to ru).
+    androidResources {
+        generateLocaleConfig = true
+    }
+
     buildTypes {
         debug {
             ndk {

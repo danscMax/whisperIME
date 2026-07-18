@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Warm liquid-glass control tokens. These describe the *glass* surfaces (model catalog and every
+  screen rolled onto the same look): a light frosted card system whose accent is warm amber.
+  They are deliberately independent of the selectable Material palette (teal/terracotta/...),
+  which is tuned for M3 tonal surfaces and clashes with the glass cards.
+-->
+<resources>
+
+    <!-- Ink -->
+    <color name="glass_ink">#161B2C</color>        <!-- headlines -->
+    <color name="glass_ink_body">#3A4155</color>   <!-- body / labels -->
+    <color name="glass_ink_dim">#6A7183</color>    <!-- meta, mono -->
+    <color name="glass_ink_faint">#98A0B0</color>  <!-- chevrons, disabled -->
+
+    <!-- Solid control: filled buttons, checked filter chips -->
+    <color name="glass_solid">#1E2740</color>
+    <color name="glass_on_solid">#FFFFFF</color>
+    <color name="glass_solid_dim">#E61E283C</color>
+
+    <!-- Glass pill: unchecked chips, dropdown boxes, footer -->
+    <color name="glass_pill">#6BFFFFFF</color>
+    <color name="glass_pill_brd">#8CFFFFFF</color>
+    <color name="glass_sheet">#D9FFFFFF</color>    <!-- opaque-ish menus/popups -->
+    <color name="glass_dialog">#F7F4F7FA</color>   <!-- floating windows must stay near-opaque -->
+
+    <!-- Outline for ghost controls (ink at 20%) -->
+    <color name="glass_outline">#33283246</color>
+
+    <!-- Warm accent = "on / active" (matches the warm glow of the active card).
+         glass_warm and glass_on_warm are the same in both themes on purpose: the accent is the
+         app's identity, so whatever sits on it must not flip with the night. -->
+    <color name="glass_warm">#F5793B</color>
+    <color name="glass_on_warm">#FFFFFF</color>
+    <color name="glass_warm_bg">#D9FFE1C2</color>
+    <color name="glass_warm_ink">#8A4A18</color>
+
+    <color name="glass_danger">#E0564B</color>
+
+    <!-- Engine badges: semantic per engine, not per palette -->
+    <color name="glass_engine_tflite_bg">#294C7DF6</color>
+    <color name="glass_engine_tflite_fg">#2E5AD0</color>
+    <color name="glass_engine_cpp_bg">#298C6EF0</color>
+    <color name="glass_engine_cpp_fg">#6A4FD0</color>
+
+    <!-- Card surfaces (kept here so the adapter stops hardcoding hex) -->
+    <color name="glass_card">#C6FFFFFF</color>
+    <color name="glass_card_brd">#66FFFFFF</color>
+    <color name="glass_card_active">#C8FFEAD3</color>
+    <color name="glass_card_active_brd">#C0FFD3A6</color>
+    <color name="glass_shadow">#FF6E86AA</color>
+    <color name="glass_shadow_active">#FFF5924A</color>
+
+    <!-- Icon tile behind a model's glyph; the active one inverts against its card -->
+    <color name="glass_tile">#F2FFFFFF</color>
+    <color name="glass_tile_ink">#2A2F3C</color>
+    <color name="glass_tile_active_top">#39404F</color>
+    <color name="glass_tile_active_bottom">#242A36</color>
+
+    <!-- Backdrop: cool sky top-left fading to warm peach bottom-right, plus two blooms -->
+    <color name="glass_bg_top">#D7EAF1</color>
+    <color name="glass_bg_mid">#ECE6E4</color>
+    <color name="glass_bg_bottom">#F8D6BB</color>
+    <color name="glass_bloom_cool">#7FC7E0F0</color>
+    <color name="glass_bloom_cool_out">#00C7E0F0</color>
+    <color name="glass_bloom_warm">#66FBBE8E</color>
+    <color name="glass_bloom_warm_out">#00FBBE8E</color>
+
+    <!-- Sheen laid over a card: iridescent on the frosted ones, amber on the active one -->
+    <color name="glass_sheen_a">#3CFFFFFF</color>
+    <color name="glass_sheen_b">#12FFFFFF</color>
+    <color name="glass_sheen_c">#20D8ECF6</color>
+    <color name="glass_sheen_warm_a">#66FFE7CE</color>
+    <color name="glass_sheen_warm_b">#4DFFD3A6</color>
+    <color name="glass_sheen_warm_c">#59FFC08A</color>
+    <!-- Frosted panel (footers, config sheets) -->
+    <color name="glass_panel">#D6FFFFFF</color>
+    <color name="glass_panel_brd">#80FFFFFF</color>
+    <color name="glass_iris_a">#2E6FA8FF</color>
+    <color name="glass_iris_b">#2270E0B0</color>
+    <color name="glass_iris_c">#2CFF9AD0</color>
+    <color name="glass_beam">#3DFFFFFF</color>
+    <!-- Provider bottom sheet: warm sweep in light; a lifted (not near-black) frosted dark. -->
+    <color name="provider_sheet_top">#D7EAF1</color>
+    <color name="provider_sheet_mid">#ECE6E4</color>
+    <color name="provider_sheet_bottom">#F8D6BB</color>
+</resources>

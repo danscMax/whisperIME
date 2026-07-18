@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Caps the single-column content width so screens don't stretch edge-to-edge on tablets and
+         large foldables; on phones (narrower than this) the content still fills the width. Used as
+         app:layout_constraintWidth_max on a ConstraintLayout wrapper. -->
+    <dimen name="content_max_width">640dp</dimen>
+</resources>

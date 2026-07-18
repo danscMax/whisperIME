@@ -7,13 +7,23 @@
     <color name="colorAccentDark">#ff6750A4</color>
     <color name="windowBackground">#FAFAFA</color>
 
-    <!-- Aurora premium dark surface (the redesigned main screen is dark-first; accent comes from
-         the selected palette's colorPrimary). -->
-    <color name="aurora_bg">#070A0C</color>
-    <color name="aurora_bg2">#0E1317</color>
-    <color name="aurora_ink">#ECF3F1</color>
-    <color name="aurora_ink_dim">#8A9A96</color>
-    <color name="aurora_panel">#14FFFFFF</color>
-    <color name="aurora_panel_brd">#22FFFFFF</color>
-    <color name="aurora_scrim">#66000000</color>
+    <!-- Living Signal light surfaces. Night overrides provide the dark glass system. -->
+    <color name="glass_screen">#F4F7FD</color>
+    <color name="glass_screen_alt">#EAF0FA</color>
+    <color name="glass_scrim">#66000000</color>
+    <color name="living_bg_mid">#EEF2FA</color>
+    <color name="living_backdrop_glow">#2F7D73FF</color>
+    <color name="living_glass_pressed">#E5FFFFFF</color>
+    <color name="living_glass_focus">#A86DE7FF</color>
+    <color name="living_dock_start">#D9FFFFFF</color>
+    <color name="living_dock_end">#AFFFFFFF</color>
+    <color name="living_cyan">#257D9A</color>
+    <color name="living_violet">#5947D8</color>
+    <color name="living_magenta">#C43D95</color>
+<color name="living_blob_a">#245947D8</color>
+<color name="living_blob_b">#1E257D9A</color>
+<color name="living_blob_c">#1AC43D95</color>
+<color name="living_panel_top">#E6FFFFFF</color>
+<color name="menu_sheet">#FFF3F6FC</color>
+<color name="menu_sheet_brd">#FFDBE3F0</color>
 </resources>

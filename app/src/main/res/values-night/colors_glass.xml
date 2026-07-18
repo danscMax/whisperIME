@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Warm liquid glass after dark. Same language as values/colors_glass.xml, mirrored: the ink
+  becomes the light, the frosted white pills become frosted light-on-deep, and the warm amber
+  accent stays — it is the app's identity and reads well against a deep blue-warm ground.
+  Every name here must exist in values/colors_glass.xml and mean the same role.
+-->
+<resources>
+
+    <!-- Ink (light on deep) -->
+    <color name="glass_ink">#F2F5FC</color>
+    <color name="glass_ink_body">#C2C9DA</color>
+    <color name="glass_ink_dim">#8E97AC</color>
+    <color name="glass_ink_faint">#5D667C</color>
+
+    <!-- Solid control: on a deep ground the "solid" is a light slab, so the label goes dark -->
+    <color name="glass_solid">#E8ECF6</color>
+    <color name="glass_on_solid">#141A2A</color>
+    <color name="glass_solid_dim">#E6E8ECF6</color>
+
+    <!-- Glass pill -->
+    <color name="glass_pill">#1FFFFFFF</color>
+    <color name="glass_pill_brd">#33FFFFFF</color>
+    <color name="glass_sheet">#F21B2130</color>
+    <color name="glass_dialog">#F7161B28</color>
+
+    <color name="glass_outline">#4DFFFFFF</color>
+
+    <!-- Warm accent survives the night unchanged; only its soft fills darken -->
+    <color name="glass_warm">#F5793B</color>
+    <color name="glass_warm_bg">#3DF5924A</color>
+    <color name="glass_warm_ink">#FFC79A</color>
+
+    <color name="glass_danger">#FF7A6E</color>
+
+    <!-- Engine badges: same hues, lifted for contrast against the deep card -->
+    <color name="glass_engine_tflite_bg">#334C7DF6</color>
+    <color name="glass_engine_tflite_fg">#A8C0FF</color>
+    <color name="glass_engine_cpp_bg">#338C6EF0</color>
+    <color name="glass_engine_cpp_fg">#C6B4FF</color>
+
+    <!-- Card surfaces. The active card stays near-opaque: its elevation shadow is amber, and a
+         translucent slab lets that shadow read back through its own edges as a bright inner band. -->
+    <color name="glass_card">#1FFFFFFF</color>
+    <color name="glass_card_brd">#2EFFFFFF</color>
+    <color name="glass_card_active">#E03A2416</color>
+    <color name="glass_card_active_brd">#8CF5924A</color>
+    <color name="glass_shadow">#FF000000</color>
+    <color name="glass_shadow_active">#FFF5924A</color>
+
+    <!-- The tiles invert with everything else: the active one becomes the light slab -->
+    <color name="glass_tile">#1AFFFFFF</color>
+    <color name="glass_tile_ink">#F2F5FC</color>
+    <color name="glass_tile_active_top">#F2F5FC</color>
+    <color name="glass_tile_active_bottom">#D9E1F0</color>
+
+    <!-- Backdrop: the same cool-to-warm sweep, after dark -->
+    <color name="glass_bg_top">#0B1424</color>
+    <color name="glass_bg_mid">#12131F</color>
+    <color name="glass_bg_bottom">#241814</color>
+    <color name="glass_bloom_cool">#3D5B9FC4</color>
+    <color name="glass_bloom_cool_out">#005B9FC4</color>
+    <color name="glass_bloom_warm">#47F5924A</color>
+    <color name="glass_bloom_warm_out">#00F5924A</color>
+
+    <color name="glass_sheen_a">#1FFFFFFF</color>
+    <color name="glass_sheen_b">#0AFFFFFF</color>
+    <color name="glass_sheen_c">#14D8ECF6</color>
+    <color name="glass_sheen_warm_a">#3DFFC08A</color>
+    <color name="glass_sheen_warm_b">#2EF5924A</color>
+    <color name="glass_sheen_warm_c">#33FFA366</color>
+    <!-- Frosted panel (footers, config sheets) -->
+    <color name="glass_panel">#26FFFFFF</color>
+    <color name="glass_panel_brd">#38FFFFFF</color>
+    <color name="glass_iris_a">#1F6FA8FF</color>
+    <color name="glass_iris_b">#1670E0B0</color>
+    <color name="glass_iris_c">#1FFF9AD0</color>
+    <color name="glass_beam">#1AFFFFFF</color>
+    <!-- Provider bottom sheet lifted well above the near-black backdrop so it reads as glass. -->
+    <color name="provider_sheet_top">#212B3B</color>
+    <color name="provider_sheet_mid">#26232C</color>
+    <color name="provider_sheet_bottom">#32241B</color>
+</resources>

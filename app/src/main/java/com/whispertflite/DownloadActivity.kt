@@ -22,15 +22,20 @@ class DownloadActivity : AppCompatActivity(), ModelDownloadManager.Listener {
     private var binding: ActivityDownloadBinding? = null
     private lateinit var manager: ModelDownloadManager
 
-    private val base by lazy { ModelRegistry.byId("tflite-base-topworld")!! }
+    // Recommended default: whisper.cpp base Q5_1. On this build's runtime-dispatched CPU backend it
+    // transcribes a short clip ~3x faster than the TFLite base (≈0.95s vs ≈2.9s warm on a flagship),
+    // is ~half the size (57 vs 108 MB), covers 99 languages, and stays silent on silence instead of
+    // hallucinating. Q5_1 is the standard production quant — accuracy cost is small. (Measured on a
+    // Galaxy Tab S9; low-end/armv7 devices fall back to the baseline backend, where TFLite may match it.)
+    private val base by lazy { ModelRegistry.byId("gguf-base-q5")!! }
     private val small by lazy { ModelRegistry.byId("tflite-small-topworld")!! }
     private val tiny by lazy { ModelRegistry.byId("tflite-tiny-en")!! }
     private var selected: ModelInfo? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        ThemeUtils.applyNightMode(this)
         ThemeUtils.applyPalette(this)
+        ThemeUtils.applyGlass(this)
         val b = ActivityDownloadBinding.inflate(layoutInflater)
         binding = b
         setContentView(b.root)
@@ -40,7 +45,7 @@ class DownloadActivity : AppCompatActivity(), ModelDownloadManager.Listener {
 
         // Aurora hero orb: tint from the selected palette (bright accent + deep container).
         b.onboardingOrb.setColors(
-            MaterialColors.getColor(b.onboardingOrb, com.google.android.material.R.attr.colorPrimary),
+            MaterialColors.getColor(b.onboardingOrb, androidx.appcompat.R.attr.colorPrimary),
             MaterialColors.getColor(b.onboardingOrb, com.google.android.material.R.attr.colorPrimaryContainer)
         )
 
@@ -88,7 +93,7 @@ class DownloadActivity : AppCompatActivity(), ModelDownloadManager.Listener {
     private fun highlight(card: MaterialCardView, on: Boolean) {
         card.strokeWidth = if (on) (2 * resources.displayMetrics.density).toInt() else 0
         card.strokeColor = MaterialColors.getColor(
-            card, com.google.android.material.R.attr.colorPrimary
+            card, androidx.appcompat.R.attr.colorPrimary
         )
     }
 

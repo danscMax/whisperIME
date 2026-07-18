@@ -71,7 +71,7 @@
     <string name="onboarding_title">Выберите модель</string>
     <string name="onboarding_subtitle">Одну для старта, остальные — потом. Всё офлайн.</string>
     <string name="onboarding_base_title">Рекомендуем · base</string>
-    <string name="onboarding_base_desc">Русский + 77 языков, быстрая</string>
+    <string name="onboarding_base_desc">Русский + 98 языков, быстрая</string>
     <string name="onboarding_small_title">Точнее · small</string>
     <string name="onboarding_tiny_title">Английский · tiny.en</string>
     <string name="onboarding_cta">Скачать и начать</string>
@@ -91,6 +91,14 @@
     <string name="main_cd_menu">Ещё</string>
     <string name="main_cd_speak">Озвучить результат</string>
     <string name="main_cd_share">Поделиться</string>
+    <string name="main_local_badge">Локально · приватно</string>
+    <string name="main_state_ready">Готова · удерживайте сигнал</string>
+    <string name="main_state_listening">Слушает · отпустите для завершения</string>
+    <string name="main_state_processing">Фокусирует речь</string>
+    <string name="main_state_result">Сигнал распознан</string>
+    <string name="main_state_error">Сигнал потерян</string>
+    <string name="main_hold_signal">Удерживайте сигнал и говорите</string>
+    <string name="main_context_format">%1$s · %2$s</string>
 
     <!-- IME strip -->
     <string name="ime_hint">Нажми и говори</string>
@@ -101,6 +109,10 @@
     <string name="dialog_tap_to_talk">Коснитесь, чтобы говорить</string>
     <string name="dialog_listening">Слушаю…</string>
     <string name="dialog_processing">Обрабатываю…</string>
+    <string name="dialog_mode_auto">Авто</string>
+    <string name="dialog_mode_hold">Зажать</string>
+    <string name="dialog_mode_cd">Режим распознавания: автоматический или по нажатию</string>
+    <string name="switch_to_keyboard">Переключить на клавиатуру</string>
     <string name="dialog_no_model_title">Модель ещё не скачана</string>
     <string name="dialog_no_model_desc">Для голосового ввода нужна модель распознавания.</string>
     <string name="dialog_open_catalog">Открыть каталог</string>
@@ -113,7 +125,7 @@
     <string name="catalog_engine_soon">скоро движок</string>
     <string name="catalog_engine_soon_hint">Движок whisper.cpp появится в следующей волне</string>
     <string name="catalog_download">Скачать</string>
-    <string name="catalog_use">Использовать</string>
+    <string name="catalog_use">Выбрать</string>
     <string name="catalog_delete">Удалить</string>
     <string name="catalog_cancel">Отмена</string>
     <string name="catalog_delete_confirm">Удалить %1$s с устройства?</string>
@@ -122,6 +134,12 @@
     <string name="catalog_hint_fast">быстро</string>
     <string name="catalog_hint_balanced">баланс</string>
     <string name="catalog_hint_best">лучшее качество</string>
+    <string name="catalog_section_cpp_sub">локально · быстро</string>
+    <string name="catalog_section_tflite_sub">совместимо</string>
+    <string name="catalog_speed_fast">быстро</string>
+    <string name="catalog_speed_mid">средне</string>
+    <string name="catalog_speed_slow">медленно</string>
+    <string name="catalog_heavy">медленно на телефоне</string>
     <string name="catalog_progress">%1$.0f / %2$.0f МБ · %3$.1f МБ/с</string>
     <string name="catalog_starting">Запуск…</string>
     <string name="catalog_storage_used">Занято: %1$s</string>

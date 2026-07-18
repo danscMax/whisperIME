@@ -12,17 +12,16 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
 import android.os.Bundle;
-import android.os.CountDownTimer;
 import android.speech.RecognizerIntent;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.os.Build;
 import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.ImageButton;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -31,13 +30,13 @@ import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 
 import com.github.houbb.opencc4j.util.ZhConverterUtil;
-import com.google.android.material.color.MaterialColors;
 import com.whispertflite.asr.Recorder;
 import com.whispertflite.asr.Whisper;
 import com.whispertflite.asr.WhisperResult;
 import com.whispertflite.history.HistoryDb;
 import com.whispertflite.models.ModelInfo;
 import com.whispertflite.models.ModelRegistry;
+import com.whispertflite.ui.LivingSignalView;
 import com.whispertflite.utils.HapticFeedback;
 import com.whispertflite.utils.InputLang;
 import com.whispertflite.utils.ThemeUtils;
@@ -49,8 +48,7 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     private static final String TAG = "WhisperRecognizeActivity";
     private ImageButton btnRecord;
     private ImageButton btnCancel;
-    private com.whispertflite.ui.AuroraOrbView orb;
-    private ProgressBar processingBar = null;
+    private LivingSignalView orb;
     private TextView statusText;
     private TextView partialText;
     private Recorder mRecorder = null;
@@ -59,8 +57,8 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     private File selectedTfliteFile = null;
     private SharedPreferences sp = null;
     private Context mContext;
-    private CountDownTimer countDownTimer;
     private String langCode = "auto";
+    private boolean modeAuto = false;   // false = push-to-talk (default), true = hands-free VAD
 
     // ACTION_PROCESS_TEXT support: dictation replaces the selected text.
     private boolean processTextMode = false;
@@ -71,8 +69,8 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mContext = this;
-        ThemeUtils.applyNightMode(this);
         ThemeUtils.applyPalette(this);
+        ThemeUtils.applyGlass(this);
         sp = PreferenceManager.getDefaultSharedPreferences(this);
         sdcardDataFolder = this.getExternalFilesDir(null);
         // Use the SAME model the rest of the app selected (selectedModelId), not the legacy
@@ -107,17 +105,29 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
         params.width = WindowManager.LayoutParams.MATCH_PARENT;
         params.height = WindowManager.LayoutParams.WRAP_CONTENT;
         params.gravity = Gravity.BOTTOM;
+        getWindow().setAttributes(params);
+        applyBlurBehind();
 
         btnCancel = findViewById(R.id.btnCancel);
         btnRecord = findViewById(R.id.btnRecord);
         orb = findViewById(R.id.orb);
-        orb.setColors(themeColor(com.google.android.material.R.attr.colorPrimary),
-                themeColor(com.google.android.material.R.attr.colorPrimaryContainer));
-        processingBar = findViewById(R.id.processing_bar);
+        int[] orbTint = ThemeUtils.orbColors(this);
+        orb.setColors(orbTint[0], orbTint[1]);
         statusText = findViewById(R.id.dialog_status);
         partialText = findViewById(R.id.dialog_partial);
 
         btnCancel.setOnClickListener(v -> {
+            if (mWhisper != null) stopTranscription();
+            setResult(RESULT_CANCELED, null);
+            finish();
+        });
+
+        // Return to typing: cancel the voice request (the caller's keyboard comes back) and offer
+        // the input-method switcher so the user can land on a text keyboard directly.
+        ImageButton btnKeyboard = findViewById(R.id.btnKeyboard);
+        btnKeyboard.setOnClickListener(v -> {
+            InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+            if (imm != null) imm.showInputMethodPicker();
             if (mWhisper != null) stopTranscription();
             setResult(RESULT_CANCELED, null);
             finish();
@@ -151,42 +161,76 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
                 startTranscription();
             } else if (message.equals(Recorder.MSG_RECORDING_ERROR)) {
                 HapticFeedback.vibrate(mContext);
-                if (countDownTimer != null) countDownTimer.cancel();
                 runOnUiThread(() -> {
-                    stopMicPulse();
-                    processingBar.setProgress(0);
-                    processingBar.setVisibility(View.INVISIBLE);
-                    setStatus(R.string.dialog_tap_to_talk); // let the user tap the orb to retry
+                    orb.setSignalState(LivingSignalView.SignalState.ERROR);
+                    setStatus(modeAuto ? R.string.dialog_tap_to_talk : R.string.dialog_hold_to_speak);
                     Toast.makeText(mContext, R.string.error_no_input, Toast.LENGTH_SHORT).show();
                 });
             }
         });
 
-        // One unified mode: the dialog listens as soon as it opens and auto-stops on a speech pause
-        // (VAD). Tap the orb to stop early or to listen again; the X (top-left) always cancels.
-        btnRecord.setOnClickListener(v -> {
-            if (mRecorder.isInProgress()) {
-                mRecorder.stop();               // stop now -> transcribe what was captured
-            } else if (mWhisper != null && !mWhisper.isInProgress()) {
-                startListening();               // idle: start (or retry) listening
-            }
+        // Two modes, same as the IME: push-to-talk (default) — hold the orb, release to transcribe;
+        // auto (hands-free) — tap to start, VAD auto-stops on a speech pause, tap again to stop early.
+        modeAuto = sp.getBoolean("imeModeAuto", false);
+        TextView modeToggle = findViewById(R.id.dialog_mode);
+        modeToggle.setOnClickListener(v -> {
+            if (mRecorder.isInProgress()) mRecorder.stop();
+            modeAuto = !modeAuto;
+            sp.edit().putBoolean("imeModeAuto", modeAuto).apply();
+            applyModeUi();
         });
 
-        if (checkRecordPermission()) startListening();
+        btnRecord.setOnTouchListener((v, event) -> {
+            if (modeAuto) {
+                // Hands-free: tap toggles listening; VAD also auto-stops.
+                if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                    if (mRecorder.isInProgress()) mRecorder.stop();
+                    else if (mWhisper != null && !mWhisper.isInProgress()) startListening(true);
+                }
+                return true;
+            }
+            // Push-to-talk: record while held, transcribe on release.
+            if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                if (mWhisper != null && !mWhisper.isInProgress()) startListening(false);
+            } else if (event.getAction() == MotionEvent.ACTION_UP
+                    || event.getAction() == MotionEvent.ACTION_CANCEL) {
+                if (mRecorder.isInProgress()) mRecorder.stop();
+            }
+            return true;
+        });
+
+        applyModeUi();
+        // Auto mode starts listening on open; push-to-talk waits calmly for the user to hold.
+        if (modeAuto && checkRecordPermission()) startListening(true);
     }
 
-    /** Begin a VAD-gated listening session (auto-stops on a speech pause). */
-    private void startListening() {
+    /** Reflect the current mode on the toggle pill and the idle prompt (when not busy). */
+    private void applyModeUi() {
+        TextView modeToggle = findViewById(R.id.dialog_mode);
+        modeToggle.setText(modeAuto ? R.string.dialog_mode_auto : R.string.dialog_mode_hold);
+        modeToggle.setBackgroundResource(
+                modeAuto ? R.drawable.living_glass_pill_warm : R.drawable.living_glass_pill);
+        if (mRecorder == null || !mRecorder.isInProgress()) {
+            orb.setSignalState(LivingSignalView.SignalState.READY);
+            setStatus(modeAuto ? R.string.dialog_tap_to_talk : R.string.dialog_hold_to_speak);
+            if (partialText != null) partialText.setVisibility(View.GONE);  // no dead band at idle
+        }
+    }
+
+    /**
+     * Start a capture. Auto mode gates it with VAD (auto-stop on silence); push-to-talk records
+     * continuously until {@link Recorder#stop()} on release.
+     */
+    private void startListening(boolean auto) {
         HapticFeedback.vibrate(this);
         setStatus(R.string.dialog_listening);
-        mRecorder.initVad();   // auto-stop on silence
+        orb.setSignalState(LivingSignalView.SignalState.LISTENING);
+        if (auto) mRecorder.initVad();   // auto-stop on silence
         mRecorder.start();
-        startCountdown();
     }
 
     private void showNoModelState() {
         findViewById(R.id.dialog_main_group).setVisibility(View.GONE);
-        processingBar.setVisibility(View.GONE);
         View noModel = findViewById(R.id.dialog_no_model_group);
         noModel.setVisibility(View.VISIBLE);
         findViewById(R.id.dialog_open_catalog).setOnClickListener(v -> {
@@ -196,31 +240,19 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
         });
     }
 
-    private void startCountdown() {
-        runOnUiThread(() -> {
-            processingBar.setVisibility(View.VISIBLE);
-            processingBar.setProgress(100);
-        });
-        countDownTimer = new CountDownTimer(30000, 1000) {
-            @Override
-            public void onTick(long l) {
-                runOnUiThread(() -> processingBar.setProgress((int) (l / 300)));
-            }
-            @Override
-            public void onFinish() {}
-        };
-        countDownTimer.start();
-    }
-
     private void setStatus(int resId) {
         if (statusText != null) statusText.setText(resId);
     }
 
     private void updateChip() {
         TextView chip = findViewById(R.id.dialog_chip);
-        String modelLabel = selectedTfliteFile.getName();
+        String fileName = selectedTfliteFile.getName();
+        String modelLabel = fileName;
         for (ModelInfo m : ModelRegistry.all()) {
-            if (m.filename.equals(selectedTfliteFile.getName())) {
+            // Match on the basename: gguf models carry a "gguf/…" path in m.filename, while the
+            // selected file reports only its name, so a plain equals never hit and the raw
+            // "ggml-tiny-q5_1.bin" leaked into the chip.
+            if (new File(m.filename).getName().equals(fileName)) {
                 modelLabel = m.displayName;
                 break;
             }
@@ -233,8 +265,29 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
         if (orb != null) orb.setIdle();
     }
 
-    private int themeColor(int attr) {
-        return MaterialColors.getColor(orb, attr, Color.GRAY);
+    /**
+     * Frost the host app behind the sheet with cross-window blur (Android 12+, GPU-permitting).
+     * See https://source.android.com/docs/core/display/window-blurs. When the system disables
+     * blur (battery saver, unsupported GPU) we deepen the scrim instead so the sheet stays legible.
+     */
+    private java.util.function.Consumer<Boolean> blurListener;
+
+    private void applyBlurBehind() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return;
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND
+                | WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+        WindowManager.LayoutParams p = getWindow().getAttributes();
+        p.setBlurBehindRadius(40);
+        getWindow().setAttributes(p);
+        updateScrimForBlur(getWindowManager().isCrossWindowBlurEnabled());
+        blurListener = this::updateScrimForBlur;   // keep the ref so onDestroy can remove it (no leak)
+        getWindowManager().addCrossWindowBlurEnabledListener(getMainExecutor(), blurListener);
+    }
+
+    private void updateScrimForBlur(boolean blurEnabled) {
+        WindowManager.LayoutParams p = getWindow().getAttributes();
+        p.dimAmount = blurEnabled ? 0.20f : 0.55f;
+        getWindow().setAttributes(p);
     }
 
     // Model initialization
@@ -252,8 +305,6 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
 
             @Override
             public void onResultReceived(WhisperResult whisperResult) {
-                runOnUiThread(() -> processingBar.setIndeterminate(false));
-
                 String result = whisperResult.getResult();
                 if (whisperResult.getLanguage().equals("zh")) {
                     boolean simpleChinese = sp.getBoolean("simpleChinese", false);
@@ -261,9 +312,16 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
                 }
                 if (result.trim().length() > 0) {
                     final String text = result.trim();
-                    runOnUiThread(() -> partialText.setText(text));
+                    runOnUiThread(() -> {
+                        partialText.setVisibility(View.VISIBLE);
+                        partialText.setText(text);
+                    });
                     saveHistory(text, whisperResult.getLanguage());
                     sendResult(text);
+                } else {
+                    // Nothing recognized (silence, or an all-marker result cleaned to empty):
+                    // don't finish — return to the calm idle prompt so the user can try again.
+                    runOnUiThread(WhisperRecognizeActivity.this::applyModeUi);
                 }
             }
         });
@@ -309,12 +367,9 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     }
 
     private void startTranscription() {
-        if (countDownTimer != null) countDownTimer.cancel();
         runOnUiThread(() -> {
             setStatus(R.string.dialog_processing);
-            processingBar.setVisibility(View.VISIBLE);
-            processingBar.setProgress(0);
-            processingBar.setIndeterminate(true);
+            orb.setSignalState(LivingSignalView.SignalState.PROCESSING);
         });
         if (mWhisper != null) {
             mWhisper.setAction(Whisper.ACTION_TRANSCRIBE);
@@ -323,7 +378,6 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     }
 
     private void stopTranscription() {
-        runOnUiThread(() -> processingBar.setIndeterminate(false));
         mWhisper.stop();
     }
 
@@ -337,7 +391,9 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
 
     private void deinitModel() {
         if (mWhisper != null) {
-            mWhisper.unloadModel();
+            // shutdown() (not unloadModel()) also stops the worker thread; unloadModel leaves it
+            // parked. Matches the fix already shipped in the two services.
+            mWhisper.shutdown();
             mWhisper = null;
         }
     }
@@ -346,8 +402,11 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     public void onDestroy() {
         stopMicPulse();
         deinitModel();
-        if (mRecorder != null && mRecorder.isInProgress()) {
-            mRecorder.stop();
+        if (blurListener != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            getWindowManager().removeCrossWindowBlurEnabledListener(blurListener);
+        }
+        if (mRecorder != null) {
+            mRecorder.shutdown();   // ends the worker thread; stop() alone left it parked (leak)
         }
         super.onDestroy();
     }

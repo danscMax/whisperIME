@@ -9,6 +9,8 @@ import android.os.Vibrator;
 import android.os.VibratorManager;
 import android.provider.Settings;
 
+import androidx.preference.PreferenceManager;
+
 public class HapticFeedback {
 
     public static void vibrate(Context context){
@@ -24,6 +26,11 @@ public class HapticFeedback {
     }
 
     private static boolean hapticEnabled(Context context){
+        // Honour the in-app "Haptic feedback" setting (default on) on every surface, not just the
+        // main screen — every caller routes through here, so this is the single gate.
+        if (!PreferenceManager.getDefaultSharedPreferences(context).getBoolean("hapticFeedback", true)) {
+            return false;
+        }
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             VibratorManager vibratorManager = (VibratorManager) context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
             return vibratorManager.getDefaultVibrator().hasVibrator();

@@ -215,7 +215,9 @@ public class WhisperEngineJava implements WhisperEngine {
             offset += byteArray.length;
         }
 
-        return new WhisperResult(new String(combinedBytes, StandardCharsets.UTF_8), language, task);
+        String text = com.whispertflite.asr.Transcript.clean(
+                new String(combinedBytes, StandardCharsets.UTF_8));
+        return new WhisperResult(text, language, task);
     }
 
 }

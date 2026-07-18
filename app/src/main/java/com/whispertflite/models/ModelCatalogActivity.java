@@ -1,25 +1,33 @@
 package com.whispertflite.models;
 
 import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
 import android.os.Bundle;
+import android.text.Spannable;
+import android.text.SpannableStringBuilder;
 import android.text.format.Formatter;
+import android.text.style.ForegroundColorSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.TextView;
 
+import androidx.annotation.ColorRes;
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.SimpleItemAnimator;
 
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.snackbar.Snackbar;
@@ -42,10 +50,15 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        ThemeUtils.applyNightMode(this);
-        ThemeUtils.applyPalette(this);
         super.onCreate(savedInstanceState);
+        ThemeUtils.applyPalette(this);
+        // The warm glass is a light surface in both themes. It gets there through its own tokens,
+        // never through a local night mode: forcing MODE_NIGHT_NO here leaked the light config into
+        // the shared resources, so every popup inflated afterwards (even back on the main screen)
+        // came out light-on-dark.
+        ThemeUtils.applyGlass(this);
         setContentView(R.layout.activity_model_catalog);
+        ThemeUtils.setStatusBarAppearance(this);
 
         manager = ModelDownloadManager.get(this);
         prefs = PreferenceManager.getDefaultSharedPreferences(this);
@@ -58,6 +71,12 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
         adapter = new Adapter();
         adapter.setHasStableIds(true);
         recycler.setAdapter(adapter);
+        // A running download calls notifyItemChanged on its row many times a second; the default
+        // change animation crossfades the whole card each time, which reads as a flicker. Turn it
+        // off so the progress row updates in place.
+        if (recycler.getItemAnimator() instanceof SimpleItemAnimator) {
+            ((SimpleItemAnimator) recycler.getItemAnimator()).setSupportsChangeAnimations(false);
+        }
 
         ChipGroup filterGroup = findViewById(R.id.filterGroup);
         filterGroup.setOnCheckedStateChangeListener((group, ids) -> {
@@ -145,16 +164,12 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
     // --- actions ---
 
     private void use(ModelInfo model) {
-        if (model.engine == Engine.WHISPER_CPP && !ModelRegistry.WHISPER_CPP_READY) {
-            Snackbar.make(storageUsed, R.string.catalog_engine_soon_hint, Snackbar.LENGTH_LONG).show();
-            return;
-        }
         prefs.edit().putString(ModelDownloadManager.PREF_SELECTED_MODEL, model.id).apply();
         refresh();
     }
 
     private void confirmDelete(ModelInfo model) {
-        new AlertDialog.Builder(this)
+        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.catalog_delete)
                 .setMessage(getString(R.string.catalog_delete_confirm, model.displayName))
                 .setNegativeButton(android.R.string.cancel, null)
@@ -168,6 +183,9 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
                     refresh();
                 })
                 .show();
+        // The confirm is destructive; the shared dialog theme keeps both actions neutral ink.
+        dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE)
+                .setTextColor(color(R.color.glass_danger));
     }
 
     /** Number of models currently on disk (to hide delete on the last one). */
@@ -180,74 +198,112 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
         return n;
     }
 
-    private class Adapter extends RecyclerView.Adapter<Adapter.VH> {
-        private final List<ModelInfo> items = new ArrayList<>();
+    private static final int TYPE_HEADER = 0;
+    private static final int TYPE_MODEL = 1;
+
+    /** A section header row (one per engine group). */
+    private static final class Header {
+        final String title, sub;
+        Header(String title, String sub) { this.title = title; this.sub = sub; }
+    }
+
+    private class Adapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
+        private final List<Object> rows = new ArrayList<>();   // Header | ModelInfo
         // modelId -> {bytes, total, bytesPerSec}
         final java.util.HashMap<String, long[]> progress = new java.util.HashMap<>();
 
+        /** Group the visible models by engine under a header each; whisper.cpp first (the default). */
         void setItems(List<ModelInfo> newItems) {
-            items.clear();
-            items.addAll(newItems);
+            rows.clear();
+            addSection(newItems, Engine.WHISPER_CPP,
+                    getString(R.string.catalog_engine_whispercpp), getString(R.string.catalog_section_cpp_sub));
+            addSection(newItems, Engine.TFLITE,
+                    getString(R.string.catalog_engine_tflite), getString(R.string.catalog_section_tflite_sub));
             notifyDataSetChanged();
         }
 
+        private void addSection(List<ModelInfo> all, Engine engine, String title, String sub) {
+            List<ModelInfo> group = new ArrayList<>();
+            for (ModelInfo m : all) if (m.engine == engine) group.add(m);
+            if (group.isEmpty()) return;
+            rows.add(new Header(title, sub));
+            rows.addAll(group);
+        }
+
         int indexOf(String modelId) {
-            for (int i = 0; i < items.size(); i++) {
-                if (items.get(i).id.equals(modelId)) return i;
+            for (int i = 0; i < rows.size(); i++) {
+                Object r = rows.get(i);
+                if (r instanceof ModelInfo && ((ModelInfo) r).id.equals(modelId)) return i;
             }
             return -1;
         }
 
         @Override
+        public int getItemViewType(int position) {
+            return rows.get(position) instanceof Header ? TYPE_HEADER : TYPE_MODEL;
+        }
+
+        @Override
         public long getItemId(int position) {
-            return items.get(position).id.hashCode();
+            Object r = rows.get(position);
+            return r instanceof Header ? ("h:" + ((Header) r).title).hashCode()
+                    : ((ModelInfo) r).id.hashCode();
         }
 
         @NonNull
         @Override
-        public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            View v = LayoutInflater.from(parent.getContext())
-                    .inflate(R.layout.item_model, parent, false);
-            return new VH(v);
+        public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            LayoutInflater inf = LayoutInflater.from(parent.getContext());
+            if (viewType == TYPE_HEADER) {
+                return new HeaderVH(inf.inflate(R.layout.item_model_header, parent, false));
+            }
+            return new VH(inf.inflate(R.layout.item_model, parent, false));
         }
 
         @Override
-        public void onBindViewHolder(@NonNull VH h, int position) {
-            ModelInfo m = items.get(position);
+        public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+            Object r = rows.get(position);
+            if (holder instanceof HeaderVH) {
+                Header hd = (Header) r;
+                ((HeaderVH) holder).title.setText(hd.title);
+                ((HeaderVH) holder).sub.setText(hd.sub);
+                return;
+            }
+            bindModel((VH) holder, (ModelInfo) r);
+        }
+
+        private void bindModel(@NonNull VH h, ModelInfo m) {
             ModelState state = manager.stateOf(m);
 
             h.name.setText(m.displayName);
-            h.engineChip.setText(m.engine == Engine.TFLITE
-                    ? R.string.catalog_engine_tflite : R.string.catalog_engine_whispercpp);
             h.meta.setText(meta(m));
 
-            // Aurora: cards stay on the translucent panel; the active one is marked with a palette
-            // accent hairline instead of a light fill (which would break the dark surface).
+            // Warm liquid glass: the active model glows warm (warm sheen + warm shadow); the rest are
+            // light frosted cards. The engine is shown by the section header, not a per-card badge.
             boolean active = state == ModelState.ACTIVE;
-            float density = getResources().getDisplayMetrics().density;
-            h.card.setStrokeWidth((int) ((active ? 1.5f : 1f) * density));
-            h.card.setStrokeColor(active
-                    ? getColorAttr(com.google.android.material.R.attr.colorPrimary)
-                    : androidx.core.content.ContextCompat.getColor(
-                            ModelCatalogActivity.this, R.color.aurora_panel_brd));
+            h.cardSheen.setBackgroundResource(active ? R.drawable.card_sheen_warm : R.drawable.card_sheen_glass);
+            h.card.setCardBackgroundColor(color(active ? R.color.glass_card_active : R.color.glass_card));
+            h.card.setStrokeWidth(Math.round(getResources().getDisplayMetrics().density));
+            h.card.setStrokeColor(color(active ? R.color.glass_card_active_brd : R.color.glass_card_brd));
+            if (android.os.Build.VERSION.SDK_INT >= 28) {
+                h.card.setOutlineSpotShadowColor(
+                        color(active ? R.color.glass_shadow_active : R.color.glass_shadow));
+            }
 
-            // status chip: Active, or "engine soon" for not-yet-wired gguf
-            boolean soon = m.engine == Engine.WHISPER_CPP && !ModelRegistry.WHISPER_CPP_READY;
+            // status chip: shown only for the active model (warm, echoing the card)
+            h.statusChip.setVisibility(active ? View.VISIBLE : View.GONE);
             if (active) {
-                h.statusChip.setVisibility(View.VISIBLE);
                 h.statusChip.setText(R.string.catalog_active);
-            } else if (soon) {
-                h.statusChip.setVisibility(View.VISIBLE);
-                h.statusChip.setText(R.string.catalog_engine_soon);
-            } else {
-                h.statusChip.setVisibility(View.GONE);
+                tint(h.statusChip, R.color.glass_warm_bg, R.color.glass_warm_ink);
             }
 
             boolean downloading = state == ModelState.DOWNLOADING;
             h.progressGroup.setVisibility(downloading ? View.VISIBLE : View.GONE);
-            h.buttonRow.setVisibility(downloading ? View.GONE : View.VISIBLE);
 
             if (downloading) {
+                h.useButton.setVisibility(View.GONE);
+                h.downloadButton.setVisibility(View.GONE);
+                h.deleteButton.setVisibility(View.GONE);
                 long[] p = progress.get(m.id);
                 if (p != null && p[1] > 0) {
                     h.progress.setIndeterminate(false);
@@ -283,27 +339,35 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
 
         @Override
         public int getItemCount() {
-            return items.size();
+            return rows.size();
+        }
+
+        class HeaderVH extends RecyclerView.ViewHolder {
+            final TextView title, sub;
+            HeaderVH(@NonNull View v) {
+                super(v);
+                title = v.findViewById(R.id.headerTitle);
+                sub = v.findViewById(R.id.headerSub);
+            }
         }
 
         class VH extends RecyclerView.ViewHolder {
             final com.google.android.material.card.MaterialCardView card;
             final TextView name, meta, progressText;
-            final Chip engineChip, statusChip;
-            final View progressGroup, buttonRow;
+            final Chip statusChip;
+            final View progressGroup, cardSheen;
             final LinearProgressIndicator progress;
-            final ImageButton cancelButton;
-            final MaterialButton downloadButton, useButton, deleteButton;
+            final ImageButton cancelButton, downloadButton, deleteButton;
+            final MaterialButton useButton;
 
             VH(@NonNull View v) {
                 super(v);
                 card = (com.google.android.material.card.MaterialCardView) v;
+                cardSheen = v.findViewById(R.id.cardSheen);
                 name = v.findViewById(R.id.name);
                 meta = v.findViewById(R.id.meta);
-                engineChip = v.findViewById(R.id.engineChip);
                 statusChip = v.findViewById(R.id.statusChip);
                 progressGroup = v.findViewById(R.id.progressGroup);
-                buttonRow = v.findViewById(R.id.buttonRow);
                 progress = v.findViewById(R.id.progress);
                 progressText = v.findViewById(R.id.progressText);
                 cancelButton = v.findViewById(R.id.cancelButton);
@@ -314,19 +378,40 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
         }
     }
 
-    private String meta(ModelInfo m) {
+    private CharSequence meta(ModelInfo m) {
         String langs = m.englishOnly
                 ? getString(R.string.catalog_english_only)
                 : getString(R.string.catalog_languages, m.languages);
         String size = Formatter.formatShortFileSize(this, m.sizeBytes);
-        int hint = m.qualityClass >= 3 ? R.string.catalog_hint_best
-                : (m.qualityClass == 2 ? R.string.catalog_hint_balanced : R.string.catalog_hint_fast);
-        return langs + " · " + size + " · " + getString(hint);
+        int speed = m.speedClass <= 1 ? R.string.catalog_speed_fast
+                : (m.speedClass == 2 ? R.string.catalog_speed_mid : R.string.catalog_speed_slow);
+        SpannableStringBuilder sb = new SpannableStringBuilder();
+        sb.append(langs).append(" · ").append(size).append(" · ").append(getString(speed)).append(" · ");
+        appendQualityDots(sb, m.qualityClass);
+        if (m.isHeavy()) sb.append(" · ").append(getString(R.string.catalog_heavy));
+        return sb;
     }
 
-    private int getColorAttr(int attr) {
-        android.util.TypedValue tv = new android.util.TypedValue();
-        getTheme().resolveAttribute(attr, tv, true);
-        return tv.data;
+    /** Three dots: filled (warm accent) up to qualityClass, the rest hollow (faint) — a quality scale. */
+    private void appendQualityDots(SpannableStringBuilder sb, int qualityClass) {
+        int q = Math.max(1, Math.min(3, qualityClass));
+        int filled = color(R.color.glass_warm);
+        int hollow = color(R.color.glass_ink_faint);
+        for (int i = 1; i <= 3; i++) {
+            int start = sb.length();
+            sb.append((char) (i <= q ? 0x25CF : 0x25CB));
+            sb.setSpan(new ForegroundColorSpan(i <= q ? filled : hollow),
+                    start, sb.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+    }
+
+    private int color(@ColorRes int res) {
+        return ContextCompat.getColor(this, res);
+    }
+
+    /** Paint a chip as a soft tinted pill. */
+    private void tint(Chip chip, @ColorRes int bg, @ColorRes int fg) {
+        chip.setChipBackgroundColor(ColorStateList.valueOf(color(bg)));
+        chip.setTextColor(color(fg));
     }
 }

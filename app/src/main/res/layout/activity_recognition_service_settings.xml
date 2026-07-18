@@ -1,75 +1,116 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true">
+    android:background="@drawable/liquid_glass_bg"
+    android:fitsSystemWindows="true"
+    android:orientation="vertical">
+
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="64dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="12dp">
+
+        <ImageButton
+            android:id="@+id/btnBack"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/living_glass_pill"
+            android:contentDescription="@android:string/cancel"
+            android:src="@drawable/ic_arrow_back_24dp"
+            app:tint="@color/glass_ink" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="14dp"
+            android:layout_weight="1"
+            android:fontFamily="@font/space_grotesk"
+            android:text="@string/voice_input"
+            android:textColor="@color/glass_ink"
+            android:textFontWeight="700"
+            android:textSize="21sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/living_glass_panel"
         android:orientation="vertical"
         android:padding="16dp">
-        <LinearLayout
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/space_mono_regular"
+            android:letterSpacing="0.08"
+            android:text="@string/settings_recognition"
+            android:textAllCaps="true"
+            android:textColor="@color/living_cyan"
+            android:textSize="10sp" />
+
+        <!-- The pills carry their own label: a floating hint would notch a gap through the
+             glass stroke, and these two values are not self-describing on a settings form. -->
+        <TextView
+            style="@style/TextAppearance.LivingSignal.FieldLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="@string/select_model" />
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilRecognitionModel"
+            style="@style/Widget.LivingSignal.Dropdown"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="10dp"
-            android:orientation="horizontal">
+            android:layout_marginTop="6dp">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textSize="16sp"
-                android:textColor="@color/colorAccent"
-                android:text="@string/select_model" />
-
-            <Spinner
+            <com.google.android.material.textfield.MaterialAutoCompleteTextView
                 android:id="@+id/spnrTfliteFiles"
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1" />
-        </LinearLayout>
+                android:fontFamily="@font/space_grotesk"
+                android:inputType="none"
+                android:popupBackground="@drawable/menu_sheet"
+                android:textColor="@color/glass_ink" />
+        </com.google.android.material.textfield.TextInputLayout>
 
-        <LinearLayout
+        <TextView
+            style="@style/TextAppearance.LivingSignal.FieldLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/language" />
+
+        <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/layout_language"
+            style="@style/Widget.LivingSignal.Dropdown"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:orientation="horizontal">
+            android:layout_marginTop="6dp">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textSize="16sp"
-                android:textColor="@color/colorAccent"
-                android:text="@string/language" />
-
-            <Spinner
+            <com.google.android.material.textfield.MaterialAutoCompleteTextView
                 android:id="@+id/spnrLanguage"
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1" />
-        </LinearLayout>
-        <LinearLayout
-            android:id="@+id/layout_mode_chinese"
+                android:fontFamily="@font/space_grotesk"
+                android:inputType="none"
+                android:popupBackground="@drawable/menu_sheet"
+                android:textColor="@color/glass_ink" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/mode_simple_chinese"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="start">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:textSize="16sp"
-                android:textColor="@color/colorAccent"
-                android:text="@string/simple_chinese" />
-
-            <CheckBox
-                android:id="@+id/mode_simple_chinese"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:minWidth="0dp"
-                android:minHeight="0dp"
-                android:contentDescription="@string/simple_chinese"/>
-
-        </LinearLayout>
+            android:layout_height="56dp"
+            android:layout_marginTop="8dp"
+            android:gravity="center_vertical"
+            android:text="@string/settings_simple_chinese"
+            android:textColor="@color/glass_ink" />
     </LinearLayout>
-</androidx.coordinatorlayout.widget.CoordinatorLayout>
+</LinearLayout>

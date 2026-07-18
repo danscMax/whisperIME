@@ -30,8 +30,8 @@ public class SettingsActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        ThemeUtils.applyNightMode(this);
         ThemeUtils.applyPalette(this);
+        ThemeUtils.applyGlass(this);
         setContentView(R.layout.activity_settings);
         ThemeUtils.setStatusBarAppearance(this);
 
@@ -96,7 +96,7 @@ public class SettingsActivity extends AppCompatActivity {
         }
         if (selected) {
             // Aurora dark panel: light ink ring reads clearly against the swatch.
-            g.setStroke(dp(3), ContextCompat.getColor(this, R.color.aurora_ink));
+            g.setStroke(dp(3), ContextCompat.getColor(this, R.color.glass_ink));
         }
         return g;
     }

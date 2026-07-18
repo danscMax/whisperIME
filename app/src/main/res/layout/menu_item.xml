@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Exposed-dropdown popup row: compact, brand type, light ink, ripple. -->
+<!-- Exposed-dropdown popup row: roomy, brand type, a warm check on the selected item (set by the
+     adapter's getView). drawablePadding leaves room for that trailing check. -->
 <TextView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:minHeight="48dp"
+    android:minHeight="52dp"
     android:gravity="center_vertical"
-    android:paddingHorizontal="18dp"
+    android:paddingHorizontal="20dp"
+    android:drawablePadding="12dp"
     android:fontFamily="@font/space_grotesk"
-    android:textColor="@color/aurora_ink"
+    android:textColor="@color/glass_ink"
     android:textSize="15sp"
     android:ellipsize="end"
     android:maxLines="1" />

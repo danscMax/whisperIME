@@ -9,7 +9,6 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
-import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -41,8 +40,6 @@ import androidx.transition.TransitionManager;
 
 import com.github.houbb.opencc4j.util.ZhConverterUtil;
 import com.google.android.material.button.MaterialButton;
-import com.google.android.material.color.MaterialColors;
-import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.whispertflite.asr.Recorder;
 import com.whispertflite.asr.RecordBuffer;
 import com.whispertflite.asr.Whisper;
@@ -51,13 +48,11 @@ import com.whispertflite.history.HistoryDb;
 import com.whispertflite.models.ModelDownloadManager;
 import com.whispertflite.models.ModelInfo;
 import com.whispertflite.models.ModelRegistry;
-import com.whispertflite.ui.WaveformView;
+import com.whispertflite.ui.LivingSignalView;
 import com.whispertflite.utils.HapticFeedback;
 import com.whispertflite.utils.InputLang;
 import com.whispertflite.utils.LanguagePairAdapter;
 import com.whispertflite.utils.ThemeUtils;
-
-import org.woheller69.freeDroidWarn.FreeDroidWarn;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -88,16 +83,16 @@ public class MainActivity extends AppCompatActivity {
     private ImageButton btnOverflow;
     private com.google.android.material.chip.Chip append;
     private com.google.android.material.chip.Chip translate;
-    private LinearProgressIndicator processingBar;
-    private WaveformView waveform;
-    private com.whispertflite.ui.AuroraOrbView orb;
+    private LivingSignalView orb;
     private TextView tvReadyHint;
-    private TextView tvHintTap;
     private TextView tvTimer;
     private TextView perfChip;
     private LinearLayout layoutRecording;
     private LinearLayout layoutError;
     private LinearLayout layoutActions;
+    private LinearLayout contextPanel;
+    private MaterialButton btnContext;
+    private TextView dockStatus;
 
     private Recorder mRecorder = null;
     private Whisper mWhisper = null;
@@ -143,6 +138,9 @@ public class MainActivity extends AppCompatActivity {
         modelExecutor.shutdownNow();
         deinitModel();
         deinitTTS();
+        if (mRecorder != null) {
+            mRecorder.shutdown();   // ends the worker thread; leaked one per activity recreate
+        }
         super.onDestroy();
     }
 
@@ -168,7 +166,10 @@ public class MainActivity extends AppCompatActivity {
         String prefId = sp.getString("selectedModelId", selectedModel != null ? selectedModel.id : null);
         boolean modelChanged = selectedModel == null || !selectedModel.id.equals(prefId);
         boolean listChanged = !sameModelList(downloaded);
-        if (!modelChanged && !listChanged) return;
+        if (!modelChanged && !listChanged) {
+            updateContextPill();
+            return;
+        }
 
         selectedModel = resolveSelectedModel(downloaded);
         currentDownloadedModels = downloaded;
@@ -191,25 +192,35 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mContext = this;
-        ThemeUtils.applyNightMode(this);
         ThemeUtils.applyPalette(this);
+        ThemeUtils.applyGlass(this);
         setContentView(R.layout.activity_main);
         ThemeUtils.setStatusBarAppearance(this);
         sp = PreferenceManager.getDefaultSharedPreferences(this);
         checkInputMethodEnabled();
 
-        processingBar = findViewById(R.id.processing_bar);
-        waveform = findViewById(R.id.waveform);
         orb = findViewById(R.id.orb);
-        orb.setColors(themeColor(com.google.android.material.R.attr.colorPrimary),
-                themeColor(com.google.android.material.R.attr.colorPrimaryContainer));
+        int[] orbTint = ThemeUtils.orbColors(this);
+        orb.setColors(orbTint[0], orbTint[1]);
         tvReadyHint = findViewById(R.id.tvReadyHint);
-        tvHintTap = findViewById(R.id.tvHintTap);
         tvTimer = findViewById(R.id.tvTimer);
         perfChip = findViewById(R.id.perf_chip);
         layoutRecording = findViewById(R.id.layout_recording);
         layoutError = findViewById(R.id.layout_error);
         layoutActions = findViewById(R.id.layout_actions);
+        contextPanel = findViewById(R.id.contextPanel);
+        btnContext = findViewById(R.id.btnContext);
+        dockStatus = findViewById(R.id.dockStatus);
+        btnContext.setOnClickListener(v -> {
+            boolean opening = contextPanel.getVisibility() != View.VISIBLE;
+            TransitionManager.beginDelayedTransition((ViewGroup) contextPanel.getParent(),
+                    new Fade().setDuration(180));
+            contextPanel.setVisibility(opening ? View.VISIBLE : View.GONE);
+            // Flip the chevron so the button reflects the panel state (MaterialButton has no
+            // icon-rotation API — swap the up/down glyph instead).
+            btnContext.setIconResource(opening ? R.drawable.ic_expand_less_24dp
+                    : R.drawable.ic_expand_more_24dp);
+        });
 
         append = findViewById(R.id.mode_append);
         translate = findViewById(R.id.mode_translate);
@@ -252,10 +263,11 @@ public class MainActivity extends AppCompatActivity {
         languagePairs = LanguagePairAdapter.getLanguagePairs(this);
         List<String> langNames = new ArrayList<>();
         for (Pair<String, String> p : languagePairs) langNames.add(p.second);
-        spinnerLanguage.setAdapter(noFilterAdapter(langNames));
+        spinnerLanguage.setAdapter(noFilterAdapter(spinnerLanguage, langNames));
         spinnerLanguage.setOnItemClickListener((parent, view, pos, id) -> {
             langToken = InputLang.getIdForLanguage(InputLang.getLangList(), languagePairs.get(pos).first);
             sp.edit().putString("language", languagePairs.get(pos).first).apply();
+            updateContextPill();
         });
 
         badgeEngine = findViewById(R.id.badge_engine);
@@ -273,6 +285,7 @@ public class MainActivity extends AppCompatActivity {
             sp.edit().putString("selectedModelId", selectedModel.id).apply();
             updateEngineBadge();
             applyLanguageEnabled();
+            updateContextPill();
             // Loading a GGUF model (up to ~0.5 GB) blocks for seconds; switch off the UI thread.
             switchModelAsync();
         });
@@ -286,7 +299,7 @@ public class MainActivity extends AppCompatActivity {
                 if (mWhisper == null) {
                     Toast.makeText(this, R.string.main_model_loading, Toast.LENGTH_SHORT).show();
                 } else if (!mWhisper.isInProgress()) {
-                    if (sp.getBoolean("hapticFeedback", true)) HapticFeedback.vibrate(this);
+                    HapticFeedback.vibrate(this);
                     startRecording();
                 } else (Toast.makeText(this,getString(R.string.please_wait),Toast.LENGTH_SHORT)).show();
             } else if (event.getAction() == MotionEvent.ACTION_UP
@@ -331,7 +344,7 @@ public class MainActivity extends AppCompatActivity {
         // Audio recording functionality
         mRecorder = new Recorder(this);
         mRecorder.setRmsListener(rms -> runOnUiThread(() -> {
-            if (currentState == UiState.RECORDING) { waveform.push(rms); orb.pushLevel(rms); }
+            if (currentState == UiState.RECORDING) orb.pushLevel(rms);
         }));
         // Each VAD chunk feeds the Whisper queue for live, sequential (pseudo-streaming) transcription.
         // Guard the mutable field: a model switch can null mWhisper while the recorder still emits a chunk.
@@ -343,7 +356,7 @@ public class MainActivity extends AppCompatActivity {
                 if (message.equals(Recorder.MSG_RECORDING)) {
                     if (!append.isChecked()) runOnUiThread(() -> tvResult.setText(""));
                 } else if (message.equals(Recorder.MSG_RECORDING_DONE) || message.equals(Recorder.MSG_RECORDING_ERROR)) {
-                    if (sp.getBoolean("hapticFeedback", true)) HapticFeedback.vibrate(mContext);
+                    HapticFeedback.vibrate(mContext);
                     recordingStopped = true;
                     recordDurationMs = System.currentTimeMillis() - recordStartMs;
                     // Queued chunks may still be transcribing: PROCESSING until the queue drains,
@@ -358,20 +371,30 @@ public class MainActivity extends AppCompatActivity {
 
         applyState(UiState.READY);
 
-        FreeDroidWarn.showWarningOnUpgrade(this, BuildConfig.VERSION_CODE);
         if (GithubStar.shouldShowStarDialog(this)) GithubStar.starDialog(this, "https://github.com/woheller69/whisperIME");
         // Assume this Activity is the current activity, check record permission
         checkPermissions();
     }
 
     private void showOverflowMenu(View anchor) {
-        PopupMenu menu = new PopupMenu(this, anchor);
-        android.view.MenuItem item = menu.getMenu().add(0, 1, 0, R.string.settings_simple_chinese);
+        // Frosted glass menu sheet instead of the flat Material popup, to match the dropdowns.
+        PopupMenu menu = new PopupMenu(
+                new android.view.ContextThemeWrapper(this, R.style.ThemeOverlay_Glass_Menu), anchor);
+        menu.getMenu().add(0, 2, 0, R.string.info);
+        android.view.MenuItem item = menu.getMenu().add(0, 1, 1, R.string.settings_simple_chinese);
         item.setCheckable(true);
         item.setChecked(sp.getBoolean("simpleChinese", false));
         menu.setOnMenuItemClickListener(mi -> {
-            sp.edit().putBoolean("simpleChinese", !mi.isChecked()).apply();
-            return true;
+            if (mi.getItemId() == 2) {
+                startActivity(new Intent(Intent.ACTION_VIEW,
+                        Uri.parse("https://github.com/woheller69/whisperIME#Donate")));
+                return true;
+            }
+            if (mi.getItemId() == 1) {
+                sp.edit().putBoolean("simpleChinese", !mi.isChecked()).apply();
+                return true;
+            }
+            return false;
         });
         menu.show();
     }
@@ -394,27 +417,31 @@ public class MainActivity extends AppCompatActivity {
         layoutError.setVisibility(error ? View.VISIBLE : View.GONE);
         layoutActions.setVisibility(result ? View.VISIBLE : View.GONE);
         perfChip.setVisibility(result ? View.VISIBLE : View.GONE);
-        processingBar.setVisibility(processing ? View.VISIBLE : View.INVISIBLE);
         // Transcript-panel placeholder shows only when the panel is empty (READY, nothing typed yet).
         boolean empty = tvResult.getText().length() == 0;
         if (tvReadyHint != null)
             tvReadyHint.setVisibility(state == UiState.READY && empty ? View.VISIBLE : View.GONE);
-        // The "tap to speak" caption under the orb hides while recording (the timer takes over above).
-        if (tvHintTap != null) tvHintTap.setVisibility(recording ? View.GONE : View.VISIBLE);
+        dockStatus.setVisibility(result ? View.GONE : View.VISIBLE);
+        dockStatus.setText(state == UiState.RECORDING ? R.string.main_state_listening
+                : state == UiState.PROCESSING ? R.string.main_state_processing
+                : state == UiState.ERROR ? R.string.main_retry
+                : R.string.main_hold_signal);
+
+        LivingSignalView.SignalState signalState = state == UiState.RECORDING
+                ? LivingSignalView.SignalState.LISTENING
+                : state == UiState.PROCESSING ? LivingSignalView.SignalState.PROCESSING
+                : state == UiState.RESULT ? LivingSignalView.SignalState.RESULT
+                : state == UiState.ERROR ? LivingSignalView.SignalState.ERROR
+                : LivingSignalView.SignalState.READY;
+        orb.setSignalState(signalState);
 
         if (recording) {
             recordStartMs = System.currentTimeMillis();
             tvTimer.setText("0:00");
-            waveform.clear();
             timerHandler.post(timerTick);
         } else {
-            orb.setIdle(); // orb returns to calm breathing
             timerHandler.removeCallbacks(timerTick);
         }
-    }
-
-    private int themeColor(int attr) {
-        return MaterialColors.getColor(this, attr, Color.GRAY);
     }
 
     private void checkInputMethodEnabled() {
@@ -442,14 +469,17 @@ public class MainActivity extends AppCompatActivity {
     private void switchModelAsync() {
         btnRecord.setEnabled(false);
         tilModel.setEnabled(false);
-        processingBar.setVisibility(View.VISIBLE);
+        btnContext.setEnabled(false);
+        dockStatus.setText(R.string.main_model_loading);
+        orb.setSignalState(LivingSignalView.SignalState.PROCESSING);
         modelExecutor.submit(() -> {
             deinitModel();
             initModel();
             runOnUiThread(() -> {
                 btnRecord.setEnabled(true);
                 tilModel.setEnabled(true);
-                if (currentState != UiState.RESULT) processingBar.setVisibility(View.INVISIBLE);
+                btnContext.setEnabled(true);
+                applyState(currentState);
             });
         });
     }
@@ -581,13 +611,14 @@ public class MainActivity extends AppCompatActivity {
     private void updateEngineBadge() {
         badgeEngine.setText(selectedModel.engine == ModelInfo.Engine.WHISPER_CPP
                 ? R.string.catalog_engine_whispercpp : R.string.main_badge_tflite);
+        updateContextPill();
     }
 
     /** Populate the model dropdown with the given models and show {@code selected} as the value. */
     private void setModelDropdown(List<ModelInfo> models, ModelInfo selected) {
         List<String> labels = new ArrayList<>();
         for (ModelInfo m : models) labels.add(modelLabel(m));
-        spinnerModel.setAdapter(noFilterAdapter(labels));
+        spinnerModel.setAdapter(noFilterAdapter(spinnerModel, labels));
         spinnerModel.setText(modelLabel(selected), false); // false: set value without filtering the list
     }
 
@@ -596,8 +627,9 @@ public class MainActivity extends AppCompatActivity {
      * the popup by the field's current text (so opening it would show only the selected row); this
      * keeps the full list by returning all items from the filter and never shrinking the backing list.
      */
-    private ArrayAdapter<String> noFilterAdapter(List<String> items) {
-        return new ArrayAdapter<String>(this, R.layout.aurora_menu_item, new ArrayList<>(items)) {
+    private ArrayAdapter<String> noFilterAdapter(android.widget.AutoCompleteTextView host,
+                                                 List<String> items) {
+        return new ArrayAdapter<String>(this, R.layout.menu_item, new ArrayList<>(items)) {
             @Override public android.widget.Filter getFilter() {
                 return new android.widget.Filter() {
                     @Override protected FilterResults performFiltering(CharSequence c) {
@@ -609,6 +641,18 @@ public class MainActivity extends AppCompatActivity {
                         notifyDataSetChanged(); // keep the full list; don't reduce it to matches
                     }
                 };
+            }
+
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                TextView row = (TextView) super.getView(position, convertView, parent);
+                // Mark the active choice: warm ink + a check, so the open list shows the current pick.
+                boolean selected = row.getText().toString().contentEquals(host.getText());
+                row.setTextColor(ContextCompat.getColor(MainActivity.this,
+                        selected ? R.color.glass_warm : R.color.glass_ink));
+                row.setCompoundDrawablesRelativeWithIntrinsicBounds(
+                        0, 0, selected ? R.drawable.ic_check_20dp : 0, 0);
+                return row;
             }
         };
     }
@@ -629,6 +673,14 @@ public class MainActivity extends AppCompatActivity {
             spinnerLanguage.setText(languagePairs.get(0).second, false); // "Detect language"
             tilLanguage.setEnabled(false);
         }
+        updateContextPill();
+    }
+
+    private void updateContextPill() {
+        if (btnContext == null || selectedModel == null) return;
+        String model = selectedModel.displayName.replace(" · TOP_WORLD", "");
+        CharSequence language = spinnerLanguage != null ? spinnerLanguage.getText() : "";
+        btnContext.setText(getString(R.string.main_context_format, model, language));
     }
 
     private String modelLabel(ModelInfo m) {
@@ -645,9 +697,6 @@ public class MainActivity extends AppCompatActivity {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             perms.add(Manifest.permission.RECORD_AUDIO);
             Toast.makeText(this, getString(R.string.need_record_audio_permission), Toast.LENGTH_SHORT).show();
-        }
-        if ((Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) && (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)){
-            perms.add(Manifest.permission.POST_NOTIFICATIONS);
         }
         if (!perms.isEmpty()) {
             requestPermissions(perms.toArray(new String[] {}), 0);

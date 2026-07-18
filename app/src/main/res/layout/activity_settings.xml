@@ -7,7 +7,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:fitsSystemWindows="true"
-    android:background="@drawable/aurora_bg_radial">
+    android:background="@drawable/liquid_glass_bg">
 
     <!-- top bar: circle back + Space Grotesk title -->
     <LinearLayout
@@ -20,11 +20,11 @@
 
         <ImageButton
             android:id="@+id/btnBack"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="@drawable/aurora_circle_btn"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/living_glass_pill"
             android:src="@drawable/ic_arrow_back_24dp"
-            app:tint="@color/aurora_ink"
+            app:tint="@color/glass_ink"
             android:contentDescription="@android:string/cancel" />
 
         <TextView
@@ -33,7 +33,7 @@
             android:layout_marginStart="12dp"
             android:fontFamily="@font/space_grotesk"
             android:text="@string/settings_title"
-            android:textColor="@color/aurora_ink"
+            android:textColor="@color/glass_ink"
             android:textFontWeight="700"
             android:textSize="22sp"
             android:letterSpacing="-0.02" />
@@ -45,19 +45,28 @@
         android:layout_weight="1"
         android:fillViewport="true">
 
-        <LinearLayout
+        <!-- Cap + centre the settings column so it doesn't stretch across a tablet. -->
+        <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+        <LinearLayout
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:paddingHorizontal="16dp"
-            android:paddingBottom="16dp">
+            android:paddingBottom="16dp"
+            app:layout_constraintWidth_max="@dimen/content_max_width"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
 
             <!-- Appearance -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                android:background="@drawable/aurora_panel_bg"
+                android:background="@drawable/living_glass_panel"
                 android:orientation="vertical"
                 android:padding="18dp">
 
@@ -75,7 +84,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
                     android:text="@string/settings_palette"
-                    android:textColor="@color/aurora_ink"
+                    android:textColor="@color/glass_ink"
                     android:textAppearance="?attr/textAppearanceBodyMedium" />
 
                 <LinearLayout
@@ -90,7 +99,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
                     android:text="@string/settings_theme"
-                    android:textColor="@color/aurora_ink"
+                    android:textColor="@color/glass_ink"
                     android:textAppearance="?attr/textAppearanceBodyMedium" />
 
                 <com.google.android.material.button.MaterialButtonToggleGroup
@@ -132,7 +141,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                android:background="@drawable/aurora_panel_bg"
+                android:background="@drawable/living_glass_panel"
                 android:orientation="vertical"
                 android:padding="18dp">
 
@@ -153,7 +162,7 @@
                     android:minHeight="48dp"
                     android:gravity="center_vertical"
                     android:text="@string/settings_haptic"
-                    android:textColor="@color/aurora_ink" />
+                    android:textColor="@color/glass_ink" />
 
                 <com.google.android.material.materialswitch.MaterialSwitch
                     android:id="@+id/switch_tts"
@@ -162,7 +171,7 @@
                     android:minHeight="48dp"
                     android:gravity="center_vertical"
                     android:text="@string/settings_tts"
-                    android:textColor="@color/aurora_ink" />
+                    android:textColor="@color/glass_ink" />
 
                 <com.google.android.material.materialswitch.MaterialSwitch
                     android:id="@+id/switch_simple_chinese"
@@ -171,7 +180,7 @@
                     android:minHeight="48dp"
                     android:gravity="center_vertical"
                     android:text="@string/settings_simple_chinese"
-                    android:textColor="@color/aurora_ink" />
+                    android:textColor="@color/glass_ink" />
             </LinearLayout>
 
             <!-- History -->
@@ -179,7 +188,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                android:background="@drawable/aurora_panel_bg"
+                android:background="@drawable/living_glass_panel"
                 android:orientation="vertical"
                 android:padding="18dp">
 
@@ -200,7 +209,7 @@
                     android:minHeight="48dp"
                     android:gravity="center_vertical"
                     android:text="@string/settings_history_save"
-                    android:textColor="@color/aurora_ink" />
+                    android:textColor="@color/glass_ink" />
 
                 <com.google.android.material.materialswitch.MaterialSwitch
                     android:id="@+id/switch_history_ime"
@@ -209,7 +218,7 @@
                     android:minHeight="48dp"
                     android:gravity="center_vertical"
                     android:text="@string/settings_history_from_ime"
-                    android:textColor="@color/aurora_ink" />
+                    android:textColor="@color/glass_ink" />
 
                 <TextView
                     android:id="@+id/row_history_open"
@@ -221,7 +230,7 @@
                     android:gravity="center_vertical"
                     android:minHeight="48dp"
                     android:text="@string/settings_history_open"
-                    android:textColor="@color/aurora_ink"
+                    android:textColor="@color/glass_ink"
                     android:textAppearance="?attr/textAppearanceBodyLarge" />
             </LinearLayout>
 
@@ -229,7 +238,7 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/aurora_panel_bg"
+                android:background="@drawable/living_glass_panel"
                 android:orientation="vertical"
                 android:padding="18dp">
 
@@ -253,7 +262,7 @@
                     android:gravity="center_vertical"
                     android:minHeight="48dp"
                     android:text="@string/settings_models"
-                    android:textColor="@color/aurora_ink"
+                    android:textColor="@color/glass_ink"
                     android:textAppearance="?attr/textAppearanceBodyLarge" />
 
                 <TextView
@@ -266,7 +275,7 @@
                     android:gravity="center_vertical"
                     android:minHeight="48dp"
                     android:text="@string/settings_enable_keyboard"
-                    android:textColor="@color/aurora_ink"
+                    android:textColor="@color/glass_ink"
                     android:textAppearance="?attr/textAppearanceBodyLarge" />
 
                 <TextView
@@ -279,7 +288,7 @@
                     android:gravity="center_vertical"
                     android:minHeight="48dp"
                     android:text="@string/settings_voice_input"
-                    android:textColor="@color/aurora_ink"
+                    android:textColor="@color/glass_ink"
                     android:textAppearance="?attr/textAppearanceBodyLarge" />
 
                 <TextView
@@ -292,9 +301,10 @@
                     android:gravity="center_vertical"
                     android:minHeight="48dp"
                     android:text="@string/settings_github"
-                    android:textColor="@color/aurora_ink"
+                    android:textColor="@color/glass_ink"
                     android:textAppearance="?attr/textAppearanceBodyLarge" />
             </LinearLayout>
         </LinearLayout>
+        </androidx.constraintlayout.widget.ConstraintLayout>
     </ScrollView>
 </LinearLayout>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icon tile on the active card: inverted against its own surface, so it reads as the one
+     picked out of the list. Dark slab on the light theme, light slab after dark. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient android:angle="270"
+        android:startColor="@color/glass_tile_active_top"
+        android:endColor="@color/glass_tile_active_bottom" />
+    <corners android:radius="15dp" />
+</shape>

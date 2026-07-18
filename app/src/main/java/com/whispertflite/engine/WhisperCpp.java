@@ -18,6 +18,9 @@ public final class WhisperCpp {
     /** @param lang ISO code ("ru"/"en") or "auto" for language detection. */
     public static native String nativeTranscribe(long ctxPtr, float[] pcm16k, String lang, boolean translate);
 
+    /** ISO code of the language whisper auto-detected on the last {@link #nativeTranscribe}, or "". */
+    public static native String nativeDetectedLang(long ctxPtr);
+
     public static native void nativeRelease(long ctxPtr);
 
     /** Ask a running nativeTranscribe to abort as soon as possible (thread-safe). */

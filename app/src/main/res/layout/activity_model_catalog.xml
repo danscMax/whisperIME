@@ -1,36 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Warm liquid-glass model catalog. Ids preserved for ModelCatalogActivity. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
+    android:background="@drawable/liquid_glass_bg"
     android:fitsSystemWindows="true"
-    android:background="@drawable/aurora_bg_radial">
+    android:orientation="vertical">
 
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
+        android:layout_marginTop="4dp"
         android:background="@android:color/transparent"
         app:navigationIcon="@drawable/ic_arrow_back_24dp"
-        app:navigationIconTint="@color/aurora_ink"
-        app:titleTextAppearance="@style/TextAppearance.Aurora.Toolbar"
-        app:titleTextColor="@color/aurora_ink"
-        app:title="@string/catalog_title" />
+        app:navigationIconTint="@color/glass_ink"
+        app:title="@string/catalog_title"
+        app:titleTextColor="@color/glass_ink" />
 
     <com.google.android.material.chip.ChipGroup
         android:id="@+id/filterGroup"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="12dp"
-        android:layout_marginBottom="4dp"
+        android:layout_marginHorizontal="14dp"
+        android:layout_marginBottom="6dp"
+        app:selectionRequired="true"
         app:singleLine="true"
-        app:singleSelection="true"
-        app:selectionRequired="true">
+        app:singleSelection="true">
 
         <com.google.android.material.chip.Chip
             android:id="@+id/filterAll"
-            style="@style/Widget.Aurora.Chip.Filter"
+            style="@style/Widget.Glass.Chip.Filter"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:checked="true"
@@ -38,47 +39,57 @@
 
         <com.google.android.material.chip.Chip
             android:id="@+id/filterTflite"
-            style="@style/Widget.Aurora.Chip.Filter"
+            style="@style/Widget.Glass.Chip.Filter"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/catalog_filter_tflite" />
 
         <com.google.android.material.chip.Chip
             android:id="@+id/filterWhisperCpp"
-            style="@style/Widget.Aurora.Chip.Filter"
+            style="@style/Widget.Glass.Chip.Filter"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/catalog_filter_whispercpp" />
     </com.google.android.material.chip.ChipGroup>
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recycler"
+    <!-- Cap + centre the list so cards don't stretch across a tablet. -->
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:clipToPadding="false"
-        android:paddingHorizontal="12dp"
-        android:paddingBottom="12dp" />
+        android:layout_weight="1">
 
-    <com.google.android.material.divider.MaterialDivider
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recycler"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:clipToPadding="false"
+            android:paddingHorizontal="10dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="10dp"
+            app:layout_constraintWidth_max="@dimen/content_max_width"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
+        android:layout_margin="12dp"
+        android:background="@drawable/liquid_glass_card"
         android:gravity="center_vertical"
-        android:paddingHorizontal="16dp"
-        android:paddingVertical="8dp">
+        android:orientation="horizontal"
+        android:paddingHorizontal="18dp"
+        android:paddingVertical="13dp">
 
         <TextView
             android:id="@+id/storageUsed"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:textAppearance="?attr/textAppearanceBodyMedium"
-            android:textColor="?attr/colorOnSurfaceVariant" />
+            android:textColor="@color/glass_ink_body"
+            android:textSize="14sp" />
 
         <com.google.android.material.materialswitch.MaterialSwitch
             android:id="@+id/wifiOnlySwitch"

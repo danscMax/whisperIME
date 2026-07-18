@@ -62,6 +62,8 @@ public class Recorder {
     private final Lock lock = new ReentrantLock();
     private final Condition hasTask = lock.newCondition();
     private final Object fileSavedLock = new Object(); // Lock object for wait/notify
+    private boolean recordingFinished = true;           // guarded by fileSavedLock
+    private volatile boolean released = false;          // set by shutdown() to end the worker
 
     private volatile boolean shouldStartRecording = false;
     private boolean useVAD = false;
@@ -99,6 +101,7 @@ public class Recorder {
             Log.d(TAG, "Recording is already in progress...");
             return;
         }
+        synchronized (fileSavedLock) { recordingFinished = false; }
         lock.lock();
         try {
             Log.d(TAG, "Recording starts now");
@@ -126,13 +129,43 @@ public class Recorder {
         Log.d(TAG, "Recording stopped");
         mInProgress.set(false);
 
-        // Wait for the recording thread to finish
+        // Wait (bounded) for the worker to drain and signal completion. The guard flag defeats the
+        // lost-wakeup race (the worker can finish between our set(false) and wait()), and the 3 s cap
+        // means a capture that never started (e.g. permission denied) can't hang the caller — stop()
+        // runs on the UI thread, so an unbounded wait() was an ANR waiting to happen.
         synchronized (fileSavedLock) {
-            try {
-                fileSavedLock.wait(); // Wait until notified by the recording thread
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt(); // Restore interrupted status
+            long end = System.currentTimeMillis() + 3000;
+            while (!recordingFinished) {
+                long remaining = end - System.currentTimeMillis();
+                if (remaining <= 0) break;
+                try {
+                    fileSavedLock.wait(remaining);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
             }
+        }
+    }
+
+    /**
+     * Permanently stop this recorder: abort any capture, end the worker thread and wake anyone
+     * blocked in {@link #stop()}. Unusable afterwards. Every owner MUST call this in teardown — the
+     * worker is a while-loop that otherwise parks forever (one leaked thread per abandoned Recorder).
+     */
+    public void shutdown() {
+        released = true;
+        mInProgress.set(false);
+        lock.lock();
+        try {
+            hasTask.signalAll();
+        } finally {
+            lock.unlock();
+        }
+        workerThread.interrupt();
+        synchronized (fileSavedLock) {
+            recordingFinished = true;
+            fileSavedLock.notifyAll();
         }
     }
 
@@ -210,10 +243,10 @@ public class Recorder {
 
 
     private void recordLoop() {
-        while (true) {
+        while (!released) {
             lock.lock();
             try {
-                while (!shouldStartRecording) {
+                while (!shouldStartRecording && !released) {
                     hasTask.await();
                 }
                 shouldStartRecording = false;
@@ -223,6 +256,7 @@ public class Recorder {
             } finally {
                 lock.unlock();
             }
+            if (released) return;
 
             // Start recording process
             try {
@@ -233,6 +267,13 @@ public class Recorder {
                 sendUpdate(e.getMessage());
             } finally {
                 mInProgress.set(false);
+                // Signal completion on EVERY path — normal, early-return (permission denied) and
+                // exception — so a caller waiting in stop() is never stranded. (Previously the notify
+                // lived only at the tail of the record methods, which the early returns skipped.)
+                synchronized (fileSavedLock) {
+                    recordingFinished = true;
+                    fileSavedLock.notifyAll();
+                }
             }
         }
     }
@@ -343,12 +384,7 @@ public class Recorder {
         } else {
             sendUpdate(MSG_RECORDING_ERROR);
         }
-
-        // Notify the waiting thread that recording is complete
-        synchronized (fileSavedLock) {
-            fileSavedLock.notify(); // Notify that recording is finished
-        }
-
+        // Completion is signalled centrally in recordLoop's finally (covers every exit path).
     }
 
     /**
@@ -464,10 +500,7 @@ public class Recorder {
 
         Log.d(TAG, "Chunked recording done, chunks emitted: " + chunksEmitted);
         sendUpdate(chunksEmitted > 0 ? MSG_RECORDING_DONE : MSG_RECORDING_ERROR);
-
-        synchronized (fileSavedLock) {
-            fileSavedLock.notify();
-        }
+        // Completion is signalled centrally in recordLoop's finally (covers every exit path).
     }
 
 }

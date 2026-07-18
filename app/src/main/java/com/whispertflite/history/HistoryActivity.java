@@ -5,6 +5,8 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
@@ -20,6 +22,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.PopupMenu;
+import androidx.core.view.ViewCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -31,6 +34,8 @@ import com.whispertflite.utils.ThemeUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class HistoryActivity extends AppCompatActivity {
 
@@ -39,11 +44,17 @@ public class HistoryActivity extends AppCompatActivity {
     private View emptyState;
     private String query = null;
 
+    // History reads (a LIKE over up to 500 rows) run off the UI thread; the search box debounces so
+    // it doesn't fire a query on every keystroke.
+    private final ExecutorService dbExecutor = Executors.newSingleThreadExecutor();
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private final Runnable reloadTask = this::reload;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        ThemeUtils.applyNightMode(this);
         ThemeUtils.applyPalette(this);
+        ThemeUtils.applyGlass(this);
         setContentView(R.layout.activity_history);
         ThemeUtils.setStatusBarAppearance(this);
         db = HistoryDb.get(this);
@@ -65,13 +76,27 @@ public class HistoryActivity extends AppCompatActivity {
         adapter = new HistoryAdapter();
         recycler.setAdapter(adapter);
 
+        // Frosted top bar: the list scrolls under it, blurred (API 31+) / translucent glass otherwise.
+        com.whispertflite.ui.FrostedBlurView blurBar = findViewById(R.id.blurBar);
+        blurBar.attach(recycler);
+        int bg = androidx.core.content.ContextCompat.getColor(this, R.color.glass_screen);
+        blurBar.setGlass(
+                androidx.core.graphics.ColorUtils.setAlphaComponent(bg, 0xEE),   // frosted veil over the blur
+                androidx.core.content.ContextCompat.getColor(this, R.color.glass_card_brd));
+        blurBar.post(() -> recycler.setPadding(recycler.getPaddingLeft(), blurBar.getHeight(),
+                recycler.getPaddingRight(), recycler.getPaddingBottom()));
+        recycler.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override public void onScrolled(RecyclerView rv, int dx, int dy) { blurBar.markDirty(); }
+        });
+
         EditText search = findViewById(R.id.searchField);
         search.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
             @Override public void onTextChanged(CharSequence s, int a, int b, int c) {}
             @Override public void afterTextChanged(Editable s) {
                 query = s.toString();
-                reload();
+                mainHandler.removeCallbacks(reloadTask);
+                mainHandler.postDelayed(reloadTask, 250);   // debounce: don't query per keystroke
             }
         });
 
@@ -84,10 +109,23 @@ public class HistoryActivity extends AppCompatActivity {
         reload();
     }
 
+    @Override
+    protected void onDestroy() {
+        mainHandler.removeCallbacks(reloadTask);
+        dbExecutor.shutdownNow();
+        super.onDestroy();
+    }
+
+    /** Query the DB off the UI thread, then swap the list in on the main thread. */
     private void reload() {
-        List<HistoryDb.Entry> entries = db.list(query, 500);
-        adapter.setItems(entries);
-        emptyState.setVisibility(entries.isEmpty() ? View.VISIBLE : View.GONE);
+        final String q = query;
+        dbExecutor.execute(() -> {
+            final List<HistoryDb.Entry> entries = db.list(q, 500);
+            mainHandler.post(() -> {
+                adapter.setItems(entries);
+                emptyState.setVisibility(entries.isEmpty() ? View.VISIBLE : View.GONE);
+            });
+        });
     }
 
     private void confirmClearAll() {
@@ -147,7 +185,33 @@ public class HistoryActivity extends AppCompatActivity {
         public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             View v = LayoutInflater.from(parent.getContext())
                     .inflate(R.layout.item_history, parent, false);
-            return new VH(v);
+            VH vh = new VH(v);
+            // TalkBack / switch access: expose copy, share and delete as first-class custom actions —
+            // the long-press PopupMenu is invisible to screen readers. Added ONCE per view here (not
+            // per bind, which accumulated stale actions on recycled rows); each resolves the live row
+            // by its current bound position at invocation time.
+            ViewCompat.addAccessibilityAction(v, getString(R.string.copy_to_clipboard), (view, a) -> {
+                HistoryDb.Entry e = entryAt(vh);
+                if (e != null) copy(e.text);
+                return e != null;
+            });
+            ViewCompat.addAccessibilityAction(v, getString(R.string.history_share), (view, a) -> {
+                HistoryDb.Entry e = entryAt(vh);
+                if (e != null) share(e.text);
+                return e != null;
+            });
+            ViewCompat.addAccessibilityAction(v, getString(R.string.history_delete), (view, a) -> {
+                HistoryDb.Entry e = entryAt(vh);
+                if (e != null) { db.delete(e.id); reload(); }
+                return e != null;
+            });
+            return vh;
+        }
+
+        /** The entry currently bound to a holder, or null if it is unbound/recycling. */
+        private HistoryDb.Entry entryAt(VH vh) {
+            int pos = vh.getBindingAdapterPosition();
+            return (pos != RecyclerView.NO_POSITION && pos < items.size()) ? items.get(pos) : null;
         }
 
         @Override
@@ -172,6 +236,7 @@ public class HistoryActivity extends AppCompatActivity {
                 menu.show();
                 return true;
             });
+            // Screen-reader custom actions (copy/share/delete) are attached once in onCreateViewHolder.
         }
 
         @Override

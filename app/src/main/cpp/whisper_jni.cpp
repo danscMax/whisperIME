@@ -4,19 +4,60 @@
 #include <thread>
 #include <algorithm>
 #include <atomic>
+#include <mutex>
+#include <dlfcn.h>
 #include <unistd.h>
 #include <android/log.h>
 
 #include "whisper.h"
+#include "ggml-backend.h"
 
 #define LOG_TAG "whisper_jni"
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  LOG_TAG, __VA_ARGS__)
 
 // Set by nativeCancel(); polled by whisper_full via the abort callback to stop a slow run early.
 static std::atomic<bool> g_cancel{false};
 
 static bool abort_callback(void *) {
     return g_cancel.load();
+}
+
+// The CPU backend is built as feature-tiered variant .so (GGML_CPU_ALL_VARIANTS) that the ggml
+// registry dlopen's and scores at runtime. Its default search — get_executable_path() — is
+// /system/bin on Android, never the app's lib dir, so nothing loads unless we point it there.
+// dladdr on our own symbol yields the path to libwhisper_jni.so, whose directory *is* the app's
+// nativeLibraryDir where every bundled variant sits — no Context plumbing needed. This only holds
+// with android:extractNativeLibs="true" in the manifest: otherwise the variant .so stay compressed
+// inside the APK (mapped, not on disk) and a directory scan finds nothing. Runs once.
+static void load_backends_once() {
+    static std::once_flag flag;
+    std::call_once(flag, [] {
+        Dl_info info;
+        if (dladdr(reinterpret_cast<void *>(&abort_callback), &info) && info.dli_fname) {
+            std::string dir(info.dli_fname);
+            auto slash = dir.find_last_of('/');
+            if (slash != std::string::npos) {
+                dir.resize(slash);
+                ggml_backend_load_all_from_path(dir.c_str());
+            }
+        }
+        // Log which CPU variant the registry scored highest — the whole point of the dispatch is
+        // that this is a feature-accelerated tier (dotprod/fp16 on ARM, AVX2 on x86), not baseline.
+        // Also a field diagnostic: it tells us the active kernel set on any user's device.
+        ggml_backend_dev_t cpu = ggml_backend_dev_by_type(GGML_BACKEND_DEVICE_TYPE_CPU);
+        LOGI("ggml backends registered: %zu; CPU device: %s (%s)",
+             ggml_backend_reg_count(),
+             cpu ? ggml_backend_dev_name(cpu) : "none",
+             cpu ? ggml_backend_dev_description(cpu) : "-");
+    });
+}
+
+// True once a CPU backend device is available. whisper_init calls ggml_backend_dev_backend_reg on
+// the CPU device and ggml_abort()s (uncatchable SIGABRT) if there is none, so gate on this first
+// and surface a catchable error instead of taking the whole process down.
+static bool cpu_backend_available() {
+    return ggml_backend_dev_by_type(GGML_BACKEND_DEVICE_TYPE_CPU) != nullptr;
 }
 
 static void throw_java(JNIEnv *env, const char *msg) {
@@ -35,6 +76,14 @@ Java_com_whispertflite_engine_WhisperCpp_nativeInit(JNIEnv *env, jclass, jstring
     const char *path = env->GetStringUTFChars(modelPath, nullptr);
     if (path == nullptr) {
         throw_java(env, "failed to read modelPath");
+        return 0;
+    }
+
+    load_backends_once();  // register the CPU backend variants before the first model load
+    if (!cpu_backend_available()) {
+        env->ReleaseStringUTFChars(modelPath, path);
+        LOGE("no CPU backend registered; refusing to init (would ggml_abort)");
+        throw_java(env, "whisper.cpp CPU backend unavailable");
         return 0;
     }
 
@@ -106,6 +155,16 @@ Java_com_whispertflite_engine_WhisperCpp_nativeTranscribe(JNIEnv *env, jclass, j
     wparams.abort_callback  = abort_callback;
     wparams.abort_callback_user_data = nullptr;
 
+    // Cap the encoder context to the actual audio length (+ margin) instead of always encoding a full
+    // 30 s window: whisper's encoder runs over `audio_ctx` frames (~50 per second of audio), so short
+    // VAD chunks skip most of the encoder for a large latency win.
+    // ponytail: the 256-frame (~5 s) pad is a calibration knob — widen it if word tails get cut on
+    // real speech (needs an on-device WER check); capped at the model's 1500, floored for tiny blips.
+    int audio_ctx = (int) ((n_samples / 16000.0) * 50.0 + 0.5) + 256;
+    if (audio_ctx > 1500) audio_ctx = 1500;
+    if (audio_ctx < 256)  audio_ctx = 256;
+    wparams.audio_ctx = audio_ctx;
+
     int rc = whisper_full(ctx, wparams, samples, (int) n_samples);
     env->ReleaseFloatArrayElements(pcm16k, samples, JNI_ABORT);
 
@@ -128,6 +187,17 @@ Java_com_whispertflite_engine_WhisperCpp_nativeTranscribe(JNIEnv *env, jclass, j
     }
 
     return env->NewStringUTF(result.c_str());
+}
+
+// ISO code of the language whisper detected on the last run (used for "auto" so downstream Chinese
+// simplified/traditional conversion still works). Reads the context's stored auto-detect result.
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_whispertflite_engine_WhisperCpp_nativeDetectedLang(JNIEnv *env, jclass, jlong ctxPtr) {
+    auto *ctx = reinterpret_cast<whisper_context *>(ctxPtr);
+    if (ctx == nullptr) return env->NewStringUTF("");
+    int id = whisper_full_lang_id(ctx);
+    const char *code = id >= 0 ? whisper_lang_str(id) : nullptr;
+    return env->NewStringUTF(code ? code : "");
 }
 
 extern "C" JNIEXPORT void JNICALL

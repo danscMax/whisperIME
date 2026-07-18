@@ -1,16 +1,25 @@
 <resources>
     <!-- Base application theme. -->
-    <style name="Theme.Whisper.NoActionBar" parent="Theme.Material3.DayNight.NoActionBar">
+    <style name="Theme.Whisper.NoActionBar" parent="Theme.Material3Expressive.DayNight.NoActionBar">
         <!-- Customize your light theme here. -->
         <item name="android:windowBackground">@color/windowBackground</item>
         <item name="android:windowAnimationStyle">@style/Animation.Whisper.Activity</item>
+        <!-- Edge-to-edge immersion: let the ambient backdrop bleed under transparent system bars. -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:enforceStatusBarContrast">false</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
     </style>
 
     <!-- Base application theme. -->
-    <style name="Theme.Whisper.ActionBar" parent="Theme.Material3.DayNight">
+    <style name="Theme.Whisper.ActionBar" parent="Theme.Material3Expressive.DayNight">
         <!-- Customize your light theme here. -->
         <item name="android:windowBackground">@color/windowBackground</item>
         <item name="android:windowAnimationStyle">@style/Animation.Whisper.Activity</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:enforceStatusBarContrast">false</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
     </style>
 
     <!-- Simple, coherent fade for every activity open/close (Main <-> Settings/History/Catalog). -->
@@ -32,39 +41,121 @@
         <item name="android:backgroundDimEnabled">false</item>
     </style>
 
-    <!-- Force light-on-dark text inside the Aurora pills (spinners inherit android:textColorPrimary,
-         which is dark under the palette's light surface and would be invisible on the dark screen). -->
-    <style name="ThemeOverlay.Aurora.OnDark" parent="">
-        <item name="android:textColorPrimary">@color/aurora_ink</item>
-        <item name="android:textColorSecondary">@color/aurora_ink_dim</item>
-        <item name="android:textColor">@color/aurora_ink</item>
-        <item name="colorControlNormal">@color/aurora_ink</item>
+    <!-- Force glass ink on views that inherit android:textColorPrimary from the palette (spinners
+         resolve it against the palette's tonal surface, not the glass one). -->
+    <style name="ThemeOverlay.Glass.OnSurface" parent="">
+        <item name="android:textColorPrimary">@color/glass_ink</item>
+        <item name="android:textColorSecondary">@color/glass_ink_dim</item>
+        <item name="android:textColor">@color/glass_ink</item>
+        <item name="colorControlNormal">@color/glass_ink</item>
     </style>
 
-    <!-- Aurora toolbar title: Space Grotesk 700 in aurora ink (used by catalog + other dark chrome). -->
-    <style name="TextAppearance.Aurora.Toolbar" parent="TextAppearance.Material3.TitleLarge">
+    <!-- Toolbar title: Space Grotesk 700 in glass ink. -->
+    <style name="TextAppearance.Glass.Toolbar" parent="TextAppearance.Material3.TitleLarge">
         <item name="android:fontFamily">@font/space_grotesk</item>
         <item name="android:textFontWeight">700</item>
-        <item name="android:textColor">@color/aurora_ink</item>
+        <item name="android:textColor">@color/glass_ink</item>
         <item name="android:letterSpacing">-0.02</item>
     </style>
 
-    <!-- Aurora filter chip: translucent panel on dark, palette-accent fill when selected. -->
-    <style name="Widget.Aurora.Chip.Filter" parent="Widget.Material3.Chip.Filter">
-        <item name="android:textColor">@color/aurora_chip_text</item>
-        <item name="chipBackgroundColor">@color/aurora_chip_bg</item>
-        <item name="chipStrokeColor">@color/aurora_chip_stroke</item>
+    <!-- Overflow / context PopupMenu on the glass: the frosted menu sheet + glass ink, matching the
+         dropdown popups instead of the flat Material surface. -->
+    <style name="ThemeOverlay.Glass.Menu" parent="">
+        <item name="android:popupMenuStyle">@style/Widget.Glass.PopupMenu</item>
+        <item name="popupMenuStyle">@style/Widget.Glass.PopupMenu</item>
+        <item name="android:textColorPrimary">@color/glass_ink</item>
+        <item name="android:textColorSecondary">@color/glass_ink_dim</item>
+        <item name="colorControlNormal">@color/glass_ink_dim</item>
+        <item name="colorControlActivated">@color/glass_warm</item>
+    </style>
+
+    <style name="Widget.Glass.PopupMenu" parent="Widget.Material3.PopupMenu">
+        <item name="android:popupBackground">@drawable/menu_sheet</item>
+        <item name="android:popupElevation">10dp</item>
+    </style>
+
+    <!-- Label sitting above a glass pill, in the same mono voice as the section headers. -->
+    <style name="TextAppearance.LivingSignal.FieldLabel" parent="">
+        <item name="android:fontFamily">@font/space_mono_regular</item>
+        <item name="android:textColor">@color/glass_ink_dim</item>
+        <item name="android:textSize">11sp</item>
+        <item name="android:letterSpacing">0.04</item>
+        <item name="android:paddingStart">4dp</item>
+    </style>
+
+    <!-- Glass pill selector. hintEnabled=false: the label lives outside the box, so the floating
+         hint would only carve a gap through the pill's own stroke. -->
+    <style name="Widget.LivingSignal.Dropdown" parent="Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
+        <item name="boxBackgroundColor">@color/glass_card</item>
+        <item name="boxCornerRadiusTopStart">18dp</item>
+        <item name="boxCornerRadiusTopEnd">18dp</item>
+        <item name="boxCornerRadiusBottomStart">18dp</item>
+        <item name="boxCornerRadiusBottomEnd">18dp</item>
+        <item name="boxStrokeColor">@color/glass_card_brd</item>
+        <item name="boxStrokeWidth">1dp</item>
+        <item name="boxStrokeWidthFocused">1dp</item>
+        <item name="hintEnabled">false</item>
+        <item name="endIconTint">@color/glass_ink_dim</item>
+        <item name="android:textColorHint">@color/glass_ink_dim</item>
+    </style>
+
+    <!-- chipSurfaceColor must be cleared: the chip background is translucent glass, and M3 paints
+         colorSurface (the palette's tonal surface) underneath, tinting the pill with the accent. -->
+    <style name="Widget.LivingSignal.Chip.Toggle" parent="Widget.Material3.Chip.Filter">
+        <item name="chipBackgroundColor">@color/glass_chip_bg</item>
+        <item name="android:textColor">@color/glass_chip_text</item>
+        <item name="chipStrokeColor">@color/glass_chip_stroke</item>
         <item name="chipStrokeWidth">1dp</item>
         <item name="checkedIconVisible">false</item>
         <item name="chipSurfaceColor">@android:color/transparent</item>
+        <item name="ensureMinTouchTargetSize">true</item>
+        <item name="android:textSize">12sp</item>
     </style>
 
-    <!-- Aurora engine badge: solid accent pill, mono aurora-ink label (matches the main-screen badge). -->
-    <style name="Widget.Aurora.Chip.Badge" parent="Widget.Material3.Chip.Suggestion">
+    <!--
+      Warm liquid-glass control language, applied by ThemeUtils.applyGlass on glass screens.
+      It re-points the M3 colour roles at the glass tokens so stock widgets (buttons, chips,
+      dialogs, menus) inherit the card look instead of the tonal palette, which is tuned for
+      M3 surfaces and clashes with the frosted cards.
+    -->
+    <style name="ThemeOverlay.Whisper.Glass" parent="">
+        <item name="colorPrimary">@color/glass_solid</item>
+        <item name="colorOnPrimary">@color/glass_on_solid</item>
+        <item name="colorPrimaryContainer">@color/glass_warm_bg</item>
+        <item name="colorOnPrimaryContainer">@color/glass_warm_ink</item>
+        <item name="colorSecondaryContainer">@color/glass_solid</item>
+        <item name="colorOnSecondaryContainer">@color/glass_on_solid</item>
+        <item name="colorSurface">@color/glass_sheet</item>
+        <item name="colorOnSurface">@color/glass_ink</item>
+        <item name="colorSurfaceVariant">@color/glass_pill</item>
+        <item name="colorOnSurfaceVariant">@color/glass_ink_body</item>
+        <item name="colorOutline">@color/glass_outline</item>
+        <item name="colorOutlineVariant">@color/glass_pill_brd</item>
+        <item name="colorError">@color/glass_danger</item>
+        <item name="android:textColorPrimary">@color/glass_ink</item>
+        <item name="android:textColorSecondary">@color/glass_ink_dim</item>
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.Glass.Dialog</item>
+        <!-- "On" is warm everywhere, so every switch on a glass screen picks it up by default
+             instead of each layout asking for it. -->
+        <item name="materialSwitchStyle">@style/Widget.Glass.Switch</item>
+    </style>
+
+    <!-- Glass filter chip: frosted pill that fills with ink when selected (no check icon). -->
+    <style name="Widget.Glass.Chip.Filter" parent="Widget.Material3.Chip.Filter">
+        <item name="android:textColor">@color/glass_chip_text</item>
+        <item name="chipBackgroundColor">@color/glass_chip_bg</item>
+        <item name="chipStrokeColor">@color/glass_chip_stroke</item>
+        <item name="chipStrokeWidth">1dp</item>
+        <item name="checkedIconVisible">false</item>
+        <item name="chipSurfaceColor">@android:color/transparent</item>
+        <item name="android:textFontWeight">600</item>
+        <item name="android:textSize">13sp</item>
+    </style>
+
+    <!-- Engine badge: soft tinted pill; the tint itself is set per engine by the adapter. -->
+    <style name="Widget.Glass.Chip.Badge" parent="Widget.Material3.Chip.Suggestion">
         <item name="android:fontFamily">@font/space_mono_regular</item>
-        <item name="android:textColor">@color/aurora_ink</item>
         <item name="android:textSize">10sp</item>
-        <item name="chipBackgroundColor">?attr/colorPrimary</item>
         <item name="chipStrokeWidth">0dp</item>
         <item name="chipMinHeight">24dp</item>
         <item name="chipStartPadding">8dp</item>
@@ -73,47 +164,47 @@
         <item name="chipSurfaceColor">@android:color/transparent</item>
     </style>
 
-    <!-- Aurora status chip (Active / engine soon): faint panel, aurora ink. -->
-    <style name="Widget.Aurora.Chip.Status" parent="Widget.Material3.Chip.Suggestion">
-        <item name="android:fontFamily">@font/space_mono_regular</item>
-        <item name="android:textColor">@color/aurora_ink</item>
-        <item name="android:textSize">10sp</item>
-        <item name="chipBackgroundColor">@color/aurora_panel</item>
-        <item name="chipStrokeColor">@color/aurora_panel_brd</item>
-        <item name="chipStrokeWidth">1dp</item>
-        <item name="chipMinHeight">24dp</item>
-        <item name="chipStartPadding">8dp</item>
-        <item name="chipEndPadding">8dp</item>
-        <item name="ensureMinTouchTargetSize">false</item>
-        <item name="chipSurfaceColor">@android:color/transparent</item>
+    <!-- Status chip ("Активна" / "движок скоро"): warm or neutral, set by the adapter. -->
+    <style name="Widget.Glass.Chip.Status" parent="Widget.Glass.Chip.Badge" />
+
+    <!-- Ghost action ("Скачать"): no fill, ink hairline, ink label. -->
+    <style name="Widget.Glass.Button.Ghost" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:textColor">@color/glass_ink_body</item>
+        <item name="strokeColor">@color/glass_outline</item>
+        <item name="rippleColor">@color/glass_outline</item>
+        <item name="android:textFontWeight">600</item>
     </style>
 
-    <!-- Aurora exposed dropdown: a rounded translucent pill with a light chevron and dark popup. -->
-    <style name="Widget.Aurora.Dropdown" parent="Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
-        <item name="boxBackgroundColor">@color/aurora_panel</item>
-        <item name="boxCornerRadiusTopStart">22dp</item>
-        <item name="boxCornerRadiusTopEnd">22dp</item>
-        <item name="boxCornerRadiusBottomStart">22dp</item>
-        <item name="boxCornerRadiusBottomEnd">22dp</item>
-        <item name="boxStrokeColor">@color/aurora_panel_brd</item>
-        <item name="boxStrokeWidth">1dp</item>
-        <item name="boxStrokeWidthFocused">1dp</item>
-        <item name="hintEnabled">false</item>
-        <item name="endIconTint">@color/aurora_ink</item>
-        <item name="android:textColorHint">@color/aurora_ink_dim</item>
+    <!-- Destructive text action ("Удалить"). -->
+    <style name="Widget.Glass.Button.Danger" parent="Widget.Material3.Button.TextButton">
+        <item name="android:textColor">@color/glass_danger</item>
+        <item name="rippleColor">@color/glass_danger</item>
+        <item name="android:textFontWeight">600</item>
     </style>
 
-    <!-- Aurora toggle chip: a clean pill that fills with the accent when on. -->
-    <style name="Widget.Aurora.Chip.Toggle" parent="Widget.Material3.Chip.Filter">
-        <item name="chipBackgroundColor">@color/aurora_chip_bg</item>
-        <item name="android:textColor">@color/aurora_chip_text</item>
-        <item name="chipStrokeColor">@color/aurora_chip_stroke</item>
-        <item name="chipStrokeWidth">1dp</item>
-        <item name="checkedIconEnabled">false</item>
-        <item name="checkedIconVisible">false</item>
-        <item name="chipIconVisible">false</item>
-        <item name="ensureMinTouchTargetSize">true</item>
-        <item name="android:textSize">13sp</item>
+    <!-- Warm toggle: on = the same amber that makes the active card glow. -->
+    <style name="Widget.Glass.Switch" parent="Widget.Material3.CompoundButton.MaterialSwitch">
+        <item name="trackTint">@color/glass_switch_track</item>
+        <item name="thumbTint">@color/glass_switch_thumb</item>
+        <item name="trackDecorationTint">@color/glass_switch_track_deco</item>
+        <item name="android:textColor">@color/glass_ink_body</item>
+    </style>
+
+    <!-- Dialogs on glass screens: frosted sheet, ink text, ink actions. -->
+    <style name="ThemeOverlay.Glass.Dialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="colorSurface">@color/glass_dialog</item>
+        <item name="colorOnSurface">@color/glass_ink</item>
+        <item name="colorPrimary">@color/glass_solid</item>
+        <item name="android:textColorPrimary">@color/glass_ink</item>
+        <item name="android:textColorSecondary">@color/glass_ink_body</item>
+        <item name="buttonBarPositiveButtonStyle">@style/Widget.Glass.Button.Ghost.Text</item>
+        <item name="buttonBarNegativeButtonStyle">@style/Widget.Glass.Button.Ghost.Text</item>
+    </style>
+
+    <!-- Dialog actions; a destructive confirm recolours its own button (see confirmDelete). -->
+    <style name="Widget.Glass.Button.Ghost.Text" parent="Widget.Material3.Button.TextButton">
+        <item name="android:textColor">@color/glass_ink_body</item>
+        <item name="android:textFontWeight">600</item>
     </style>
 
     <!-- Palette overlays applied at runtime by ThemeUtils.applyPalette. -->

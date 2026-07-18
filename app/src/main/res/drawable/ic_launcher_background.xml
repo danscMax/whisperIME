@@ -1,21 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Aurora adaptive icon background: deep radial so the foreground bloom reads as light in the dark. -->
+<!-- Warm liquid-glass icon background: cool sky top-left sweeping to warm peach bottom-right, the
+     same backdrop the app wears. Two soft blooms give it depth so the cloud orb reads as glass. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+
+    <!-- base cool-to-warm sweep -->
     <path android:pathData="M0,0 h108 v108 h-108 z">
         <aapt:attr name="android:fillColor">
             <gradient
-                android:type="radial"
-                android:centerX="54"
-                android:centerY="48"
-                android:gradientRadius="80"
-                android:startColor="#0C1A18"
-                android:centerColor="#08110F"
-                android:endColor="#04090B" />
+                android:type="linear"
+                android:startX="14" android:startY="6" android:endX="98" android:endY="104"
+                android:startColor="#CFE7F1"
+                android:centerColor="#ECE5E5"
+                android:endColor="#F7CFA2" />
+        </aapt:attr>
+    </path>
+
+    <!-- cool bloom, upper-left -->
+    <path android:pathData="M0,0 h108 v108 h-108 z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="radial"
+                android:centerX="26" android:centerY="22" android:gradientRadius="66"
+                android:startColor="#8FC9E6F0" android:endColor="#00C9E6F0" />
+        </aapt:attr>
+    </path>
+
+    <!-- warm bloom, lower-right -->
+    <path android:pathData="M0,0 h108 v108 h-108 z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="radial"
+                android:centerX="86" android:centerY="90" android:gradientRadius="60"
+                android:startColor="#80FBBE8E" android:endColor="#00FBBE8E" />
         </aapt:attr>
     </path>
 </vector>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Circular glass button (light theme): pearl sheen + hairline definition. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true">
+        <shape android:shape="oval">
+            <gradient android:angle="90" android:startColor="#FFFFFFFF" android:endColor="#EBEFF7FF" />
+            <stroke android:width="1dp" android:color="#5B6BB0" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="oval">
+            <gradient android:angle="90" android:startColor="#F7FAFFFF" android:endColor="#D8E0F0FF" />
+            <stroke android:width="1dp" android:color="#22324066" />
+        </shape>
+    </item>
+</selector>

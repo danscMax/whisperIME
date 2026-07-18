@@ -71,7 +71,7 @@
     <string name="onboarding_title">Choose your model</string>
     <string name="onboarding_subtitle">One to start, the rest later. Everything offline.</string>
     <string name="onboarding_base_title">Recommended · base</string>
-    <string name="onboarding_base_desc">Russian + 77 languages, fast</string>
+    <string name="onboarding_base_desc">Russian + 98 languages, fast</string>
     <string name="onboarding_small_title">More accurate · small</string>
     <string name="onboarding_tiny_title">English · tiny.en</string>
     <string name="onboarding_cta">Download and start</string>
@@ -92,6 +92,14 @@
     <string name="main_cd_menu">More options</string>
     <string name="main_cd_speak">Speak result</string>
     <string name="main_cd_share">Share</string>
+    <string name="main_local_badge">Private · on device</string>
+    <string name="main_state_ready">Ready · hold the signal</string>
+    <string name="main_state_listening">Listening · release to finish</string>
+    <string name="main_state_processing">Focusing speech</string>
+    <string name="main_state_result">Signal captured</string>
+    <string name="main_state_error">Signal lost</string>
+    <string name="main_hold_signal">Hold the signal to speak</string>
+    <string name="main_context_format">%1$s · %2$s</string>
 
     <!-- IME strip -->
     <string name="ime_hint">Tap and speak</string>
@@ -107,6 +115,10 @@
     <string name="dialog_open_catalog">Open catalog</string>
     <string name="dialog_dictate">Dictate</string>
     <string name="dialog_copied">Copied</string>
+    <string name="dialog_mode_auto">Auto</string>
+    <string name="dialog_mode_hold">Push</string>
+    <string name="dialog_mode_cd">Recognition mode: automatic or push-to-talk</string>
+    <string name="switch_to_keyboard">Switch to keyboard</string>
 
     <string name="catalog_title">Models</string>
     <string name="catalog_filter_all">All</string>
@@ -127,6 +139,12 @@
     <string name="catalog_hint_fast">fast</string>
     <string name="catalog_hint_balanced">balanced</string>
     <string name="catalog_hint_best">best quality</string>
+    <string name="catalog_section_cpp_sub">local · fast</string>
+    <string name="catalog_section_tflite_sub">compatible</string>
+    <string name="catalog_speed_fast">fast</string>
+    <string name="catalog_speed_mid">medium</string>
+    <string name="catalog_speed_slow">slow</string>
+    <string name="catalog_heavy">slow on phone</string>
     <string name="catalog_progress">%1$.0f / %2$.0f MB · %3$.1f MB/s</string>
     <string name="catalog_starting">Starting…</string>
     <string name="catalog_storage_used">Storage used: %1$s</string>

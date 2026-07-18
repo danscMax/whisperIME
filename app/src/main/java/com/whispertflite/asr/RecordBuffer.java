@@ -21,7 +21,8 @@ public class RecordBuffer {
 
         int numSamples = RecordBuffer.getOutputBuffer().length / 2;
         ByteBuffer byteBuffer = ByteBuffer.wrap(RecordBuffer.getOutputBuffer());
-        byteBuffer.order(ByteOrder.nativeOrder());
+        // PCM from AudioRecord is little-endian by contract; decode as LE, not host order.
+        byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
 
         // Convert audio data to PCM_FLOAT format
         float[] samples = new float[numSamples];

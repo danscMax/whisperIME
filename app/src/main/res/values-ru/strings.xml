@@ -149,4 +149,11 @@
     <string name="tile_label">Голосовой ввод</string>
     <string name="widget_label">Whisper голосовой ввод</string>
     <string name="widget_mic_description">Начать голосовой ввод</string>
+    <string name="error_model_load">Не удалось загрузить модель — возможно, она слишком велика для устройства</string>
+    <string name="error_transcription">Ошибка распознавания</string>
+    <string name="main_clear">Очистить</string>
+    <string name="dialog_send">Вставить</string>
+    <string name="dialog_review">Проверьте и отправьте</string>
+    <string name="settings_vocabulary">Свой словарь</string>
+    <string name="settings_vocabulary_hint">Имена, термины, жаргон — помогает распознаванию (необязательно)</string>
 </resources>

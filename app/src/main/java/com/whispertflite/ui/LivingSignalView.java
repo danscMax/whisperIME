@@ -317,7 +317,12 @@ public class LivingSignalView extends TextureView implements TextureView.Surface
             egl.eglMakeCurrent(display, EGL10.EGL_NO_SURFACE, EGL10.EGL_NO_SURFACE, EGL10.EGL_NO_CONTEXT);
             if (eglSurface != null) egl.eglDestroySurface(display, eglSurface);
             if (context != null) egl.eglDestroyContext(display, context);
-            egl.eglTerminate(display);
+            // Deliberately NOT eglTerminate(display): EGL_DEFAULT_DISPLAY is process-global and shared by
+            // every orb (onboarding, main, provider, IME). Terminating it here tore down the display a
+            // *concurrently starting* orb had just initialised — e.g. onboarding finishes a download and
+            // launches MainActivity, whose orb inits EGL while this (onboarding) orb tears down and
+            // terminates the shared display — leaving the new orb blank or frozen. Destroying only this
+            // instance's surface+context is correct; the display stays initialised for the others.
         }
     }
 

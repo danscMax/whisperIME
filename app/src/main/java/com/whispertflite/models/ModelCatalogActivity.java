@@ -195,59 +195,89 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
         return n;
     }
 
-    private class Adapter extends RecyclerView.Adapter<Adapter.VH> {
-        private final List<ModelInfo> items = new ArrayList<>();
+    private static final int TYPE_HEADER = 0;
+    private static final int TYPE_MODEL = 1;
+
+    /** A section header row (one per engine group). */
+    private static final class Header {
+        final String title, sub;
+        Header(String title, String sub) { this.title = title; this.sub = sub; }
+    }
+
+    private class Adapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
+        private final List<Object> rows = new ArrayList<>();   // Header | ModelInfo
         // modelId -> {bytes, total, bytesPerSec}
         final java.util.HashMap<String, long[]> progress = new java.util.HashMap<>();
 
+        /** Group the visible models by engine under a header each; whisper.cpp first (the default). */
         void setItems(List<ModelInfo> newItems) {
-            items.clear();
-            items.addAll(newItems);
+            rows.clear();
+            addSection(newItems, Engine.WHISPER_CPP,
+                    getString(R.string.catalog_engine_whispercpp), getString(R.string.catalog_section_cpp_sub));
+            addSection(newItems, Engine.TFLITE,
+                    getString(R.string.catalog_engine_tflite), getString(R.string.catalog_section_tflite_sub));
             notifyDataSetChanged();
         }
 
+        private void addSection(List<ModelInfo> all, Engine engine, String title, String sub) {
+            List<ModelInfo> group = new ArrayList<>();
+            for (ModelInfo m : all) if (m.engine == engine) group.add(m);
+            if (group.isEmpty()) return;
+            rows.add(new Header(title, sub));
+            rows.addAll(group);
+        }
+
         int indexOf(String modelId) {
-            for (int i = 0; i < items.size(); i++) {
-                if (items.get(i).id.equals(modelId)) return i;
+            for (int i = 0; i < rows.size(); i++) {
+                Object r = rows.get(i);
+                if (r instanceof ModelInfo && ((ModelInfo) r).id.equals(modelId)) return i;
             }
             return -1;
         }
 
         @Override
+        public int getItemViewType(int position) {
+            return rows.get(position) instanceof Header ? TYPE_HEADER : TYPE_MODEL;
+        }
+
+        @Override
         public long getItemId(int position) {
-            return items.get(position).id.hashCode();
+            Object r = rows.get(position);
+            return r instanceof Header ? ("h:" + ((Header) r).title).hashCode()
+                    : ((ModelInfo) r).id.hashCode();
         }
 
         @NonNull
         @Override
-        public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            View v = LayoutInflater.from(parent.getContext())
-                    .inflate(R.layout.item_model, parent, false);
-            return new VH(v);
+        public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            LayoutInflater inf = LayoutInflater.from(parent.getContext());
+            if (viewType == TYPE_HEADER) {
+                return new HeaderVH(inf.inflate(R.layout.item_model_header, parent, false));
+            }
+            return new VH(inf.inflate(R.layout.item_model, parent, false));
         }
 
         @Override
-        public void onBindViewHolder(@NonNull VH h, int position) {
-            ModelInfo m = items.get(position);
+        public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+            Object r = rows.get(position);
+            if (holder instanceof HeaderVH) {
+                Header hd = (Header) r;
+                ((HeaderVH) holder).title.setText(hd.title);
+                ((HeaderVH) holder).sub.setText(hd.sub);
+                return;
+            }
+            bindModel((VH) holder, (ModelInfo) r);
+        }
+
+        private void bindModel(@NonNull VH h, ModelInfo m) {
             ModelState state = manager.stateOf(m);
 
             h.name.setText(m.displayName);
             h.meta.setText(meta(m));
 
-            // Engine badge is tinted by engine, not by the app palette: the reader is telling two
-            // runtimes apart, and a palette accent here just fights the card.
-            boolean tflite = m.engine == Engine.TFLITE;
-            h.engineChip.setText(tflite ? R.string.catalog_engine_tflite : R.string.catalog_engine_whispercpp);
-            tint(h.engineChip,
-                    tflite ? R.color.glass_engine_tflite_bg : R.color.glass_engine_cpp_bg,
-                    tflite ? R.color.glass_engine_tflite_fg : R.color.glass_engine_cpp_fg);
-
-            // Warm liquid glass: the active model glows warm (dark icon tile + warm sheen + warm shadow),
-            // the rest are light frosted cards with a dark-on-light icon.
+            // Warm liquid glass: the active model glows warm (warm sheen + warm shadow); the rest are
+            // light frosted cards. The engine is shown by the section header, not a per-card badge.
             boolean active = state == ModelState.ACTIVE;
-            h.icon.setBackgroundResource(active ? R.drawable.icon_tile_active : R.drawable.icon_tile);
-            h.icon.setImageTintList(ColorStateList.valueOf(
-                    color(active ? R.color.glass_on_solid : R.color.glass_tile_ink)));
             h.cardSheen.setBackgroundResource(active ? R.drawable.card_sheen_warm : R.drawable.card_sheen_glass);
             h.card.setCardBackgroundColor(color(active ? R.color.glass_card_active : R.color.glass_card));
             h.card.setStrokeWidth(Math.round(getResources().getDisplayMetrics().density));
@@ -266,9 +296,11 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
 
             boolean downloading = state == ModelState.DOWNLOADING;
             h.progressGroup.setVisibility(downloading ? View.VISIBLE : View.GONE);
-            h.buttonRow.setVisibility(downloading ? View.GONE : View.VISIBLE);
 
             if (downloading) {
+                h.useButton.setVisibility(View.GONE);
+                h.downloadButton.setVisibility(View.GONE);
+                h.deleteButton.setVisibility(View.GONE);
                 long[] p = progress.get(m.id);
                 if (p != null && p[1] > 0) {
                     h.progress.setIndeterminate(false);
@@ -304,30 +336,34 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
 
         @Override
         public int getItemCount() {
-            return items.size();
+            return rows.size();
+        }
+
+        class HeaderVH extends RecyclerView.ViewHolder {
+            final TextView title, sub;
+            HeaderVH(@NonNull View v) {
+                super(v);
+                title = v.findViewById(R.id.headerTitle);
+                sub = v.findViewById(R.id.headerSub);
+            }
         }
 
         class VH extends RecyclerView.ViewHolder {
             final com.google.android.material.card.MaterialCardView card;
             final TextView name, meta, progressText;
-            final Chip engineChip, statusChip;
-            final View progressGroup, buttonRow, cardSheen;
-            final ImageView icon;
+            final Chip statusChip;
+            final View progressGroup, cardSheen;
             final LinearProgressIndicator progress;
-            final ImageButton cancelButton;
-            final MaterialButton downloadButton, useButton, deleteButton;
+            final ImageButton cancelButton, downloadButton, useButton, deleteButton;
 
             VH(@NonNull View v) {
                 super(v);
                 card = (com.google.android.material.card.MaterialCardView) v;
-                icon = v.findViewById(R.id.icon);
                 cardSheen = v.findViewById(R.id.cardSheen);
                 name = v.findViewById(R.id.name);
                 meta = v.findViewById(R.id.meta);
-                engineChip = v.findViewById(R.id.engineChip);
                 statusChip = v.findViewById(R.id.statusChip);
                 progressGroup = v.findViewById(R.id.progressGroup);
-                buttonRow = v.findViewById(R.id.buttonRow);
                 progress = v.findViewById(R.id.progress);
                 progressText = v.findViewById(R.id.progressText);
                 cancelButton = v.findViewById(R.id.cancelButton);
@@ -343,9 +379,19 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
                 ? getString(R.string.catalog_english_only)
                 : getString(R.string.catalog_languages, m.languages);
         String size = Formatter.formatShortFileSize(this, m.sizeBytes);
-        int hint = m.qualityClass >= 3 ? R.string.catalog_hint_best
-                : (m.qualityClass == 2 ? R.string.catalog_hint_balanced : R.string.catalog_hint_fast);
-        return langs + " · " + size + " · " + getString(hint);
+        int speed = m.speedClass <= 1 ? R.string.catalog_speed_fast
+                : (m.speedClass == 2 ? R.string.catalog_speed_mid : R.string.catalog_speed_slow);
+        String out = langs + " · " + size + " · " + getString(speed) + " · " + qualityDots(m.qualityClass);
+        if (m.isHeavy()) out += " · " + getString(R.string.catalog_heavy);
+        return out;
+    }
+
+    /** Quality as three dots, filled up to qualityClass, the rest hollow (e.g. 2 -> filled-filled-hollow). */
+    private static String qualityDots(int qualityClass) {
+        int q = Math.max(1, Math.min(3, qualityClass));
+        StringBuilder sb = new StringBuilder(3);
+        for (int i = 1; i <= 3; i++) sb.append(i <= q ? (char) 0x25CF : (char) 0x25CB); // filled / hollow
+        return sb.toString();
     }
 
     private int color(@ColorRes int res) {

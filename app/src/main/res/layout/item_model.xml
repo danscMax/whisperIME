@@ -1,15 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Warm liquid-glass model card: icon tile, title/meta, engine badge; active glows warm. -->
+<!-- Compact model row: name + inline action on the first line, a dense stats line below. The engine
+     is carried by the section header (item_model_header), so no per-row engine badge or icon tile. -->
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/card"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginHorizontal="6dp"
-    android:layout_marginVertical="7dp"
+    android:layout_marginVertical="4dp"
     app:cardBackgroundColor="@color/glass_card"
-    app:cardCornerRadius="26dp"
-    app:cardElevation="6dp"
+    app:cardCornerRadius="20dp"
+    app:cardElevation="3dp"
     app:strokeColor="@color/glass_card_brd"
     app:strokeWidth="1dp">
 
@@ -27,79 +28,95 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="15dp">
+            android:paddingStart="15dp"
+            android:paddingEnd="8dp"
+            android:paddingVertical="11dp">
 
+            <!-- Line 1: name + status/action, all on one row -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center_vertical"
+                android:minHeight="40dp"
                 android:orientation="horizontal">
 
-                <ImageView
-                    android:id="@+id/icon"
-                    android:layout_width="46dp"
-                    android:layout_height="46dp"
-                    android:background="@drawable/icon_tile"
-                    android:contentDescription="@null"
-                    android:padding="12dp"
-                    android:src="@drawable/ic_model_bars_24dp"
-                    app:tint="@color/glass_tile_ink" />
-
-                <LinearLayout
+                <TextView
+                    android:id="@+id/name"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="14dp"
                     android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/name"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:ellipsize="end"
-                        android:fontFamily="@font/space_grotesk"
-                        android:maxLines="1"
-                        android:textColor="@color/glass_ink"
-                        android:textFontWeight="750"
-                        android:textSize="17sp" />
-
-                    <TextView
-                        android:id="@+id/meta"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:ellipsize="end"
-                        android:fontFamily="@font/space_mono_regular"
-                        android:maxLines="1"
-                        android:textColor="@color/glass_ink_dim"
-                        android:textSize="12sp" />
-                </LinearLayout>
+                    android:ellipsize="end"
+                    android:fontFamily="@font/space_grotesk"
+                    android:maxLines="1"
+                    android:textColor="@color/glass_ink"
+                    android:textFontWeight="700"
+                    android:textSize="16sp" />
 
                 <com.google.android.material.chip.Chip
-                    android:id="@+id/engineChip"
-                    style="@style/Widget.Glass.Chip.Badge"
+                    android:id="@+id/statusChip"
+                    style="@style/Widget.Glass.Chip.Status"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="6dp"
-                    android:clickable="false" />
+                    android:clickable="false"
+                    android:visibility="gone" />
+
+                <ImageButton
+                    android:id="@+id/useButton"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginStart="2dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/catalog_use"
+                    android:padding="9dp"
+                    android:src="@drawable/ic_check_20dp"
+                    android:visibility="gone"
+                    app:tint="@color/glass_warm" />
+
+                <ImageButton
+                    android:id="@+id/downloadButton"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginStart="2dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/catalog_download"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_download_48dp"
+                    android:visibility="gone"
+                    app:tint="@color/glass_ink_body" />
+
+                <ImageButton
+                    android:id="@+id/deleteButton"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginStart="2dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/catalog_delete"
+                    android:padding="9dp"
+                    android:src="@drawable/ic_delete_24dp"
+                    android:visibility="gone"
+                    app:tint="@color/glass_danger" />
             </LinearLayout>
 
-            <com.google.android.material.chip.Chip
-                android:id="@+id/statusChip"
-                style="@style/Widget.Glass.Chip.Status"
-                android:layout_width="wrap_content"
+            <!-- Line 2: dense stats (languages · size · speed · quality [· slow-on-phone]) -->
+            <TextView
+                android:id="@+id/meta"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_gravity="start"
-                android:layout_marginTop="6dp"
-                android:clickable="false"
-                android:visibility="gone" />
+                android:layout_marginEnd="7dp"
+                android:layout_marginTop="1dp"
+                android:ellipsize="end"
+                android:fontFamily="@font/space_mono_regular"
+                android:maxLines="1"
+                android:textColor="@color/glass_ink_dim"
+                android:textSize="12sp" />
 
-            <!-- DOWNLOADING -->
+            <!-- DOWNLOADING: progress replaces the action -->
             <LinearLayout
                 android:id="@+id/progressGroup"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
+                android:layout_marginTop="9dp"
                 android:orientation="vertical"
                 android:visibility="gone">
 
@@ -120,11 +137,12 @@
 
                     <ImageButton
                         android:id="@+id/cancelButton"
-                        style="@style/Widget.Material3.Button.IconButton"
-                        android:layout_width="48dp"
-                        android:layout_height="48dp"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
                         android:layout_marginStart="4dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
                         android:contentDescription="@string/catalog_cancel"
+                        android:padding="6dp"
                         android:src="@drawable/ic_cancel_36dp"
                         app:tint="@color/glass_ink_body" />
                 </LinearLayout>
@@ -133,45 +151,10 @@
                     android:id="@+id/progressText"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
+                    android:layout_marginTop="1dp"
                     android:fontFamily="@font/space_mono_regular"
                     android:textColor="@color/glass_ink_dim"
-                    android:textSize="12sp" />
-            </LinearLayout>
-
-            <!-- AVAILABLE / DOWNLOADED / ACTIVE actions -->
-            <LinearLayout
-                android:id="@+id/buttonRow"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:gravity="end"
-                android:orientation="horizontal">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/deleteButton"
-                    style="@style/Widget.Glass.Button.Danger"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/catalog_delete"
-                    android:visibility="gone" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/downloadButton"
-                    style="@style/Widget.Glass.Button.Ghost"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:text="@string/catalog_download"
-                    android:visibility="gone" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/useButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:text="@string/catalog_use"
-                    android:visibility="gone" />
+                    android:textSize="11sp" />
             </LinearLayout>
         </LinearLayout>
     </FrameLayout>

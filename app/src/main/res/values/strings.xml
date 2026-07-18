@@ -139,6 +139,12 @@
     <string name="catalog_hint_fast">fast</string>
     <string name="catalog_hint_balanced">balanced</string>
     <string name="catalog_hint_best">best quality</string>
+    <string name="catalog_section_cpp_sub">local · fast</string>
+    <string name="catalog_section_tflite_sub">compatible</string>
+    <string name="catalog_speed_fast">fast</string>
+    <string name="catalog_speed_mid">medium</string>
+    <string name="catalog_speed_slow">slow</string>
+    <string name="catalog_heavy">slow on phone</string>
     <string name="catalog_progress">%1$.0f / %2$.0f MB · %3$.1f MB/s</string>
     <string name="catalog_starting">Starting…</string>
     <string name="catalog_storage_used">Storage used: %1$s</string>

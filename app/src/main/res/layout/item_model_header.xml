@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Catalog section header: an engine group title + a one-line subtitle. Makes the engine each
+     model belongs to explicit, so the cards no longer need a per-row engine badge. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingHorizontal="16dp"
+    android:paddingTop="18dp"
+    android:paddingBottom="6dp">
+
+    <TextView
+        android:id="@+id/headerTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/space_grotesk"
+        android:letterSpacing="-0.01"
+        android:textColor="@color/glass_ink"
+        android:textFontWeight="700"
+        android:textSize="15sp" />
+
+    <TextView
+        android:id="@+id/headerSub"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="1dp"
+        android:fontFamily="@font/space_mono_regular"
+        android:textColor="@color/glass_ink_dim"
+        android:textSize="11sp" />
+</LinearLayout>

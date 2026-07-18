@@ -23,6 +23,6 @@ public final class WhisperCpp {
 
     public static native void nativeRelease(long ctxPtr);
 
-    /** Ask a running nativeTranscribe to abort as soon as possible (thread-safe). */
-    public static native void nativeCancel();
+    /** Ask the run on THIS context to abort as soon as possible (thread-safe, per-context — C3). */
+    public static native void nativeCancel(long ctxPtr);
 }

@@ -52,7 +52,8 @@ public final class WhisperCppEngine implements AsrEngine {
 
     @Override
     public void cancel() {
-        WhisperCpp.nativeCancel();
+        long p = ctxPtr;
+        if (p != 0) WhisperCpp.nativeCancel(p);   // per-context cancel; no-op once released (C3)
     }
 
     @Override

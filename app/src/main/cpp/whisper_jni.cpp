@@ -16,11 +16,19 @@
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  LOG_TAG, __VA_ARGS__)
 
-// Set by nativeCancel(); polled by whisper_full via the abort callback to stop a slow run early.
-static std::atomic<bool> g_cancel{false};
+// Per-context handle: cancel targets exactly one run and can't be clobbered by another context's reset
+// (the old global flag had a lost-cancel race). The pointer to this struct is what Java holds as its
+// "ctxPtr" and passes back to every native call (C3).
+struct WhisperCtx {
+    whisper_context *ctx;
+    std::atomic<bool> cancel;
+    explicit WhisperCtx(whisper_context *c) : ctx(c), cancel(false) {}
+};
 
-static bool abort_callback(void *) {
-    return g_cancel.load();
+// Polled by whisper_full through abort_callback_user_data — the WhisperCtx of the running transcription.
+static bool abort_callback(void *user_data) {
+    auto *wc = reinterpret_cast<WhisperCtx *>(user_data);
+    return wc != nullptr && wc->cancel.load();
 }
 
 // The CPU backend is built as feature-tiered variant .so (GGML_CPU_ALL_VARIANTS) that the ggml
@@ -98,18 +106,19 @@ Java_com_whispertflite_engine_WhisperCpp_nativeInit(JNIEnv *env, jclass, jstring
         throw_java(env, "failed to load whisper model");
         return 0;
     }
-    return reinterpret_cast<jlong>(ctx);
+    return reinterpret_cast<jlong>(new WhisperCtx(ctx));
 }
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_whispertflite_engine_WhisperCpp_nativeTranscribe(JNIEnv *env, jclass, jlong ctxPtr,
                                                           jfloatArray pcm16k, jstring lang,
                                                           jboolean translate) {
-    auto *ctx = reinterpret_cast<whisper_context *>(ctxPtr);
-    if (ctx == nullptr) {
+    auto *wc = reinterpret_cast<WhisperCtx *>(ctxPtr);
+    if (wc == nullptr || wc->ctx == nullptr) {
         throw_java(env, "whisper context is null");
         return nullptr;
     }
+    whisper_context *ctx = wc->ctx;
     if (pcm16k == nullptr) {
         throw_java(env, "pcm buffer is null");
         return nullptr;
@@ -151,10 +160,10 @@ Java_com_whispertflite_engine_WhisperCpp_nativeTranscribe(JNIEnv *env, jclass, j
     wparams.no_context      = true;
     wparams.single_segment  = false;
     wparams.suppress_nst    = true;   // suppress non-speech tokens ([BLANK_AUDIO], music) — anti-hallucination (A2/A11)
-    // Let Java stop a slow run (large models take minutes on mobile CPUs).
-    g_cancel.store(false);
+    // Let Java stop a slow run (large models take minutes on mobile CPUs) — per-context flag (C3).
+    wc->cancel.store(false);
     wparams.abort_callback  = abort_callback;
-    wparams.abort_callback_user_data = nullptr;
+    wparams.abort_callback_user_data = wc;
 
     // Cap the encoder context to the actual audio length (+ margin) instead of always encoding a full
     // 30 s window: whisper's encoder runs over `audio_ctx` frames (~50 per second of audio), so short
@@ -169,7 +178,7 @@ Java_com_whispertflite_engine_WhisperCpp_nativeTranscribe(JNIEnv *env, jclass, j
     int rc = whisper_full(ctx, wparams, samples, (int) n_samples);
     env->ReleaseFloatArrayElements(pcm16k, samples, JNI_ABORT);
 
-    if (g_cancel.load()) {
+    if (wc->cancel.load()) {
         return env->NewStringUTF(""); // cancelled by user: return what we have (nothing)
     }
     if (rc != 0) {
@@ -204,22 +213,25 @@ Java_com_whispertflite_engine_WhisperCpp_nativeTranscribe(JNIEnv *env, jclass, j
 // simplified/traditional conversion still works). Reads the context's stored auto-detect result.
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_whispertflite_engine_WhisperCpp_nativeDetectedLang(JNIEnv *env, jclass, jlong ctxPtr) {
-    auto *ctx = reinterpret_cast<whisper_context *>(ctxPtr);
-    if (ctx == nullptr) return env->NewStringUTF("");
+    auto *wc = reinterpret_cast<WhisperCtx *>(ctxPtr);
+    if (wc == nullptr || wc->ctx == nullptr) return env->NewStringUTF("");
+    whisper_context *ctx = wc->ctx;
     int id = whisper_full_lang_id(ctx);
     const char *code = id >= 0 ? whisper_lang_str(id) : nullptr;
     return env->NewStringUTF(code ? code : "");
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_whispertflite_engine_WhisperCpp_nativeCancel(JNIEnv *, jclass) {
-    g_cancel.store(true);
+Java_com_whispertflite_engine_WhisperCpp_nativeCancel(JNIEnv *, jclass, jlong ctxPtr) {
+    auto *wc = reinterpret_cast<WhisperCtx *>(ctxPtr);
+    if (wc != nullptr) wc->cancel.store(true);
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_whispertflite_engine_WhisperCpp_nativeRelease(JNIEnv *, jclass, jlong ctxPtr) {
-    auto *ctx = reinterpret_cast<whisper_context *>(ctxPtr);
-    if (ctx != nullptr) {
-        whisper_free(ctx);
+    auto *wc = reinterpret_cast<WhisperCtx *>(ctxPtr);
+    if (wc != nullptr) {
+        if (wc->ctx != nullptr) whisper_free(wc->ctx);
+        delete wc;
     }
 }

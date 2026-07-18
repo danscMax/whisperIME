@@ -69,7 +69,9 @@ public class Recorder {
     private boolean useVAD = false;
     private VadWebRTC vad = null;
     private static final int VAD_FRAME_SIZE = 480;                 // 30 ms @ 16 kHz
-    private static final int CHUNK_SILENCE_FRAMES = 700 / 30;      // ~700 ms pause splits a chunk
+    // ~550 ms pause splits a chunk. ponytail: calibration knob — lower = faster first result, higher =
+    // fewer mid-phrase splits; tune with an on-device latency/accuracy check (B1, device-tunable).
+    private static final int CHUNK_SILENCE_FRAMES = 550 / 30;
     private static final int CHUNK_HARD_CAP_BYTES = 16000 * 2 * 28; // 28 s force-split mid-speech
 
     private final Thread workerThread;
@@ -116,7 +118,7 @@ public class Recorder {
         vad = Vad.builder()
                 .setSampleRate(SampleRate.SAMPLE_RATE_16K)
                 .setFrameSize(FrameSize.FRAME_SIZE_480)
-                .setMode(Mode.VERY_AGGRESSIVE)
+                .setMode(Mode.AGGRESSIVE)   // was VERY_AGGRESSIVE: too rejective for quiet speech (A4, device-tunable knob)
                 .setSilenceDurationMs(800)
                 .setSpeechDurationMs(200)
                 .build();
@@ -434,7 +436,7 @@ public class Recorder {
         VadWebRTC chunkVad = Vad.builder()
                 .setSampleRate(SampleRate.SAMPLE_RATE_16K)
                 .setFrameSize(FrameSize.FRAME_SIZE_480)
-                .setMode(Mode.VERY_AGGRESSIVE)
+                .setMode(Mode.AGGRESSIVE)   // was VERY_AGGRESSIVE: too rejective for quiet speech (A4, device-tunable knob)
                 .setSilenceDurationMs(300)
                 .setSpeechDurationMs(100)
                 .build();

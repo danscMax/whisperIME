@@ -18,6 +18,7 @@ import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.SimpleItemAnimator;
 
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
@@ -67,6 +68,12 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
         adapter = new Adapter();
         adapter.setHasStableIds(true);
         recycler.setAdapter(adapter);
+        // A running download calls notifyItemChanged on its row many times a second; the default
+        // change animation crossfades the whole card each time, which reads as a flicker. Turn it
+        // off so the progress row updates in place.
+        if (recycler.getItemAnimator() instanceof SimpleItemAnimator) {
+            ((SimpleItemAnimator) recycler.getItemAnimator()).setSupportsChangeAnimations(false);
+        }
 
         ChipGroup filterGroup = findViewById(R.id.filterGroup);
         filterGroup.setOnCheckedStateChangeListener((group, ids) -> {

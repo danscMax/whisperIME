@@ -160,19 +160,31 @@
             android:textFontWeight="700"
             android:textSize="20sp" />
 
-        <!-- Live transcription; collapses when empty (no reserved dead space at idle). -->
-        <TextView
+        <!-- Recognized text; editable so a wrong result can be fixed before it's sent (D3). Collapses
+             when empty (no reserved dead space at idle). -->
+        <EditText
             android:id="@+id/dialog_partial"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
-            android:ellipsize="end"
+            android:background="@android:color/transparent"
             android:fontFamily="@font/space_grotesk"
             android:gravity="center"
+            android:importantForAutofill="no"
+            android:inputType="textMultiLine|textCapSentences"
             android:lineSpacingMultiplier="1.15"
-            android:maxLines="3"
-            android:textColor="@color/glass_ink_dim"
+            android:maxLines="4"
+            android:textColor="@color/glass_ink"
             android:textSize="16sp"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/dialog_send"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="10dp"
+            android:text="@string/dialog_send"
             android:visibility="gone" />
     </LinearLayout>
 

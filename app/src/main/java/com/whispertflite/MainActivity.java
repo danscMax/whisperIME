@@ -98,6 +98,9 @@ public class MainActivity extends AppCompatActivity {
     // Set when a chunk/run reports an engine failure (vs genuine silence) so finishToResult can tell
     // the user it failed instead of silently showing the "nothing heard" state (C4/C5).
     private boolean transcriptionFailed = false;
+    // Last transcript already written to history; guards against double-logging when the result is
+    // saved on leave (onPause) so hand-edits are captured instead of the pre-edit text (D6).
+    private String lastLoggedText = "";
 
     private File sdcardDataFolder = null;
     private ModelInfo selectedModel = null;
@@ -149,6 +152,16 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         stopProcessing();
+        // Save the FINAL (possibly hand-edited) transcript when leaving a result — the pre-edit text
+        // that finishToResult used to save meant edits never reached history (D6).
+        if (currentState == UiState.RESULT && sp != null && sp.getBoolean("historyEnabled", true)) {
+            String text = tvResult.getText().toString().trim();
+            if (!text.isEmpty() && !text.equals(lastLoggedText)) {
+                HistoryDb.get(mContext).insert(text, lastLanguage,
+                        selectedModel != null ? selectedModel.id : "", recordDurationMs);
+                lastLoggedText = text;
+            }
+        }
         super.onPause();
     }
 
@@ -347,10 +360,12 @@ public class MainActivity extends AppCompatActivity {
         });
         ((MaterialButton) findViewById(R.id.btnRetry)).setOnClickListener(v -> {
             tvResult.setText("");
+            lastLoggedText = "";
             applyState(UiState.READY);
         });
         findViewById(R.id.btnClear).setOnClickListener(v -> {
             tvResult.setText("");   // deliberate wipe — recordings otherwise accumulate now (D2)
+            lastLoggedText = "";
             applyState(UiState.READY);
         });
 
@@ -771,9 +786,7 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         applyState(UiState.RESULT);
-        if (sp.getBoolean("historyEnabled", true)) {
-            HistoryDb.get(mContext).insert(text, lastLanguage, selectedModel.id, recordDurationMs);
-        }
+        // History is logged on leave (onPause), not here, so a hand-edited result is what gets saved (D6).
         if (sp.getBoolean("speakResult", false)) speak(text);
     }
 

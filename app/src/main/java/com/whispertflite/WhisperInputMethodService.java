@@ -17,6 +17,7 @@ import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputConnection;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
@@ -442,10 +443,24 @@ public class WhisperInputMethodService extends InputMethodService {
                 String trimmed = result.trim();
                 if (trimmed.isEmpty()) return;
 
-                boolean committed = getCurrentInputConnection() != null
-                        && getCurrentInputConnection().commitText(trimmed + " ", 1);
-                if (committed) imeDraft.append(trimmed).append(" ");
-                // Stay on the strip after a result: the user leaves only via the keyboard key.
+                InputConnection ic = getCurrentInputConnection();
+                if (ic == null) return;
+
+                // Smart spacing (D5): one space between chunks; a leading space before the first chunk
+                // only when the existing field text doesn't already end in whitespace/opening punctuation.
+                char prev;
+                if (imeDraft.length() == 0) {
+                    CharSequence before = ic.getTextBeforeCursor(1, 0);
+                    prev = (before != null && before.length() > 0) ? before.charAt(0) : ' ';
+                } else {
+                    prev = imeDraft.charAt(imeDraft.length() - 1);
+                }
+                if (needsSpace(prev, trimmed)) imeDraft.append(' ');
+                imeDraft.append(trimmed);
+
+                // Composing text (D4/D1): the running transcript stays revisable in place and updates
+                // live as chunks arrive, instead of being hard-committed per chunk. finalizeIme() commits.
+                ic.setComposingText(imeDraft, 1);
             }
         });
     }
@@ -461,6 +476,8 @@ public class WhisperInputMethodService extends InputMethodService {
 
     /** Recording stopped and the queue drained: log history once and return to idle. */
     private void finalizeIme() {
+        InputConnection ic = getCurrentInputConnection();
+        if (ic != null) ic.finishComposingText();   // commit the revisable transcript as final (D4)
         String text = imeDraft.toString().trim();
         if (!text.isEmpty()
                 && sp.getBoolean("historyEnabled", true)
@@ -469,7 +486,20 @@ public class WhisperInputMethodService extends InputMethodService {
             HistoryDb.get(mContext).insert(text, lastLanguage,
                     selectedModel != null ? selectedModel.id : "", recordDurationMs);
         }
+        imeDraft.setLength(0);   // next dictation starts a fresh composing region
         applyState(UiState.IDLE);
+    }
+
+    /** True if a separating space belongs between {@code prev} and the start of {@code next} (D5). */
+    private static boolean needsSpace(char prev, String next) {
+        if (next.isEmpty() || Character.isWhitespace(prev)) return false;
+        switch (next.charAt(0)) {   // never put a space before closing punctuation
+            case '.': case ',': case '!': case '?': case ';': case ':':
+            case ')': case ']': case '}': case '%':
+                return false;
+            default:
+                return true;
+        }
     }
 
     /** True for any password input variant; history must never capture these fields. */

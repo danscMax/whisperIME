@@ -118,6 +118,8 @@
     <string name="dialog_open_catalog">Open catalog</string>
     <string name="dialog_dictate">Dictate</string>
     <string name="dialog_copied">Copied</string>
+    <string name="dialog_send">Insert</string>
+    <string name="dialog_review">Check it, then send</string>
     <string name="dialog_mode_auto">Auto</string>
     <string name="dialog_mode_hold">Push</string>
     <string name="dialog_mode_cd">Recognition mode: automatic or push-to-talk</string>

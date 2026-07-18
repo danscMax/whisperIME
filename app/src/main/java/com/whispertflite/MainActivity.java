@@ -240,6 +240,9 @@ public class MainActivity extends AppCompatActivity {
         });
 
         translate = findViewById(R.id.mode_translate);
+        // Persist the translate choice so every surface (including the provider dialog) can honor it (D9).
+        translate.setChecked(sp.getBoolean("translate", false));
+        translate.setOnCheckedChangeListener((b, checked) -> sp.edit().putBoolean("translate", checked).apply());
 
         sdcardDataFolder = this.getExternalFilesDir(null);
 

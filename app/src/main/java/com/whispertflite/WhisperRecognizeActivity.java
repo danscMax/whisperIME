@@ -397,7 +397,9 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
             orb.setSignalState(LivingSignalView.SignalState.PROCESSING);
         });
         if (mWhisper != null) {
-            mWhisper.setAction(Whisper.ACTION_TRANSCRIBE);
+            // Honor the app-wide translate choice instead of hard-forcing transcribe (D9).
+            boolean translate = sp.getBoolean("translate", false);
+            mWhisper.setAction(translate ? Whisper.ACTION_TRANSLATE : Whisper.ACTION_TRANSCRIBE);
             mWhisper.start();
         }
     }

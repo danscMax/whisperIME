@@ -97,6 +97,10 @@ Java_com_whispertflite_engine_WhisperCpp_nativeInit(JNIEnv *env, jclass, jstring
 
     whisper_context_params cparams = whisper_context_default_params();
     cparams.use_gpu = false; // no GPU on this build
+    // B3: flash_attn is deliberately left off. It is primarily a GPU optimization; on this CPU-only
+    // build the ggml CPU support is limited and there is evidence it can change output quality
+    // (whisper.cpp issue #3020). Without an on-device A/B showing a win it stays disabled — enabling it
+    // blindly would risk accuracy for no measured speedup.
 
     whisper_context *ctx = whisper_init_from_file_with_params(path, cparams);
     env->ReleaseStringUTFChars(modelPath, path);

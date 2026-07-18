@@ -78,6 +78,9 @@ public class WhisperInputMethodService extends InputMethodService {
     // Auto (VAD) mode grabs the mic on open; delay it a beat so the strip isn't recording the room the
     // instant it appears (D12). Cancelled if the view goes away before it fires.
     private static final long AUTO_START_DELAY_MS = 700;
+
+    // Curated quick-pick languages for the IME menu (D11); the full 100-language list stays in the app.
+    private static final String[] QUICK_LANGS = {"auto", "en", "ru", "es", "de", "fr", "zh", "ja", "pt", "it"};
     private final Runnable autoStartRunnable = () -> {
         HapticFeedback.vibrate(mContext);
         startRecording();
@@ -337,8 +340,26 @@ public class WhisperInputMethodService extends InputMethodService {
         android.view.MenuItem autoItem = menu.getMenu().add(0, 2, 1, R.string.auto_button);
         autoItem.setCheckable(true);
         autoItem.setChecked(modeAuto);
-        menu.getMenu().add(0, 3, 2, R.string.settings_title);
+        // Quick language pick without leaving the keyboard (D11); takes effect on the next dictation.
+        android.view.SubMenu langMenu = menu.getMenu().addSubMenu(0, 4, 2, R.string.language);
+        String currentLang = sp.getString("language", "auto");
+        for (int i = 0; i < QUICK_LANGS.length; i++) {
+            String label = QUICK_LANGS[i].equals("auto")
+                    ? getString(R.string.auto_lang) : QUICK_LANGS[i].toUpperCase();
+            android.view.MenuItem li = langMenu.add(2, 100 + i, i, label);
+            li.setCheckable(true);
+            li.setChecked(QUICK_LANGS[i].equals(currentLang));
+        }
+        langMenu.setGroupCheckable(2, true, true);
+        menu.getMenu().add(0, 3, 3, R.string.settings_title);
         menu.setOnMenuItemClickListener(item -> {
+            if (item.getGroupId() == 2) {
+                int idx = item.getItemId() - 100;
+                if (idx >= 0 && idx < QUICK_LANGS.length) {
+                    sp.edit().putString("language", QUICK_LANGS[idx]).apply();
+                }
+                return true;
+            }
             if (item.getItemId() == 1) {
                 translate = !translate;
                 updateModelChip();

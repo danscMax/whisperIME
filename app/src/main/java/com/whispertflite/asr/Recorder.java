@@ -114,6 +114,11 @@ public class Recorder {
         }
     }
 
+    // B5 (deferred, scoped): whisper.cpp v1.9.1 ships a native Silero VAD (whisper_vad_* in whisper.h)
+    // that is more accurate than webrtc on speech/noise. Adopting it is a large change AND needs a
+    // bundled Silero ggml model (~1-2 MB asset) plus on-device WER/latency validation before it can
+    // replace the webrtc path here — it is NOT wired up. Kept as webrtc until that model + device test
+    // are available; tracked as its own task, not blind-swapped.
     public void initVad(){
         vad = Vad.builder()
                 .setSampleRate(SampleRate.SAMPLE_RATE_16K)

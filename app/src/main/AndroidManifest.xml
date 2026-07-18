@@ -15,6 +15,7 @@
     <application
         android:name=".WhisperApp"
         android:allowBackup="false"
+        android:enableOnBackInvokedCallback="true"
         android:extractNativeLibs="true"
         android:usesCleartextTraffic="false"
         android:fullBackupContent="false"

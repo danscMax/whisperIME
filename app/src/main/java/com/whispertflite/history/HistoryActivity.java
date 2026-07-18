@@ -5,6 +5,8 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
@@ -32,6 +34,8 @@ import com.whispertflite.utils.ThemeUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class HistoryActivity extends AppCompatActivity {
 
@@ -39,6 +43,12 @@ public class HistoryActivity extends AppCompatActivity {
     private HistoryAdapter adapter;
     private View emptyState;
     private String query = null;
+
+    // History reads (a LIKE over up to 500 rows) run off the UI thread; the search box debounces so
+    // it doesn't fire a query on every keystroke.
+    private final ExecutorService dbExecutor = Executors.newSingleThreadExecutor();
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private final Runnable reloadTask = this::reload;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -85,7 +95,8 @@ public class HistoryActivity extends AppCompatActivity {
             @Override public void onTextChanged(CharSequence s, int a, int b, int c) {}
             @Override public void afterTextChanged(Editable s) {
                 query = s.toString();
-                reload();
+                mainHandler.removeCallbacks(reloadTask);
+                mainHandler.postDelayed(reloadTask, 250);   // debounce: don't query per keystroke
             }
         });
 
@@ -98,10 +109,23 @@ public class HistoryActivity extends AppCompatActivity {
         reload();
     }
 
+    @Override
+    protected void onDestroy() {
+        mainHandler.removeCallbacks(reloadTask);
+        dbExecutor.shutdownNow();
+        super.onDestroy();
+    }
+
+    /** Query the DB off the UI thread, then swap the list in on the main thread. */
     private void reload() {
-        List<HistoryDb.Entry> entries = db.list(query, 500);
-        adapter.setItems(entries);
-        emptyState.setVisibility(entries.isEmpty() ? View.VISIBLE : View.GONE);
+        final String q = query;
+        dbExecutor.execute(() -> {
+            final List<HistoryDb.Entry> entries = db.list(q, 500);
+            mainHandler.post(() -> {
+                adapter.setItems(entries);
+                emptyState.setVisibility(entries.isEmpty() ? View.VISIBLE : View.GONE);
+            });
+        });
     }
 
     private void confirmClearAll() {

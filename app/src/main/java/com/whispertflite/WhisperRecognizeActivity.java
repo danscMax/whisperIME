@@ -50,7 +50,9 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     private ImageButton btnCancel;
     private LivingSignalView orb;
     private TextView statusText;
-    private TextView partialText;
+    private android.widget.EditText partialText;   // editable: fix a wrong result before sending (D3)
+    private com.google.android.material.button.MaterialButton sendButton;
+    private String lastLanguage = "";
     private Recorder mRecorder = null;
     private Whisper mWhisper = null;
     private File sdcardDataFolder = null;
@@ -115,6 +117,13 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
         orb.setColors(orbTint[0], orbTint[1]);
         statusText = findViewById(R.id.dialog_status);
         partialText = findViewById(R.id.dialog_partial);
+        sendButton = findViewById(R.id.dialog_send);
+        sendButton.setOnClickListener(v -> {
+            String edited = partialText.getText().toString().trim();
+            if (edited.isEmpty()) return;
+            saveHistory(edited, lastLanguage);   // log the text the user actually accepted (D3/D6)
+            sendResult(edited);
+        });
 
         btnCancel.setOnClickListener(v -> {
             if (mWhisper != null) stopTranscription();
@@ -200,8 +209,16 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
         });
 
         applyModeUi();
-        // Auto mode starts listening on open; push-to-talk waits calmly for the user to hold.
-        if (modeAuto && checkRecordPermission()) startListening(true);
+        // Auto mode starts listening shortly after open (not the instant the dialog appears, so it isn't
+        // capturing the room before the user reacts — D12); push-to-talk waits calmly for the user to hold.
+        if (modeAuto && checkRecordPermission()) {
+            orb.postDelayed(() -> {
+                if (!isFinishing() && mRecorder != null && !mRecorder.isInProgress()
+                        && mWhisper != null && !mWhisper.isInProgress()) {
+                    startListening(true);
+                }
+            }, 700);
+        }
     }
 
     /** Reflect the current mode on the toggle pill and the idle prompt (when not busy). */
@@ -214,6 +231,7 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
             orb.setSignalState(LivingSignalView.SignalState.READY);
             setStatus(modeAuto ? R.string.dialog_tap_to_talk : R.string.dialog_hold_to_speak);
             if (partialText != null) partialText.setVisibility(View.GONE);  // no dead band at idle
+            if (sendButton != null) sendButton.setVisibility(View.GONE);
         }
     }
 
@@ -225,6 +243,8 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
         HapticFeedback.vibrate(this);
         setStatus(R.string.dialog_listening);
         orb.setSignalState(LivingSignalView.SignalState.LISTENING);
+        sendButton.setVisibility(View.GONE);      // clear any previous review before a new capture (D3)
+        partialText.setVisibility(View.GONE);
         if (auto) mRecorder.initVad();   // auto-stop on silence
         mRecorder.start();
     }
@@ -310,14 +330,19 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
                     boolean simpleChinese = sp.getBoolean("simpleChinese", false);
                     result = simpleChinese ? ZhConverterUtil.toSimple(result) : ZhConverterUtil.toTraditional(result);
                 }
+                lastLanguage = whisperResult.getLanguage();
                 if (result.trim().length() > 0) {
                     final String text = result.trim();
                     runOnUiThread(() -> {
+                        // Review-before-send: show the text editable with a send button instead of firing
+                        // it straight back and closing the dialog, so a wrong result can be fixed (D3).
                         partialText.setVisibility(View.VISIBLE);
                         partialText.setText(text);
+                        partialText.setSelection(text.length());
+                        sendButton.setVisibility(View.VISIBLE);
+                        setStatus(R.string.dialog_review);
+                        orb.setSignalState(LivingSignalView.SignalState.READY);
                     });
-                    saveHistory(text, whisperResult.getLanguage());
-                    sendResult(text);
                 } else {
                     // Nothing recognized (silence, or an all-marker result cleaned to empty):
                     // don't finish — return to the calm idle prompt so the user can try again.
@@ -372,7 +397,9 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
             orb.setSignalState(LivingSignalView.SignalState.PROCESSING);
         });
         if (mWhisper != null) {
-            mWhisper.setAction(Whisper.ACTION_TRANSCRIBE);
+            // Honor the app-wide translate choice instead of hard-forcing transcribe (D9).
+            boolean translate = sp.getBoolean("translate", false);
+            mWhisper.setAction(translate ? Whisper.ACTION_TRANSLATE : Whisper.ACTION_TRANSCRIBE);
             mWhisper.start();
         }
     }

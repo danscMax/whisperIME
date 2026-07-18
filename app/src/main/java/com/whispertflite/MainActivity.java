@@ -75,13 +75,14 @@ public class MainActivity extends AppCompatActivity {
     public static final String ENGLISH_ONLY_VOCAB_FILE = "filters_vocab_en.bin";
     public static final String MULTILINGUAL_VOCAB_FILE = "filters_vocab_multilingual.bin";
 
-    private enum UiState { READY, RECORDING, PROCESSING, RESULT, ERROR }
+    // NO_SPEECH = nothing was recognized (silence). Shares the error card's "try again" layout but uses
+    // a calm orb, not the red error orb — "didn't catch that" is not a failure (E1).
+    private enum UiState { READY, RECORDING, PROCESSING, RESULT, ERROR, NO_SPEECH }
 
     private EditText tvResult;
     private ImageButton btnRecord;
     private ImageButton btnInfo;
     private ImageButton btnOverflow;
-    private com.google.android.material.chip.Chip append;
     private com.google.android.material.chip.Chip translate;
     private LivingSignalView orb;
     private TextView tvReadyHint;
@@ -96,6 +97,12 @@ public class MainActivity extends AppCompatActivity {
 
     private Recorder mRecorder = null;
     private Whisper mWhisper = null;
+    // Set when a chunk/run reports an engine failure (vs genuine silence) so finishToResult can tell
+    // the user it failed instead of silently showing the "nothing heard" state (C4/C5).
+    private boolean transcriptionFailed = false;
+    // Last transcript already written to history; guards against double-logging when the result is
+    // saved on leave (onPause) so hand-edits are captured instead of the pre-edit text (D6).
+    private String lastLoggedText = "";
 
     private File sdcardDataFolder = null;
     private ModelInfo selectedModel = null;
@@ -147,12 +154,23 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         stopProcessing();
+        // Save the FINAL (possibly hand-edited) transcript when leaving a result — the pre-edit text
+        // that finishToResult used to save meant edits never reached history (D6).
+        if (currentState == UiState.RESULT && sp != null && sp.getBoolean("historyEnabled", true)) {
+            String text = tvResult.getText().toString().trim();
+            if (!text.isEmpty() && !text.equals(lastLoggedText)) {
+                HistoryDb.get(mContext).insert(text, lastLanguage,
+                        selectedModel != null ? selectedModel.id : "", recordDurationMs);
+                lastLoggedText = text;
+            }
+        }
         super.onPause();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        if (orb != null) orb.refreshStyle();   // pick up an orb-style change made in Settings
         // The catalog can add/remove/select models while we're backgrounded. Re-sync the spinner
         // and, if the active model changed, reload the engine — without this the main screen keeps
         // showing/using the old model until the app is restarted.
@@ -222,8 +240,10 @@ public class MainActivity extends AppCompatActivity {
                     : R.drawable.ic_expand_more_24dp);
         });
 
-        append = findViewById(R.id.mode_append);
         translate = findViewById(R.id.mode_translate);
+        // Persist the translate choice so every surface (including the provider dialog) can honor it (D9).
+        translate.setChecked(sp.getBoolean("translate", false));
+        translate.setOnCheckedChangeListener((b, checked) -> sp.edit().putBoolean("translate", checked).apply());
 
         sdcardDataFolder = this.getExternalFilesDir(null);
 
@@ -281,6 +301,14 @@ public class MainActivity extends AppCompatActivity {
             if (currentDownloadedModels == null || pos >= currentDownloadedModels.size()) return;
             ModelInfo picked = currentDownloadedModels.get(pos);
             if (picked.id.equals(selectedModel.id)) return;
+            // A switch tears down the engine; doing it mid-recording drops in-flight chunks into a
+            // shutting-down instance. Refuse until idle and restore the visible selection (C10).
+            if ((mRecorder != null && mRecorder.isInProgress())
+                    || (mWhisper != null && mWhisper.isInProgress())) {
+                Toast.makeText(this, R.string.please_wait, Toast.LENGTH_SHORT).show();
+                setModelDropdown(currentDownloadedModels, selectedModel);
+                return;
+            }
             selectedModel = picked;
             sp.edit().putString("selectedModelId", selectedModel.id).apply();
             updateEngineBadge();
@@ -338,6 +366,12 @@ public class MainActivity extends AppCompatActivity {
         });
         ((MaterialButton) findViewById(R.id.btnRetry)).setOnClickListener(v -> {
             tvResult.setText("");
+            lastLoggedText = "";
+            applyState(UiState.READY);
+        });
+        findViewById(R.id.btnClear).setOnClickListener(v -> {
+            tvResult.setText("");   // deliberate wipe — recordings otherwise accumulate now (D2)
+            lastLoggedText = "";
             applyState(UiState.READY);
         });
 
@@ -354,7 +388,8 @@ public class MainActivity extends AppCompatActivity {
             public void onUpdateReceived(String message) {
                 Log.d(TAG, "Update is received, Message: " + message);
                 if (message.equals(Recorder.MSG_RECORDING)) {
-                    if (!append.isChecked()) runOnUiThread(() -> tvResult.setText(""));
+                    // Do NOT wipe the field on a new recording — dictation-by-parts kept losing the
+                    // previous result. New speech appends; the trash button clears deliberately (D2).
                 } else if (message.equals(Recorder.MSG_RECORDING_DONE) || message.equals(Recorder.MSG_RECORDING_ERROR)) {
                     HapticFeedback.vibrate(mContext);
                     recordingStopped = true;
@@ -404,6 +439,8 @@ public class MainActivity extends AppCompatActivity {
         currentState = state;
         boolean recording = state == UiState.RECORDING;
         boolean error = state == UiState.ERROR;
+        boolean noSpeech = state == UiState.NO_SPEECH;
+        boolean errorLike = error || noSpeech;   // both use the "try again" card
         boolean result = state == UiState.RESULT;
         boolean processing = state == UiState.PROCESSING;
 
@@ -412,19 +449,22 @@ public class MainActivity extends AppCompatActivity {
         TransitionManager.beginDelayedTransition((ViewGroup) resultLayout.getParent(),
                 new Fade().setDuration(180));
 
-        resultLayout.setVisibility(error ? View.GONE : View.VISIBLE);
+        resultLayout.setVisibility(errorLike ? View.GONE : View.VISIBLE);
         layoutRecording.setVisibility(recording ? View.VISIBLE : View.GONE);
-        layoutError.setVisibility(error ? View.VISIBLE : View.GONE);
+        layoutError.setVisibility(errorLike ? View.VISIBLE : View.GONE);
         layoutActions.setVisibility(result ? View.VISIBLE : View.GONE);
-        perfChip.setVisibility(result ? View.VISIBLE : View.GONE);
+        // Keep the speed metric visible on a no-speech result too, so the user sees the model did run (E2).
+        perfChip.setVisibility(result || noSpeech ? View.VISIBLE : View.GONE);
         // Transcript-panel placeholder shows only when the panel is empty (READY, nothing typed yet).
         boolean empty = tvResult.getText().length() == 0;
         if (tvReadyHint != null)
             tvReadyHint.setVisibility(state == UiState.READY && empty ? View.VISIBLE : View.GONE);
+        // Editing affordance: show the caret on a result so it's discoverable as an editable field (D7).
+        tvResult.setCursorVisible(result);
         dockStatus.setVisibility(result ? View.GONE : View.VISIBLE);
         dockStatus.setText(state == UiState.RECORDING ? R.string.main_state_listening
                 : state == UiState.PROCESSING ? R.string.main_state_processing
-                : state == UiState.ERROR ? R.string.main_retry
+                : errorLike ? R.string.main_retry
                 : R.string.main_hold_signal);
 
         LivingSignalView.SignalState signalState = state == UiState.RECORDING
@@ -432,7 +472,7 @@ public class MainActivity extends AppCompatActivity {
                 : state == UiState.PROCESSING ? LivingSignalView.SignalState.PROCESSING
                 : state == UiState.RESULT ? LivingSignalView.SignalState.RESULT
                 : state == UiState.ERROR ? LivingSignalView.SignalState.ERROR
-                : LivingSignalView.SignalState.READY;
+                : LivingSignalView.SignalState.READY;   // NO_SPEECH rides the calm READY orb (E1)
         orb.setSignalState(signalState);
 
         if (recording) {
@@ -494,7 +534,13 @@ public class MainActivity extends AppCompatActivity {
         // Build fully into a local, then publish: initModel runs on a background thread and can race
         // with deinitModel() (activity recreate for night mode / model switch) nulling the field.
         Whisper whisper = new Whisper(this);
-        whisper.loadModel(modelFile, vocabFile, isMultilingualModel);
+        if (!whisper.loadModel(modelFile, vocabFile, isMultilingualModel)) {
+            // Load failed — free the half-built instance and leave mWhisper null so a later switch/
+            // resume retries instead of no-opping a "loaded" dead engine (C2); tell the user (C13).
+            whisper.shutdown();
+            runOnUiThread(() -> Toast.makeText(this, R.string.error_model_load, Toast.LENGTH_LONG).show());
+            return;
+        }
         Log.d(TAG, "Initialized: " + selectedModel.id + " (" + selectedModel.engine + ")");
         whisper.setListener(new Whisper.WhisperListener() {
             @Override
@@ -511,6 +557,10 @@ public class MainActivity extends AppCompatActivity {
                     if (recordingStopped && !mWhisper.isInProgress()) {
                         runOnUiThread(MainActivity.this::finishToResult);
                     }
+                } else if (message.startsWith(Whisper.MSG_TRANSCRIBE_FAILED)
+                        || message.startsWith(Whisper.MSG_LOAD_FAILED)
+                        || message.equals(Whisper.MSG_ENGINE_NOT_INIT)) {
+                    transcriptionFailed = true;   // finishToResult reports it instead of "no speech" (C4/C5)
                 }
             }
 
@@ -519,6 +569,14 @@ public class MainActivity extends AppCompatActivity {
                 long timeTaken = System.currentTimeMillis() - startTime;
                 Log.d(TAG, "Result: " + whisperResult.getResult() + " " + whisperResult.getLanguage() + " " + (whisperResult.getTask() == Whisper.Action.TRANSCRIBE ? "transcribing" : "translating"));
 
+                // Update the speed metric for EVERY result, including an empty/no-speech one, so the user
+                // can see the model actually ran even when nothing was recognized (E2).
+                double procSec = timeTaken / 1000.0;
+                double audioSec = audioDurationSeconds();
+                double realtime = procSec > 0 ? audioSec / procSec : 0;
+                runOnUiThread(() -> perfChip.setText(getString(R.string.main_perf_chip, procSec, realtime)));
+
+                if (whisperResult.isError()) { transcriptionFailed = true; return; } // engine failure, not silence (C5)
                 String raw = whisperResult.getResult();
                 if (raw == null || raw.trim().isEmpty()) return; // empty chunk: skip; completion handled on drain
 
@@ -531,15 +589,8 @@ public class MainActivity extends AppCompatActivity {
                     out = raw;
                 }
 
-                double procSec = timeTaken / 1000.0;
-                double audioSec = audioDurationSeconds();
-                double realtime = procSec > 0 ? audioSec / procSec : 0;
-
                 // Append each chunk live (pseudo-streaming); history/TTS happen once in finishToResult().
-                runOnUiThread(() -> {
-                    tvResult.append(out);
-                    perfChip.setText(getString(R.string.main_perf_chip, procSec, realtime));
-                });
+                runOnUiThread(() -> tvResult.append(out));
             }
         });
         mWhisper = whisper; // publish only once fully constructed
@@ -722,6 +773,7 @@ public class MainActivity extends AppCompatActivity {
         }
         recordingStopped = false;
         resultFinalized = false;
+        transcriptionFailed = false;
         lastLanguage = "";
         // Flags apply to every chunk of this session.
         mWhisper.setAction(translate.isChecked() ? Whisper.ACTION_TRANSLATE : Whisper.ACTION_TRANSCRIBE);
@@ -737,13 +789,18 @@ public class MainActivity extends AppCompatActivity {
         tilModel.setEnabled(true);
         String text = tvResult.getText().toString().trim();
         if (text.isEmpty()) {
-            applyState(UiState.ERROR);
+            // Distinguish an engine failure from genuine silence so the user isn't left guessing (C5),
+            // and show a calm "didn't catch that" for silence instead of the red error orb (E1).
+            if (transcriptionFailed) {
+                Toast.makeText(mContext, R.string.error_transcription, Toast.LENGTH_LONG).show();
+                applyState(UiState.ERROR);
+            } else {
+                applyState(UiState.NO_SPEECH);
+            }
             return;
         }
         applyState(UiState.RESULT);
-        if (sp.getBoolean("historyEnabled", true)) {
-            HistoryDb.get(mContext).insert(text, lastLanguage, selectedModel.id, recordDurationMs);
-        }
+        // History is logged on leave (onPause), not here, so a hand-edited result is what gets saved (D6).
         if (sp.getBoolean("speakResult", false)) speak(text);
     }
 

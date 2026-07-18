@@ -69,7 +69,9 @@ public class Recorder {
     private boolean useVAD = false;
     private VadWebRTC vad = null;
     private static final int VAD_FRAME_SIZE = 480;                 // 30 ms @ 16 kHz
-    private static final int CHUNK_SILENCE_FRAMES = 700 / 30;      // ~700 ms pause splits a chunk
+    // ~550 ms pause splits a chunk. ponytail: calibration knob — lower = faster first result, higher =
+    // fewer mid-phrase splits; tune with an on-device latency/accuracy check (B1, device-tunable).
+    private static final int CHUNK_SILENCE_FRAMES = 550 / 30;
     private static final int CHUNK_HARD_CAP_BYTES = 16000 * 2 * 28; // 28 s force-split mid-speech
 
     private final Thread workerThread;
@@ -112,11 +114,16 @@ public class Recorder {
         }
     }
 
+    // B5 (deferred, scoped): whisper.cpp v1.9.1 ships a native Silero VAD (whisper_vad_* in whisper.h)
+    // that is more accurate than webrtc on speech/noise. Adopting it is a large change AND needs a
+    // bundled Silero ggml model (~1-2 MB asset) plus on-device WER/latency validation before it can
+    // replace the webrtc path here — it is NOT wired up. Kept as webrtc until that model + device test
+    // are available; tracked as its own task, not blind-swapped.
     public void initVad(){
         vad = Vad.builder()
                 .setSampleRate(SampleRate.SAMPLE_RATE_16K)
                 .setFrameSize(FrameSize.FRAME_SIZE_480)
-                .setMode(Mode.VERY_AGGRESSIVE)
+                .setMode(Mode.AGGRESSIVE)   // was VERY_AGGRESSIVE: too rejective for quiet speech (A4, device-tunable knob)
                 .setSilenceDurationMs(800)
                 .setSpeechDurationMs(200)
                 .build();
@@ -179,25 +186,22 @@ public class Recorder {
     }
 
     /**
-     * Peak-normalize 16-bit little-endian PCM in place. Phone mics on VOICE_RECOGNITION deliver a
-     * raw, often very quiet signal (no AGC); Whisper and the VAD both degrade on it. Gain is capped
-     * so noise-only audio is not blown up.
+     * Peak-normalize 16-bit little-endian PCM in place. Used ONLY on a throwaway copy fed to the VAD:
+     * a quiet frame otherwise never crosses the webrtc speech threshold. The Whisper-bound audio is no
+     * longer normalized here — it rides the VOICE_RECOGNITION source + platform AGC instead (A9). Gain
+     * is capped so noise-only audio is not blown up.
      */
     private static void normalizePcm(byte[] pcm) {
         AudioMath.normalizeInPlace(pcm);
     }
 
-    /** Start Bluetooth SCO only when a Bluetooth input device is actually connected. */
+    /**
+     * Deliberately does NOT force Bluetooth SCO (A10). SCO is a narrowband (8/16 kHz telephone-band)
+     * link that noticeably degrades dictation, and forcing it also overrode the VOICE_RECOGNITION
+     * source's own capture-device routing. We let the platform choose the input device instead. Kept as
+     * a hook returning false so the SCO-teardown call sites remain harmless no-ops.
+     */
     private boolean maybeStartSco(AudioManager audioManager) {
-        try {
-            for (android.media.AudioDeviceInfo d : audioManager.getDevices(AudioManager.GET_DEVICES_INPUTS)) {
-                if (d.getType() == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO) {
-                    audioManager.startBluetoothSco();
-                    audioManager.setBluetoothScoOn(true);
-                    return true;
-                }
-            }
-        } catch (Exception ignored) { }
         return false;
     }
 
@@ -217,7 +221,9 @@ public class Recorder {
                         android.media.audiofx.NoiseSuppressor.create(audioRecord.getAudioSessionId());
                 if (ns != null) { ns.setEnabled(true); mEffects.add(ns); }
             }
-        } catch (Exception ignored) { }
+        } catch (Exception e) {
+            Log.w(TAG, "Attaching AGC/NoiseSuppressor failed", e);   // diagnosable, not swallowed (C14)
+        }
     }
 
     /** Release the AGC/noise-suppression effects created for the just-finished record session. */
@@ -290,7 +296,9 @@ public class Recorder {
         int sampleRateInHz = 16000;
         int channelConfig = AudioFormat.CHANNEL_IN_MONO;
         int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
-        int audioSource = MediaRecorder.AudioSource.MIC;
+        // VOICE_RECOGNITION applies the platform's ASR-tuned capture path (speech AGC, echo/music
+        // suppression) and yields a less-raw signal than MIC — best practice for dictation (A1).
+        int audioSource = MediaRecorder.AudioSource.VOICE_RECOGNITION;
 
         int bufferSize = AudioRecord.getMinBufferSize(sampleRateInHz, channelConfig, audioFormat);
         if (bufferSize < VAD_FRAME_SIZE * 2) bufferSize = VAD_FRAME_SIZE * 2;
@@ -335,12 +343,17 @@ public class Recorder {
             }
 
             if (useVAD){
-                byte[] outputBufferByteArray = outputBuffer.toByteArray();
-                if (outputBufferByteArray.length >= VAD_FRAME_SIZE * 2) {
-                    // Always use the last VAD_FRAME_SIZE * 2 bytes (16 bit) from outputBuffer for VAD
-                    System.arraycopy(outputBufferByteArray, outputBufferByteArray.length - VAD_FRAME_SIZE * 2, vadAudioBuffer, 0, VAD_FRAME_SIZE * 2);
+                if (bytesRead == VAD_FRAME_SIZE * 2) {
+                    // The just-read frame IS the latest VAD window — copy it directly instead of
+                    // outputBuffer.toByteArray() (a full copy of the growing buffer) every 30 ms frame,
+                    // which was O(n) per frame -> O(n^2) over a long recording (B4).
+                    System.arraycopy(audioData, 0, vadAudioBuffer, 0, VAD_FRAME_SIZE * 2);
 
-                    isSpeech = vad.isSpeech(vadAudioBuffer);
+                    // Feed the VAD a normalized copy, matching the chunked path — otherwise a quiet mic
+                    // (VOICE_RECOGNITION source) never crosses the speech threshold here (A8).
+                    byte[] vadFrame = vadAudioBuffer.clone();
+                    normalizePcm(vadFrame);
+                    isSpeech = vad.isSpeech(vadFrame);
                     if (isSpeech) {
                         if (!isRecording) {
                             Log.d(TAG, "VAD Speech detected: recording starts");
@@ -375,9 +388,10 @@ public class Recorder {
             audioManager.setBluetoothScoOn(false);
         }
 
-        // Save recorded audio data to BufferStore (up to 30 seconds)
+        // Save recorded audio data to BufferStore (up to 30 seconds). No manual normalization: the
+        // VOICE_RECOGNITION source + platform AGC already level the signal; a second manual gain stage
+        // fought the AGC and rescaled each buffer differently (A9).
         byte[] recorded = outputBuffer.toByteArray();
-        normalizePcm(recorded);
         RecordBuffer.setOutputBuffer(recorded);
         if (totalBytesRead > 6400){  //min 0.2s
             sendUpdate(MSG_RECORDING_DONE);
@@ -403,7 +417,9 @@ public class Recorder {
         int channelConfig = AudioFormat.CHANNEL_IN_MONO;
         int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
         int sampleRateInHz = 16000;
-        int audioSource = MediaRecorder.AudioSource.MIC;
+        // VOICE_RECOGNITION applies the platform's ASR-tuned capture path (speech AGC, echo/music
+        // suppression) and yields a less-raw signal than MIC — best practice for dictation (A1).
+        int audioSource = MediaRecorder.AudioSource.VOICE_RECOGNITION;
 
         int bufferSize = AudioRecord.getMinBufferSize(sampleRateInHz, channelConfig, audioFormat);
         if (bufferSize < VAD_FRAME_SIZE * 2) bufferSize = VAD_FRAME_SIZE * 2;
@@ -426,7 +442,7 @@ public class Recorder {
         VadWebRTC chunkVad = Vad.builder()
                 .setSampleRate(SampleRate.SAMPLE_RATE_16K)
                 .setFrameSize(FrameSize.FRAME_SIZE_480)
-                .setMode(Mode.VERY_AGGRESSIVE)
+                .setMode(Mode.AGGRESSIVE)   // was VERY_AGGRESSIVE: too rejective for quiet speech (A4, device-tunable knob)
                 .setSilenceDurationMs(300)
                 .setSpeechDurationMs(100)
                 .build();
@@ -467,7 +483,8 @@ public class Recorder {
             boolean capSplit = chunk.size() >= CHUNK_HARD_CAP_BYTES;
             if (pauseSplit || capSplit) {
                 byte[] out = chunk.toByteArray();
-                normalizePcm(out);
+                // No manual normalization — trust the VOICE_RECOGNITION source + platform AGC so every
+                // chunk of a phrase reaches Whisper at a consistent level, not rescaled per chunk (A6/A9).
                 mChunkListener.onChunk(out);
                 chunksEmitted++;
                 chunk.reset();
@@ -481,10 +498,16 @@ public class Recorder {
         // threshold), fall back to transcribing the captured audio anyway once it's ~0.5 s+, so quiet
         // speech is not silently dropped — the legacy single-buffer path always transcribed.
         boolean trailing = chunkHasSpeech && chunk.size() > 6400;   // 0.2 s of detected speech
-        boolean softFallback = chunksEmitted == 0 && chunk.size() > 16000; // ~0.5 s, VAD never fired
-        if (trailing || softFallback) {
+        // Any substantial residual (~0.5 s+) left after the last split, even with chunkHasSpeech==false:
+        // a soft trailing fragment after an earlier chunk (VAD stopped firing on quiet tail speech) used
+        // to match neither branch and was silently dropped. Subsumes the old VAD-never-fired fallback (A5).
+        boolean residual = chunk.size() > 16000;
+        // Gate on `announced` — the VAD must have fired at least once this session. If it never did, the
+        // whole recording is silence/noise (the spectral VAD is reliable even when the platform AGC has
+        // boosted room noise to speech level, which defeats any energy test): don't flush it, so neither
+        // engine transcribes silence into a hallucinated sentence ("The train is leaving the station").
+        if (announced && (trailing || residual)) {
             byte[] out = chunk.toByteArray();
-            normalizePcm(out);
             mChunkListener.onChunk(out);
             chunksEmitted++;
         }

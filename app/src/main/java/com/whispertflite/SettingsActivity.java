@@ -41,12 +41,14 @@ public class SettingsActivity extends AppCompatActivity {
 
         buildPaletteRow();
         buildThemeToggle();
+        buildOrbToggle();
 
         // simpleChinese is an existing upstream key; hapticFeedback/speakResult are new
         // settings keys consumed when MainActivity is rewired in Task 1.3.
         bindSwitch(R.id.switch_haptic, "hapticFeedback", true);
         bindSwitch(R.id.switch_tts, "speakResult", false);
         bindSwitch(R.id.switch_simple_chinese, "simpleChinese", false);
+        bindVocabulary();   // A3: custom vocabulary prompt
         bindSwitch(R.id.switch_history, "historyEnabled", true);
         bindSwitch(R.id.switch_history_ime, "historyFromIme", true);
 
@@ -101,6 +103,17 @@ public class SettingsActivity extends AppCompatActivity {
         return g;
     }
 
+    private void buildOrbToggle() {
+        MaterialButtonToggleGroup group = findViewById(R.id.orb_group);
+        group.check(sp.getInt("orbStyle", 0) == 1 ? R.id.orb_plasma : R.id.orb_cloud);
+        group.addOnButtonCheckedListener((g, id, isChecked) -> {
+            if (!isChecked) return;
+            int s = id == R.id.orb_plasma ? 1 : 0;
+            if (s == sp.getInt("orbStyle", 0)) return;
+            sp.edit().putInt("orbStyle", s).apply();   // orbs re-read this on resume (LivingSignalView.refreshStyle)
+        });
+    }
+
     private void buildThemeToggle() {
         MaterialButtonToggleGroup group = findViewById(R.id.theme_group);
         String mode = sp.getString("nightMode", "system");
@@ -122,6 +135,19 @@ public class SettingsActivity extends AppCompatActivity {
         MaterialSwitch s = findViewById(id);
         s.setChecked(sp.getBoolean(key, def));
         s.setOnCheckedChangeListener((b, checked) -> sp.edit().putBoolean(key, checked).apply());
+    }
+
+    /** Bind the free-text custom-vocabulary field to the {@code customVocabulary} pref (A3). */
+    private void bindVocabulary() {
+        android.widget.EditText field = findViewById(R.id.edit_vocabulary);
+        field.setText(sp.getString("customVocabulary", ""));
+        field.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
+            @Override public void onTextChanged(CharSequence s, int a, int b, int c) {}
+            @Override public void afterTextChanged(android.text.Editable e) {
+                sp.edit().putString("customVocabulary", e.toString()).apply();
+            }
+        });
     }
 
     private int dp(int value) {

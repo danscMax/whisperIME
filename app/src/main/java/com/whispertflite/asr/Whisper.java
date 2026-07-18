@@ -29,6 +29,10 @@ public class Whisper {
     private static final String TAG = "Whisper";
     public static final String MSG_PROCESSING = "Processing...";
     public static final String MSG_PROCESSING_DONE = "Processing done...!";
+    // Failure updates listeners can recognise (via startsWith) to surface an error to the user (C4).
+    public static final String MSG_LOAD_FAILED = "Model initialization failed";
+    public static final String MSG_TRANSCRIBE_FAILED = "Transcription failed";
+    public static final String MSG_ENGINE_NOT_INIT = "Engine not initialized or file path not set";
 
     public static final Action ACTION_TRANSCRIBE = Action.TRANSCRIBE;
     public static final Action ACTION_TRANSLATE = Action.TRANSLATE;
@@ -41,7 +45,7 @@ public class Whisper {
     private final AtomicBoolean mInProgress = new AtomicBoolean(false);
 
     private final Context mContext;
-    private AsrEngine mEngine;
+    private volatile AsrEngine mEngine;   // read/written across worker, stop() and unloadModel() threads
     private Action mAction;
     private int mLangToken = -1;
     private WhisperListener mUpdateListener;
@@ -51,10 +55,24 @@ public class Whisper {
     private volatile boolean taskAvailable = false;
 
     // Chunked mode: chunks (16-bit PCM @16k) are queued and transcribed sequentially on the worker.
-    private final BlockingQueue<byte[]> chunkQueue = new LinkedBlockingQueue<>();
+    // Bounded so a model that can't keep up on a very long dictation can't grow the queue without limit
+    // and OOM — 64 chunks is minutes of backlog; past that we drop with a log rather than crash (C6).
+    private static final int MAX_QUEUED_CHUNKS = 64;
+    private final BlockingQueue<byte[]> chunkQueue = new LinkedBlockingQueue<>(MAX_QUEUED_CHUNKS);
     private volatile boolean chunkMode = false;
 
     private final Thread mWorker;
+
+    // Watchdog: a native whisper_full that hangs (or whose cancel was lost) holds synchronized(engine)
+    // forever, which also wedges unloadModel(). Force a cancel after a generous hard cap (C7). base·Q5
+    // warm is ~1 s; even a large model on long audio stays well under 2 min, so this only trips on a hang.
+    private static final long TRANSCRIBE_TIMEOUT_MS = 120_000;
+    private static final java.util.concurrent.ScheduledExecutorService WATCHDOG =
+            java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "whisper-watchdog");
+                t.setDaemon(true);
+                return t;
+            });
 
     public Whisper(Context context) {
         this.mContext = context.getApplicationContext();
@@ -83,18 +101,35 @@ public class Whisper {
      * pref would load the wrong model for the non-app entry points. {@code isMultilingual} is kept
      * for source compatibility; the engine derives it from the matched model/filename.
      */
-    public void loadModel(File modelPath, File vocabPath, boolean isMultilingual) {
+    public boolean loadModel(File modelPath, File vocabPath, boolean isMultilingual) {
         ModelInfo hint = modelInfoForFile(modelPath); // registry match by filename, may be null
         boolean cpp = modelPath.getName().endsWith(".bin"); // GGUF whisper.cpp model files are .bin
         try {
             AsrEngine engine = cpp ? new WhisperCppEngine() : new TfliteEngine(mContext);
             engine.load(hint, modelPath, cpp ? null : vocabPath);
+            if (!engine.isLoaded()) {
+                // load() returned without an exception but the engine isn't ready (e.g. TFLite init
+                // failed) — do NOT publish it, or callers would mark the model "loaded" and no-op (C2).
+                sendUpdate(MSG_LOAD_FAILED);
+                return false;
+            }
             mEngine = engine;
             currentModelPath = modelPath.getAbsolutePath();
+            return true;
         } catch (IOException e) {
             Log.e(TAG, "Error initializing model...", e);
-            sendUpdate("Model initialization failed");
+            // Surface the reason (out-of-memory on a too-large GGUF, missing file, …) so the UI can
+            // tell the user why instead of silently returning empty transcriptions (C13).
+            sendUpdate(MSG_LOAD_FAILED + ": " + e.getMessage());
+            return false;
         }
+    }
+
+    /** True only when an engine is published AND reports itself loaded — the gate callers must use
+     *  before recording a model as "warm" (C2). */
+    public boolean isModelLoaded() {
+        AsrEngine engine = mEngine;
+        return engine != null && engine.isLoaded();
     }
 
     /** Registry entry whose filename matches this file (handles the gguf/ subdir), or null. */
@@ -164,7 +199,11 @@ public class Whisper {
     public void enqueueChunk(byte[] pcm16k) {
         chunkMode = true;
         mInProgress.set(true);
-        chunkQueue.offer(pcm16k);
+        if (!chunkQueue.offer(pcm16k)) {
+            // Queue full: the model is hopelessly behind. Dropping this chunk loses a little audio but
+            // avoids unbounded growth / OOM on a runaway-long dictation (C6).
+            Log.w(TAG, "chunk queue full (" + chunkQueue.size() + ") — dropping a chunk; model behind");
+        }
         taskLock.lock();
         try {
             taskAvailable = true;
@@ -189,8 +228,16 @@ public class Whisper {
                 taskLock.unlock();
             }
 
-            if (chunkMode) drainChunks();
-            else processRecordBuffer();
+            // Catch-all so a throw from a listener callback (drainChunks' MSG_PROCESSING_DONE runs
+            // outside processRecordBuffer's own try) can never kill the worker thread permanently —
+            // there is no restart path, so a dead worker would silently stop all future transcription (C11).
+            try {
+                if (chunkMode) drainChunks();
+                else processRecordBuffer();
+            } catch (Throwable t) {
+                Log.e(TAG, "Worker loop iteration failed", t);
+                mInProgress.set(false);
+            }
         }
     }
 
@@ -211,12 +258,22 @@ public class Whisper {
             AsrEngine engine = mEngine; // capture once: unloadModel() may null the field concurrently
             byte[] pcm = RecordBuffer.getOutputBuffer();
             if (engine != null && engine.isLoaded() && pcm != null) {
+                engine.setInitialPrompt(readInitialPrompt());   // user's vocabulary bias, if any (A3)
                 long startTime = System.currentTimeMillis();
                 sendUpdate(MSG_PROCESSING);
 
                 WhisperResult whisperResult;
-                synchronized (engine) {
-                    whisperResult = engine.transcribe(pcm, mAction, mLangToken);
+                // Arm the watchdog around the native run: if it overruns the cap, cancel() sets the
+                // abort flag and whisper_full bails, freeing the lock instead of hanging forever (C7).
+                final AsrEngine watched = engine;
+                java.util.concurrent.ScheduledFuture<?> watchdog = WATCHDOG.schedule(
+                        watched::cancel, TRANSCRIBE_TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS);
+                try {
+                    synchronized (engine) {
+                        whisperResult = engine.transcribe(pcm, mAction, mLangToken);
+                    }
+                } finally {
+                    watchdog.cancel(false);
                 }
                 sendResult(whisperResult);
 
@@ -224,13 +281,23 @@ public class Whisper {
                 Log.d(TAG, "Time Taken for transcription: " + timeTaken + "ms");
                 sendUpdate(MSG_PROCESSING_DONE);
             } else {
-                sendUpdate("Engine not initialized or file path not set");
+                sendUpdate(MSG_ENGINE_NOT_INIT);
             }
         } catch (Exception e) {
             Log.e(TAG, "Error during transcription", e);
-            sendUpdate("Transcription failed: " + e.getMessage());
+            sendUpdate(MSG_TRANSCRIBE_FAILED + ": " + e.getMessage());
         } finally {
             mInProgress.set(false);
+        }
+    }
+
+    /** The user's optional custom vocabulary/prompt (names, jargon) to bias recognition (A3). */
+    private String readInitialPrompt() {
+        try {
+            return androidx.preference.PreferenceManager.getDefaultSharedPreferences(mContext)
+                    .getString("customVocabulary", "");
+        } catch (Exception e) {
+            return "";
         }
     }
 

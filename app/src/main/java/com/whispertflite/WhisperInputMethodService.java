@@ -17,6 +17,7 @@ import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputConnection;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
@@ -74,6 +75,17 @@ public class WhisperInputMethodService extends InputMethodService {
     private static boolean translate = false;
     private boolean modeAuto = false;
 
+    // Auto (VAD) mode grabs the mic on open; delay it a beat so the strip isn't recording the room the
+    // instant it appears (D12). Cancelled if the view goes away before it fires.
+    private static final long AUTO_START_DELAY_MS = 700;
+
+    // Curated quick-pick languages for the IME menu (D11); the full 100-language list stays in the app.
+    private static final String[] QUICK_LANGS = {"auto", "en", "ru", "es", "de", "fr", "zh", "ja", "pt", "it"};
+    private final Runnable autoStartRunnable = () -> {
+        HapticFeedback.vibrate(mContext);
+        startRecording();
+    };
+
     // Recording/transcription session state.
     private volatile boolean recordingStopped = false;
     private long recordStartMs = 0;
@@ -100,6 +112,7 @@ public class WhisperInputMethodService extends InputMethodService {
 
     @Override
     public void onDestroy() {
+        handler.removeCallbacks(autoStartRunnable);   // don't fire a pending auto-start after teardown (D12)
         deinitModel();
         if (mRecorder != null) {
             mRecorder.shutdown();   // ends the worker thread; stop() alone left it parked (leak)
@@ -112,6 +125,7 @@ public class WhisperInputMethodService extends InputMethodService {
         currentInputType = attribute.inputType;
         if (attribute.inputType == EditorInfo.TYPE_NULL) {
             Log.d(TAG, "Cancelling: onStartInput: inputType=" + attribute.inputType + ", package=" + attribute.packageName);
+            handler.removeCallbacks(autoStartRunnable);
             deinitModel();
             if (mRecorder != null && mRecorder.isInProgress()) {
                 mRecorder.stop();
@@ -234,8 +248,8 @@ public class WhisperInputMethodService extends InputMethodService {
         applyState(UiState.IDLE);
 
         if (modeAuto) {
-            HapticFeedback.vibrate(this);
-            startRecording();
+            handler.removeCallbacks(autoStartRunnable);
+            handler.postDelayed(autoStartRunnable, AUTO_START_DELAY_MS);   // D12: brief delay, not instant
         }
 
         btnDel.setOnTouchListener(new View.OnTouchListener() {
@@ -326,8 +340,26 @@ public class WhisperInputMethodService extends InputMethodService {
         android.view.MenuItem autoItem = menu.getMenu().add(0, 2, 1, R.string.auto_button);
         autoItem.setCheckable(true);
         autoItem.setChecked(modeAuto);
-        menu.getMenu().add(0, 3, 2, R.string.settings_title);
+        // Quick language pick without leaving the keyboard (D11); takes effect on the next dictation.
+        android.view.SubMenu langMenu = menu.getMenu().addSubMenu(0, 4, 2, R.string.language);
+        String currentLang = sp.getString("language", "auto");
+        for (int i = 0; i < QUICK_LANGS.length; i++) {
+            String label = QUICK_LANGS[i].equals("auto")
+                    ? getString(R.string.auto_lang) : QUICK_LANGS[i].toUpperCase();
+            android.view.MenuItem li = langMenu.add(2, 100 + i, i, label);
+            li.setCheckable(true);
+            li.setChecked(QUICK_LANGS[i].equals(currentLang));
+        }
+        langMenu.setGroupCheckable(2, true, true);
+        menu.getMenu().add(0, 3, 3, R.string.settings_title);
         menu.setOnMenuItemClickListener(item -> {
+            if (item.getGroupId() == 2) {
+                int idx = item.getItemId() - 100;
+                if (idx >= 0 && idx < QUICK_LANGS.length) {
+                    sp.edit().putString("language", QUICK_LANGS[idx]).apply();
+                }
+                return true;
+            }
             if (item.getItemId() == 1) {
                 translate = !translate;
                 updateModelChip();
@@ -386,7 +418,18 @@ public class WhisperInputMethodService extends InputMethodService {
                 ? new File(sdcardDataFolder, ModelRegistry.vocabFor(selectedModel)) : null;
 
         mWhisper = new Whisper(this);
-        mWhisper.loadModel(modelFile, vocabFile, isMultilingual);
+        if (!mWhisper.loadModel(modelFile, vocabFile, isMultilingual)) {
+            // Load failed: tear down and leave loadedModelId null so the next input view retries
+            // instead of treating a dead engine as "loaded" and no-opping (C2); tell the user (C4/C13).
+            Log.e(TAG, "Model load failed: " + selectedModel.id);
+            deinitModel();
+            handler.post(() -> {
+                tvStatus.setText(getString(R.string.error_model_load));
+                tvStatus.setVisibility(View.VISIBLE);
+                idleGroup.setVisibility(View.GONE);
+            });
+            return;
+        }
         loadedModelId = selectedModel.id;
         Log.d(TAG, "Initialized: " + selectedModel.id + " (" + selectedModel.engine + ")");
         mWhisper.setListener(new Whisper.WhisperListener() {
@@ -396,6 +439,16 @@ public class WhisperInputMethodService extends InputMethodService {
                     if (recordingStopped) handler.post(() -> applyState(UiState.PROCESSING));
                 } else if (message.equals(Whisper.MSG_PROCESSING_DONE)) {
                     if (recordingStopped && !mWhisper.isInProgress()) handler.post(() -> finalizeIme());
+                } else if (message.startsWith(Whisper.MSG_TRANSCRIBE_FAILED)
+                        || message.startsWith(Whisper.MSG_LOAD_FAILED)
+                        || message.equals(Whisper.MSG_ENGINE_NOT_INIT)) {
+                    // Surface a failed run instead of leaving the strip stuck in PROCESSING (C4).
+                    handler.post(() -> {
+                        applyState(UiState.IDLE);
+                        tvStatus.setText(getString(R.string.error_transcription));
+                        tvStatus.setVisibility(View.VISIBLE);
+                        idleGroup.setVisibility(View.GONE);
+                    });
                 }
             }
 
@@ -411,10 +464,24 @@ public class WhisperInputMethodService extends InputMethodService {
                 String trimmed = result.trim();
                 if (trimmed.isEmpty()) return;
 
-                boolean committed = getCurrentInputConnection() != null
-                        && getCurrentInputConnection().commitText(trimmed + " ", 1);
-                if (committed) imeDraft.append(trimmed).append(" ");
-                // Stay on the strip after a result: the user leaves only via the keyboard key.
+                InputConnection ic = getCurrentInputConnection();
+                if (ic == null) return;
+
+                // Smart spacing (D5): one space between chunks; a leading space before the first chunk
+                // only when the existing field text doesn't already end in whitespace/opening punctuation.
+                char prev;
+                if (imeDraft.length() == 0) {
+                    CharSequence before = ic.getTextBeforeCursor(1, 0);
+                    prev = (before != null && before.length() > 0) ? before.charAt(0) : ' ';
+                } else {
+                    prev = imeDraft.charAt(imeDraft.length() - 1);
+                }
+                if (needsSpace(prev, trimmed)) imeDraft.append(' ');
+                imeDraft.append(trimmed);
+
+                // Composing text (D4/D1): the running transcript stays revisable in place and updates
+                // live as chunks arrive, instead of being hard-committed per chunk. finalizeIme() commits.
+                ic.setComposingText(imeDraft, 1);
             }
         });
     }
@@ -430,6 +497,8 @@ public class WhisperInputMethodService extends InputMethodService {
 
     /** Recording stopped and the queue drained: log history once and return to idle. */
     private void finalizeIme() {
+        InputConnection ic = getCurrentInputConnection();
+        if (ic != null) ic.finishComposingText();   // commit the revisable transcript as final (D4)
         String text = imeDraft.toString().trim();
         if (!text.isEmpty()
                 && sp.getBoolean("historyEnabled", true)
@@ -438,7 +507,20 @@ public class WhisperInputMethodService extends InputMethodService {
             HistoryDb.get(mContext).insert(text, lastLanguage,
                     selectedModel != null ? selectedModel.id : "", recordDurationMs);
         }
+        imeDraft.setLength(0);   // next dictation starts a fresh composing region
         applyState(UiState.IDLE);
+    }
+
+    /** True if a separating space belongs between {@code prev} and the start of {@code next} (D5). */
+    private static boolean needsSpace(char prev, String next) {
+        if (next.isEmpty() || Character.isWhitespace(prev)) return false;
+        switch (next.charAt(0)) {   // never put a space before closing punctuation
+            case '.': case ',': case '!': case '?': case ';': case ':':
+            case ')': case ']': case '}': case '%':
+                return false;
+            default:
+                return true;
+        }
     }
 
     /** True for any password input variant; history must never capture these fields. */

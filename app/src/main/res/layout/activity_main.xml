@@ -219,13 +219,6 @@
                 app:chipSpacingHorizontal="8dp">
 
                 <com.google.android.material.chip.Chip
-                    android:id="@+id/mode_append"
-                    style="@style/Widget.LivingSignal.Chip.Toggle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/append_short" />
-
-                <com.google.android.material.chip.Chip
                     android:id="@+id/mode_translate"
                     style="@style/Widget.LivingSignal.Chip.Toggle"
                     android:layout_width="wrap_content"
@@ -261,7 +254,6 @@
                     android:inputType="textMultiLine"
                     android:lineSpacingMultiplier="1.16"
                     android:textColor="@color/glass_ink"
-                    android:textCursorDrawable="@null"
                     android:textSize="18sp" />
 
                 <TextView
@@ -405,6 +397,16 @@
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/main_cd_share"
                     android:src="@drawable/ic_share_24dp"
+                    app:tint="@color/glass_ink" />
+
+                <ImageButton
+                    android:id="@+id/btnClear"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_marginStart="12dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/main_clear"
+                    android:src="@drawable/ic_delete_24dp"
                     app:tint="@color/glass_ink" />
             </LinearLayout>
         </FrameLayout>

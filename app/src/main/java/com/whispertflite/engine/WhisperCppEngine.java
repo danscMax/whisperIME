@@ -19,6 +19,12 @@ import java.nio.ByteOrder;
  */
 public final class WhisperCppEngine implements AsrEngine {
     private long ctxPtr = 0;
+    private String initialPrompt = null;   // optional vocabulary bias (A3)
+
+    @Override
+    public void setInitialPrompt(String prompt) {
+        this.initialPrompt = (prompt != null && !prompt.trim().isEmpty()) ? prompt.trim() : null;
+    }
 
     @Override
     public boolean load(ModelInfo model, File modelFile, File vocabFile) throws IOException {
@@ -52,12 +58,16 @@ public final class WhisperCppEngine implements AsrEngine {
 
     @Override
     public void cancel() {
-        WhisperCpp.nativeCancel();
+        long p = ctxPtr;
+        if (p != 0) WhisperCpp.nativeCancel(p);   // per-context cancel; no-op once released (C3)
     }
 
     @Override
     public WhisperResult transcribe(byte[] pcm16k, Whisper.Action action, int langToken) {
-        if (ctxPtr == 0 || pcm16k == null) {
+        if (ctxPtr == 0) {
+            return WhisperResult.error(action);   // engine not loaded — surface, don't treat as silence
+        }
+        if (pcm16k == null) {
             return new WhisperResult("", "", action);
         }
         float[] samples = pcm16ToFloat(pcm16k);
@@ -70,9 +80,9 @@ public final class WhisperCppEngine implements AsrEngine {
 
         String text;
         try {
-            text = WhisperCpp.nativeTranscribe(ctxPtr, samples, lang, translate);
+            text = WhisperCpp.nativeTranscribe(ctxPtr, samples, lang, translate, initialPrompt);
         } catch (RuntimeException e) {
-            return new WhisperResult("", "", action);
+            return WhisperResult.error(action);   // native run crashed mid-phrase — surface, not silence
         }
         // On "auto", read back whisper's detected language so downstream zh simplified/traditional
         // conversion still fires; otherwise the requested code is authoritative.

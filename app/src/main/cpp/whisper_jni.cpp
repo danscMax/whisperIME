@@ -16,11 +16,19 @@
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  LOG_TAG, __VA_ARGS__)
 
-// Set by nativeCancel(); polled by whisper_full via the abort callback to stop a slow run early.
-static std::atomic<bool> g_cancel{false};
+// Per-context handle: cancel targets exactly one run and can't be clobbered by another context's reset
+// (the old global flag had a lost-cancel race). The pointer to this struct is what Java holds as its
+// "ctxPtr" and passes back to every native call (C3).
+struct WhisperCtx {
+    whisper_context *ctx;
+    std::atomic<bool> cancel;
+    explicit WhisperCtx(whisper_context *c) : ctx(c), cancel(false) {}
+};
 
-static bool abort_callback(void *) {
-    return g_cancel.load();
+// Polled by whisper_full through abort_callback_user_data — the WhisperCtx of the running transcription.
+static bool abort_callback(void *user_data) {
+    auto *wc = reinterpret_cast<WhisperCtx *>(user_data);
+    return wc != nullptr && wc->cancel.load();
 }
 
 // The CPU backend is built as feature-tiered variant .so (GGML_CPU_ALL_VARIANTS) that the ggml
@@ -89,6 +97,10 @@ Java_com_whispertflite_engine_WhisperCpp_nativeInit(JNIEnv *env, jclass, jstring
 
     whisper_context_params cparams = whisper_context_default_params();
     cparams.use_gpu = false; // no GPU on this build
+    // B3: flash_attn is deliberately left off. It is primarily a GPU optimization; on this CPU-only
+    // build the ggml CPU support is limited and there is evidence it can change output quality
+    // (whisper.cpp issue #3020). Without an on-device A/B showing a win it stays disabled — enabling it
+    // blindly would risk accuracy for no measured speedup.
 
     whisper_context *ctx = whisper_init_from_file_with_params(path, cparams);
     env->ReleaseStringUTFChars(modelPath, path);
@@ -98,18 +110,19 @@ Java_com_whispertflite_engine_WhisperCpp_nativeInit(JNIEnv *env, jclass, jstring
         throw_java(env, "failed to load whisper model");
         return 0;
     }
-    return reinterpret_cast<jlong>(ctx);
+    return reinterpret_cast<jlong>(new WhisperCtx(ctx));
 }
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_whispertflite_engine_WhisperCpp_nativeTranscribe(JNIEnv *env, jclass, jlong ctxPtr,
                                                           jfloatArray pcm16k, jstring lang,
-                                                          jboolean translate) {
-    auto *ctx = reinterpret_cast<whisper_context *>(ctxPtr);
-    if (ctx == nullptr) {
+                                                          jboolean translate, jstring prompt) {
+    auto *wc = reinterpret_cast<WhisperCtx *>(ctxPtr);
+    if (wc == nullptr || wc->ctx == nullptr) {
         throw_java(env, "whisper context is null");
         return nullptr;
     }
+    whisper_context *ctx = wc->ctx;
     if (pcm16k == nullptr) {
         throw_java(env, "pcm buffer is null");
         return nullptr;
@@ -136,6 +149,16 @@ Java_com_whispertflite_engine_WhisperCpp_nativeTranscribe(JNIEnv *env, jclass, j
         }
     }
 
+    // Optional vocabulary bias (A3): initial_prompt primes the decoder toward the user's names/terms.
+    std::string promptStr;
+    if (prompt != nullptr) {
+        const char *p = env->GetStringUTFChars(prompt, nullptr);
+        if (p != nullptr) {
+            promptStr = p;
+            env->ReleaseStringUTFChars(prompt, p);
+        }
+    }
+
     whisper_full_params wparams = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
     // hardware_concurrency() is unreliable on Android (often 0); sysconf is the online core count.
     int cores = (int) sysconf(_SC_NPROCESSORS_ONLN);
@@ -150,10 +173,12 @@ Java_com_whispertflite_engine_WhisperCpp_nativeTranscribe(JNIEnv *env, jclass, j
     wparams.print_timestamps = false;
     wparams.no_context      = true;
     wparams.single_segment  = false;
-    // Let Java stop a slow run (large models take minutes on mobile CPUs).
-    g_cancel.store(false);
+    wparams.suppress_nst    = true;   // suppress non-speech tokens ([BLANK_AUDIO], music) — anti-hallucination (A2/A11)
+    if (!promptStr.empty()) wparams.initial_prompt = promptStr.c_str();   // vocabulary bias (A3)
+    // Let Java stop a slow run (large models take minutes on mobile CPUs) — per-context flag (C3).
+    wc->cancel.store(false);
     wparams.abort_callback  = abort_callback;
-    wparams.abort_callback_user_data = nullptr;
+    wparams.abort_callback_user_data = wc;
 
     // Cap the encoder context to the actual audio length (+ margin) instead of always encoding a full
     // 30 s window: whisper's encoder runs over `audio_ctx` frames (~50 per second of audio), so short
@@ -168,7 +193,7 @@ Java_com_whispertflite_engine_WhisperCpp_nativeTranscribe(JNIEnv *env, jclass, j
     int rc = whisper_full(ctx, wparams, samples, (int) n_samples);
     env->ReleaseFloatArrayElements(pcm16k, samples, JNI_ABORT);
 
-    if (g_cancel.load()) {
+    if (wc->cancel.load()) {
         return env->NewStringUTF(""); // cancelled by user: return what we have (nothing)
     }
     if (rc != 0) {
@@ -179,11 +204,21 @@ Java_com_whispertflite_engine_WhisperCpp_nativeTranscribe(JNIEnv *env, jclass, j
 
     std::string result;
     int n_segments = whisper_full_n_segments(ctx);
+    // A2 (silence-conditional suppression, ref arXiv 2501.11378): whisper's own no-speech drop fires
+    // only when no_speech_prob is high AND avg_logprob is low, so a *confident* silence hallucination
+    // ("Bye.", "I'm", "Thank you") still leaks through. Gate on no_speech_prob alone — if not a single
+    // segment looks like real speech, the whole result is a silence/noise hallucination: return empty.
+    bool any_speech = false;
     for (int i = 0; i < n_segments; ++i) {
+        if (whisper_full_get_segment_no_speech_prob(ctx, i) < 0.6f) any_speech = true;
         const char *text = whisper_full_get_segment_text(ctx, i);
         if (text != nullptr) {
             result += text;
         }
+    }
+    if (n_segments > 0 && !any_speech) {
+        LOGI("suppressed no-speech hallucination across %d segment(s)", n_segments);
+        return env->NewStringUTF("");
     }
 
     return env->NewStringUTF(result.c_str());
@@ -193,22 +228,25 @@ Java_com_whispertflite_engine_WhisperCpp_nativeTranscribe(JNIEnv *env, jclass, j
 // simplified/traditional conversion still works). Reads the context's stored auto-detect result.
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_whispertflite_engine_WhisperCpp_nativeDetectedLang(JNIEnv *env, jclass, jlong ctxPtr) {
-    auto *ctx = reinterpret_cast<whisper_context *>(ctxPtr);
-    if (ctx == nullptr) return env->NewStringUTF("");
+    auto *wc = reinterpret_cast<WhisperCtx *>(ctxPtr);
+    if (wc == nullptr || wc->ctx == nullptr) return env->NewStringUTF("");
+    whisper_context *ctx = wc->ctx;
     int id = whisper_full_lang_id(ctx);
     const char *code = id >= 0 ? whisper_lang_str(id) : nullptr;
     return env->NewStringUTF(code ? code : "");
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_whispertflite_engine_WhisperCpp_nativeCancel(JNIEnv *, jclass) {
-    g_cancel.store(true);
+Java_com_whispertflite_engine_WhisperCpp_nativeCancel(JNIEnv *, jclass, jlong ctxPtr) {
+    auto *wc = reinterpret_cast<WhisperCtx *>(ctxPtr);
+    if (wc != nullptr) wc->cancel.store(true);
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_whispertflite_engine_WhisperCpp_nativeRelease(JNIEnv *, jclass, jlong ctxPtr) {
-    auto *ctx = reinterpret_cast<whisper_context *>(ctxPtr);
-    if (ctx != nullptr) {
-        whisper_free(ctx);
+    auto *wc = reinterpret_cast<WhisperCtx *>(ctxPtr);
+    if (wc != nullptr) {
+        if (wc->ctx != nullptr) whisper_free(wc->ctx);
+        delete wc;
     }
 }

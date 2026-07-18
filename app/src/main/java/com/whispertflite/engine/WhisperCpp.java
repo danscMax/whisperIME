@@ -15,14 +15,17 @@ public final class WhisperCpp {
     /** @return opaque whisper_context pointer, or 0 on failure (also throws RuntimeException). */
     public static native long nativeInit(String modelPath);
 
-    /** @param lang ISO code ("ru"/"en") or "auto" for language detection. */
-    public static native String nativeTranscribe(long ctxPtr, float[] pcm16k, String lang, boolean translate);
+    /**
+     * @param lang   ISO code ("ru"/"en") or "auto" for language detection.
+     * @param prompt optional initial_prompt to bias the vocabulary (names/terms); null or empty = none (A3).
+     */
+    public static native String nativeTranscribe(long ctxPtr, float[] pcm16k, String lang, boolean translate, String prompt);
 
     /** ISO code of the language whisper auto-detected on the last {@link #nativeTranscribe}, or "". */
     public static native String nativeDetectedLang(long ctxPtr);
 
     public static native void nativeRelease(long ctxPtr);
 
-    /** Ask a running nativeTranscribe to abort as soon as possible (thread-safe). */
-    public static native void nativeCancel();
+    /** Ask the run on THIS context to abort as soon as possible (thread-safe, per-context — C3). */
+    public static native void nativeCancel(long ctxPtr);
 }

@@ -7,11 +7,22 @@
     android:fillViewport="true"
     android:background="@drawable/liquid_glass_bg">
 
-    <LinearLayout
+    <!-- Cap the column width and centre it so onboarding doesn't stretch across a tablet; vertical
+         bias centres it in the viewport instead of clinging to the top on tall screens. -->
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:padding="20dp"
+        app:layout_constraintWidth_max="@dimen/content_max_width"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent">
 
         <!-- Living Signal Ready / Constellation state. -->
         <com.whispertflite.ui.LivingSignalView
@@ -215,4 +226,5 @@
             android:textColor="@color/glass_ink_dim"
             android:text="@string/onboarding_more" />
     </LinearLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 </ScrollView>

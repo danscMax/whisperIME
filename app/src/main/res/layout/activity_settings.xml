@@ -45,12 +45,21 @@
         android:layout_weight="1"
         android:fillViewport="true">
 
-        <LinearLayout
+        <!-- Cap + centre the settings column so it doesn't stretch across a tablet. -->
+        <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+        <LinearLayout
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:paddingHorizontal="16dp"
-            android:paddingBottom="16dp">
+            android:paddingBottom="16dp"
+            app:layout_constraintWidth_max="@dimen/content_max_width"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
 
             <!-- Appearance -->
             <LinearLayout
@@ -296,5 +305,6 @@
                     android:textAppearance="?attr/textAppearanceBodyLarge" />
             </LinearLayout>
         </LinearLayout>
+        </androidx.constraintlayout.widget.ConstraintLayout>
     </ScrollView>
 </LinearLayout>

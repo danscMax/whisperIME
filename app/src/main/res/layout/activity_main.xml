@@ -6,16 +6,27 @@
     android:fitsSystemWindows="true"
     android:background="@drawable/liquid_glass_bg">
 
-    <LinearLayout
+    <!-- Cap + centre the whole column so it doesn't stretch across a tablet; a ~640dp measure also
+         keeps transcript lines readable instead of running edge-to-edge on a wide screen. -->
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="0dp"
         android:orientation="vertical"
         android:paddingStart="18dp"
         android:paddingTop="10dp"
         android:paddingEnd="18dp"
         android:paddingBottom="14dp"
         android:focusable="true"
-        android:focusableInTouchMode="true">
+        android:focusableInTouchMode="true"
+        app:layout_constraintWidth_max="@dimen/content_max_width"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -263,11 +274,15 @@
                     android:visibility="gone" />
             </LinearLayout>
 
+            <!-- labelFor makes this visible placeholder the accessibility label for the result field.
+                 Best practice for editable text is labelFor on a visible label (not contentDescription,
+                 which interferes with text navigation): TalkBack announces the hint, then the edit box. -->
             <TextView
                 android:id="@+id/tvReadyHint"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
+                android:labelFor="@id/tvResult"
                 android:fontFamily="@font/space_grotesk"
                 android:gravity="center"
                 android:text="@string/main_hint_ready"
@@ -415,4 +430,5 @@
                 android:contentDescription="@string/main_cd_record" />
         </FrameLayout>
     </LinearLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 </FrameLayout>

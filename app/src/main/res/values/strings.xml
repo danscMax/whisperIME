@@ -71,7 +71,7 @@
     <string name="onboarding_title">Choose your model</string>
     <string name="onboarding_subtitle">One to start, the rest later. Everything offline.</string>
     <string name="onboarding_base_title">Recommended · base</string>
-    <string name="onboarding_base_desc">Russian + 77 languages, fast</string>
+    <string name="onboarding_base_desc">Russian + 98 languages, fast</string>
     <string name="onboarding_small_title">More accurate · small</string>
     <string name="onboarding_tiny_title">English · tiny.en</string>
     <string name="onboarding_cta">Download and start</string>

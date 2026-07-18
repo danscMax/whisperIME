@@ -5,6 +5,7 @@ import android.graphics.SurfaceTexture;
 import android.opengl.GLES20;
 import android.provider.Settings;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.TextureView;
 
 import androidx.annotation.Nullable;
@@ -265,6 +266,13 @@ public class LivingSignalView extends TextureView implements TextureView.Surface
             GLES20.glAttachShader(p, v);
             GLES20.glAttachShader(p, f);
             GLES20.glLinkProgram(p);
+            // Check the status: a driver that rejects the program otherwise leaves a blank orb with
+            // no clue why. Log the info log so a field GPU issue is at least diagnosable.
+            int[] linked = new int[1];
+            GLES20.glGetProgramiv(p, GLES20.GL_LINK_STATUS, linked, 0);
+            if (linked[0] == 0) {
+                Log.e("LivingSignalView", "orb program link failed: " + GLES20.glGetProgramInfoLog(p));
+            }
             return p;
         }
 
@@ -272,6 +280,12 @@ public class LivingSignalView extends TextureView implements TextureView.Surface
             int s = GLES20.glCreateShader(type);
             GLES20.glShaderSource(s, src);
             GLES20.glCompileShader(s);
+            int[] ok = new int[1];
+            GLES20.glGetShaderiv(s, GLES20.GL_COMPILE_STATUS, ok, 0);
+            if (ok[0] == 0) {
+                Log.e("LivingSignalView", "orb shader compile failed (type " + type + "): "
+                        + GLES20.glGetShaderInfoLog(s));
+            }
             return s;
         }
 

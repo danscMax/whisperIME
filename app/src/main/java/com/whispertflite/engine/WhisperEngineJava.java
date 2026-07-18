@@ -74,6 +74,9 @@ public class WhisperEngineJava implements WhisperEngine {
 
     @Override
     public WhisperResult processRecordBuffer(Whisper.Action mAction, int mLangToken) {
+        // Silence is rejected upstream in Recorder (chunks are only flushed when the VAD fired at least
+        // once), which the AGC-immune spectral VAD does reliably — an energy/RMS gate here does NOT work
+        // because the platform AGC boosts room noise up to speech level (measured RMS ~0.23 on silence).
         // Calculate Mel spectrogram
         Log.d(TAG, "Calculating Mel spectrogram...");
         float[] melSpectrogram = getMelSpectrogram();

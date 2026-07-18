@@ -502,7 +502,11 @@ public class Recorder {
         // a soft trailing fragment after an earlier chunk (VAD stopped firing on quiet tail speech) used
         // to match neither branch and was silently dropped. Subsumes the old VAD-never-fired fallback (A5).
         boolean residual = chunk.size() > 16000;
-        if (trailing || residual) {
+        // Gate on `announced` — the VAD must have fired at least once this session. If it never did, the
+        // whole recording is silence/noise (the spectral VAD is reliable even when the platform AGC has
+        // boosted room noise to speech level, which defeats any energy test): don't flush it, so neither
+        // engine transcribes silence into a hallucinated sentence ("The train is leaving the station").
+        if (announced && (trailing || residual)) {
             byte[] out = chunk.toByteArray();
             mChunkListener.onChunk(out);
             chunksEmitted++;

@@ -108,6 +108,11 @@ public class WhisperEngineJava implements WhisperEngine {
         // Get samples in PCM_FLOAT format
         float[] samples = RecordBuffer.getSamples();
 
+        // B2: the TFLite graph has a fixed 30 s input tensor, so EVERY inference zero-pads short clips
+        // to 30 s and pays the full 30 s cost (~2.9 s on a flagship for base) regardless of how little
+        // was said. This is inherent to the fixed-shape TFLite model (dynamic tensors are off) and can't
+        // be trimmed here — it's why whisper.cpp (audio_ctx scales with length) is the default engine and
+        // TFLite is the compatibility fallback. Documented so the slowness on short phrases is expected.
         int fixedInputSize = WhisperUtil.WHISPER_SAMPLE_RATE * WhisperUtil.WHISPER_CHUNK_SIZE;
         float[] inputSamples = new float[fixedInputSize];
         int copyLength = Math.min(samples.length, fixedInputSize);

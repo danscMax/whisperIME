@@ -338,10 +338,11 @@ public class Recorder {
             }
 
             if (useVAD){
-                byte[] outputBufferByteArray = outputBuffer.toByteArray();
-                if (outputBufferByteArray.length >= VAD_FRAME_SIZE * 2) {
-                    // Always use the last VAD_FRAME_SIZE * 2 bytes (16 bit) from outputBuffer for VAD
-                    System.arraycopy(outputBufferByteArray, outputBufferByteArray.length - VAD_FRAME_SIZE * 2, vadAudioBuffer, 0, VAD_FRAME_SIZE * 2);
+                if (bytesRead == VAD_FRAME_SIZE * 2) {
+                    // The just-read frame IS the latest VAD window — copy it directly instead of
+                    // outputBuffer.toByteArray() (a full copy of the growing buffer) every 30 ms frame,
+                    // which was O(n) per frame -> O(n^2) over a long recording (B4).
+                    System.arraycopy(audioData, 0, vadAudioBuffer, 0, VAD_FRAME_SIZE * 2);
 
                     // Feed the VAD a normalized copy, matching the chunked path — otherwise a quiet mic
                     // (VOICE_RECOGNITION source) never crosses the speech threshold here (A8).

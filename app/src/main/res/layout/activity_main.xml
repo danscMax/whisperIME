@@ -254,7 +254,6 @@
                     android:inputType="textMultiLine"
                     android:lineSpacingMultiplier="1.16"
                     android:textColor="@color/glass_ink"
-                    android:textCursorDrawable="@null"
                     android:textSize="18sp" />
 
                 <TextView

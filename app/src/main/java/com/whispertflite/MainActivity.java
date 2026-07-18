@@ -75,7 +75,9 @@ public class MainActivity extends AppCompatActivity {
     public static final String ENGLISH_ONLY_VOCAB_FILE = "filters_vocab_en.bin";
     public static final String MULTILINGUAL_VOCAB_FILE = "filters_vocab_multilingual.bin";
 
-    private enum UiState { READY, RECORDING, PROCESSING, RESULT, ERROR }
+    // NO_SPEECH = nothing was recognized (silence). Shares the error card's "try again" layout but uses
+    // a calm orb, not the red error orb — "didn't catch that" is not a failure (E1).
+    private enum UiState { READY, RECORDING, PROCESSING, RESULT, ERROR, NO_SPEECH }
 
     private EditText tvResult;
     private ImageButton btnRecord;
@@ -433,6 +435,8 @@ public class MainActivity extends AppCompatActivity {
         currentState = state;
         boolean recording = state == UiState.RECORDING;
         boolean error = state == UiState.ERROR;
+        boolean noSpeech = state == UiState.NO_SPEECH;
+        boolean errorLike = error || noSpeech;   // both use the "try again" card
         boolean result = state == UiState.RESULT;
         boolean processing = state == UiState.PROCESSING;
 
@@ -441,19 +445,22 @@ public class MainActivity extends AppCompatActivity {
         TransitionManager.beginDelayedTransition((ViewGroup) resultLayout.getParent(),
                 new Fade().setDuration(180));
 
-        resultLayout.setVisibility(error ? View.GONE : View.VISIBLE);
+        resultLayout.setVisibility(errorLike ? View.GONE : View.VISIBLE);
         layoutRecording.setVisibility(recording ? View.VISIBLE : View.GONE);
-        layoutError.setVisibility(error ? View.VISIBLE : View.GONE);
+        layoutError.setVisibility(errorLike ? View.VISIBLE : View.GONE);
         layoutActions.setVisibility(result ? View.VISIBLE : View.GONE);
-        perfChip.setVisibility(result ? View.VISIBLE : View.GONE);
+        // Keep the speed metric visible on a no-speech result too, so the user sees the model did run (E2).
+        perfChip.setVisibility(result || noSpeech ? View.VISIBLE : View.GONE);
         // Transcript-panel placeholder shows only when the panel is empty (READY, nothing typed yet).
         boolean empty = tvResult.getText().length() == 0;
         if (tvReadyHint != null)
             tvReadyHint.setVisibility(state == UiState.READY && empty ? View.VISIBLE : View.GONE);
+        // Editing affordance: show the caret on a result so it's discoverable as an editable field (D7).
+        tvResult.setCursorVisible(result);
         dockStatus.setVisibility(result ? View.GONE : View.VISIBLE);
         dockStatus.setText(state == UiState.RECORDING ? R.string.main_state_listening
                 : state == UiState.PROCESSING ? R.string.main_state_processing
-                : state == UiState.ERROR ? R.string.main_retry
+                : errorLike ? R.string.main_retry
                 : R.string.main_hold_signal);
 
         LivingSignalView.SignalState signalState = state == UiState.RECORDING
@@ -461,7 +468,7 @@ public class MainActivity extends AppCompatActivity {
                 : state == UiState.PROCESSING ? LivingSignalView.SignalState.PROCESSING
                 : state == UiState.RESULT ? LivingSignalView.SignalState.RESULT
                 : state == UiState.ERROR ? LivingSignalView.SignalState.ERROR
-                : LivingSignalView.SignalState.READY;
+                : LivingSignalView.SignalState.READY;   // NO_SPEECH rides the calm READY orb (E1)
         orb.setSignalState(signalState);
 
         if (recording) {
@@ -558,6 +565,13 @@ public class MainActivity extends AppCompatActivity {
                 long timeTaken = System.currentTimeMillis() - startTime;
                 Log.d(TAG, "Result: " + whisperResult.getResult() + " " + whisperResult.getLanguage() + " " + (whisperResult.getTask() == Whisper.Action.TRANSCRIBE ? "transcribing" : "translating"));
 
+                // Update the speed metric for EVERY result, including an empty/no-speech one, so the user
+                // can see the model actually ran even when nothing was recognized (E2).
+                double procSec = timeTaken / 1000.0;
+                double audioSec = audioDurationSeconds();
+                double realtime = procSec > 0 ? audioSec / procSec : 0;
+                runOnUiThread(() -> perfChip.setText(getString(R.string.main_perf_chip, procSec, realtime)));
+
                 if (whisperResult.isError()) { transcriptionFailed = true; return; } // engine failure, not silence (C5)
                 String raw = whisperResult.getResult();
                 if (raw == null || raw.trim().isEmpty()) return; // empty chunk: skip; completion handled on drain
@@ -571,15 +585,8 @@ public class MainActivity extends AppCompatActivity {
                     out = raw;
                 }
 
-                double procSec = timeTaken / 1000.0;
-                double audioSec = audioDurationSeconds();
-                double realtime = procSec > 0 ? audioSec / procSec : 0;
-
                 // Append each chunk live (pseudo-streaming); history/TTS happen once in finishToResult().
-                runOnUiThread(() -> {
-                    tvResult.append(out);
-                    perfChip.setText(getString(R.string.main_perf_chip, procSec, realtime));
-                });
+                runOnUiThread(() -> tvResult.append(out));
             }
         });
         mWhisper = whisper; // publish only once fully constructed
@@ -778,11 +785,14 @@ public class MainActivity extends AppCompatActivity {
         tilModel.setEnabled(true);
         String text = tvResult.getText().toString().trim();
         if (text.isEmpty()) {
-            // Distinguish an engine failure from genuine silence so the user isn't left guessing (C5).
+            // Distinguish an engine failure from genuine silence so the user isn't left guessing (C5),
+            // and show a calm "didn't catch that" for silence instead of the red error orb (E1).
             if (transcriptionFailed) {
                 Toast.makeText(mContext, R.string.error_transcription, Toast.LENGTH_LONG).show();
+                applyState(UiState.ERROR);
+            } else {
+                applyState(UiState.NO_SPEECH);
             }
-            applyState(UiState.ERROR);
             return;
         }
         applyState(UiState.RESULT);

@@ -3,7 +3,10 @@ package com.whispertflite.models;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.os.Bundle;
+import android.text.Spannable;
+import android.text.SpannableStringBuilder;
 import android.text.format.Formatter;
+import android.text.style.ForegroundColorSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -354,7 +357,8 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
             final Chip statusChip;
             final View progressGroup, cardSheen;
             final LinearProgressIndicator progress;
-            final ImageButton cancelButton, downloadButton, useButton, deleteButton;
+            final ImageButton cancelButton, downloadButton, deleteButton;
+            final MaterialButton useButton;
 
             VH(@NonNull View v) {
                 super(v);
@@ -374,24 +378,31 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
         }
     }
 
-    private String meta(ModelInfo m) {
+    private CharSequence meta(ModelInfo m) {
         String langs = m.englishOnly
                 ? getString(R.string.catalog_english_only)
                 : getString(R.string.catalog_languages, m.languages);
         String size = Formatter.formatShortFileSize(this, m.sizeBytes);
         int speed = m.speedClass <= 1 ? R.string.catalog_speed_fast
                 : (m.speedClass == 2 ? R.string.catalog_speed_mid : R.string.catalog_speed_slow);
-        String out = langs + " · " + size + " · " + getString(speed) + " · " + qualityDots(m.qualityClass);
-        if (m.isHeavy()) out += " · " + getString(R.string.catalog_heavy);
-        return out;
+        SpannableStringBuilder sb = new SpannableStringBuilder();
+        sb.append(langs).append(" · ").append(size).append(" · ").append(getString(speed)).append(" · ");
+        appendQualityDots(sb, m.qualityClass);
+        if (m.isHeavy()) sb.append(" · ").append(getString(R.string.catalog_heavy));
+        return sb;
     }
 
-    /** Quality as three dots, filled up to qualityClass, the rest hollow (e.g. 2 -> filled-filled-hollow). */
-    private static String qualityDots(int qualityClass) {
+    /** Three dots: filled (warm accent) up to qualityClass, the rest hollow (faint) — a quality scale. */
+    private void appendQualityDots(SpannableStringBuilder sb, int qualityClass) {
         int q = Math.max(1, Math.min(3, qualityClass));
-        StringBuilder sb = new StringBuilder(3);
-        for (int i = 1; i <= 3; i++) sb.append(i <= q ? (char) 0x25CF : (char) 0x25CB); // filled / hollow
-        return sb.toString();
+        int filled = color(R.color.glass_warm);
+        int hollow = color(R.color.glass_ink_faint);
+        for (int i = 1; i <= 3; i++) {
+            int start = sb.length();
+            sb.append((char) (i <= q ? 0x25CF : 0x25CB));
+            sb.setSpan(new ForegroundColorSpan(i <= q ? filled : hollow),
+                    start, sb.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
     }
 
     private int color(@ColorRes int res) {

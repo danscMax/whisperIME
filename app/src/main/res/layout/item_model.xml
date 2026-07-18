@@ -61,17 +61,21 @@
                     android:clickable="false"
                     android:visibility="gone" />
 
-                <ImageButton
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/useButton"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:layout_marginStart="2dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/catalog_use"
-                    android:padding="9dp"
-                    android:src="@drawable/ic_check_20dp"
-                    android:visibility="gone"
-                    app:tint="@color/glass_warm" />
+                    style="@style/Widget.Glass.Button.Ghost"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minWidth="0dp"
+                    android:minHeight="0dp"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="6dp"
+                    android:text="@string/catalog_use"
+                    android:textSize="13sp"
+                    android:visibility="gone" />
 
                 <ImageButton
                     android:id="@+id/downloadButton"

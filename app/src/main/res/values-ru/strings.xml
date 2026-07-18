@@ -125,7 +125,7 @@
     <string name="catalog_engine_soon">скоро движок</string>
     <string name="catalog_engine_soon_hint">Движок whisper.cpp появится в следующей волне</string>
     <string name="catalog_download">Скачать</string>
-    <string name="catalog_use">Использовать</string>
+    <string name="catalog_use">Выбрать</string>
     <string name="catalog_delete">Удалить</string>
     <string name="catalog_cancel">Отмена</string>
     <string name="catalog_delete_confirm">Удалить %1$s с устройства?</string>

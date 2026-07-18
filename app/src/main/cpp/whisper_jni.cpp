@@ -112,7 +112,7 @@ Java_com_whispertflite_engine_WhisperCpp_nativeInit(JNIEnv *env, jclass, jstring
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_whispertflite_engine_WhisperCpp_nativeTranscribe(JNIEnv *env, jclass, jlong ctxPtr,
                                                           jfloatArray pcm16k, jstring lang,
-                                                          jboolean translate) {
+                                                          jboolean translate, jstring prompt) {
     auto *wc = reinterpret_cast<WhisperCtx *>(ctxPtr);
     if (wc == nullptr || wc->ctx == nullptr) {
         throw_java(env, "whisper context is null");
@@ -145,6 +145,16 @@ Java_com_whispertflite_engine_WhisperCpp_nativeTranscribe(JNIEnv *env, jclass, j
         }
     }
 
+    // Optional vocabulary bias (A3): initial_prompt primes the decoder toward the user's names/terms.
+    std::string promptStr;
+    if (prompt != nullptr) {
+        const char *p = env->GetStringUTFChars(prompt, nullptr);
+        if (p != nullptr) {
+            promptStr = p;
+            env->ReleaseStringUTFChars(prompt, p);
+        }
+    }
+
     whisper_full_params wparams = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
     // hardware_concurrency() is unreliable on Android (often 0); sysconf is the online core count.
     int cores = (int) sysconf(_SC_NPROCESSORS_ONLN);
@@ -160,6 +170,7 @@ Java_com_whispertflite_engine_WhisperCpp_nativeTranscribe(JNIEnv *env, jclass, j
     wparams.no_context      = true;
     wparams.single_segment  = false;
     wparams.suppress_nst    = true;   // suppress non-speech tokens ([BLANK_AUDIO], music) — anti-hallucination (A2/A11)
+    if (!promptStr.empty()) wparams.initial_prompt = promptStr.c_str();   // vocabulary bias (A3)
     // Let Java stop a slow run (large models take minutes on mobile CPUs) — per-context flag (C3).
     wc->cancel.store(false);
     wparams.abort_callback  = abort_callback;

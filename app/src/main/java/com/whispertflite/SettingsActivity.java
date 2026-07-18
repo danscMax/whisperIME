@@ -47,6 +47,7 @@ public class SettingsActivity extends AppCompatActivity {
         bindSwitch(R.id.switch_haptic, "hapticFeedback", true);
         bindSwitch(R.id.switch_tts, "speakResult", false);
         bindSwitch(R.id.switch_simple_chinese, "simpleChinese", false);
+        bindVocabulary();   // A3: custom vocabulary prompt
         bindSwitch(R.id.switch_history, "historyEnabled", true);
         bindSwitch(R.id.switch_history_ime, "historyFromIme", true);
 
@@ -122,6 +123,19 @@ public class SettingsActivity extends AppCompatActivity {
         MaterialSwitch s = findViewById(id);
         s.setChecked(sp.getBoolean(key, def));
         s.setOnCheckedChangeListener((b, checked) -> sp.edit().putBoolean(key, checked).apply());
+    }
+
+    /** Bind the free-text custom-vocabulary field to the {@code customVocabulary} pref (A3). */
+    private void bindVocabulary() {
+        android.widget.EditText field = findViewById(R.id.edit_vocabulary);
+        field.setText(sp.getString("customVocabulary", ""));
+        field.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
+            @Override public void onTextChanged(CharSequence s, int a, int b, int c) {}
+            @Override public void afterTextChanged(android.text.Editable e) {
+                sp.edit().putString("customVocabulary", e.toString()).apply();
+            }
+        });
     }
 
     private int dp(int value) {

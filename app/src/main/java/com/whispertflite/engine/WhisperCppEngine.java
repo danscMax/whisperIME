@@ -19,6 +19,12 @@ import java.nio.ByteOrder;
  */
 public final class WhisperCppEngine implements AsrEngine {
     private long ctxPtr = 0;
+    private String initialPrompt = null;   // optional vocabulary bias (A3)
+
+    @Override
+    public void setInitialPrompt(String prompt) {
+        this.initialPrompt = (prompt != null && !prompt.trim().isEmpty()) ? prompt.trim() : null;
+    }
 
     @Override
     public boolean load(ModelInfo model, File modelFile, File vocabFile) throws IOException {
@@ -74,7 +80,7 @@ public final class WhisperCppEngine implements AsrEngine {
 
         String text;
         try {
-            text = WhisperCpp.nativeTranscribe(ctxPtr, samples, lang, translate);
+            text = WhisperCpp.nativeTranscribe(ctxPtr, samples, lang, translate, initialPrompt);
         } catch (RuntimeException e) {
             return WhisperResult.error(action);   // native run crashed mid-phrase — surface, not silence
         }

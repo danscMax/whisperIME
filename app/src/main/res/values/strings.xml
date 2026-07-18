@@ -60,6 +60,8 @@
     <string name="settings_haptic">Haptic feedback</string>
     <string name="settings_tts">Speak result</string>
     <string name="settings_simple_chinese">Simplified Chinese</string>
+    <string name="settings_vocabulary">Custom vocabulary</string>
+    <string name="settings_vocabulary_hint">Names, terms, jargon — nudges recognition (optional)</string>
     <string name="settings_history">History</string>
     <string name="settings_history_save">Save history</string>
     <string name="settings_history_from_ime">History from keyboard</string>

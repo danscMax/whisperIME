@@ -181,6 +181,32 @@
                     android:gravity="center_vertical"
                     android:text="@string/settings_simple_chinese"
                     android:textColor="@color/glass_ink" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:fontFamily="@font/space_grotesk"
+                    android:text="@string/settings_vocabulary"
+                    android:textColor="@color/glass_ink"
+                    android:textSize="14sp" />
+
+                <EditText
+                    android:id="@+id/edit_vocabulary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:background="@drawable/living_glass_panel"
+                    android:fontFamily="@font/space_grotesk"
+                    android:hint="@string/settings_vocabulary_hint"
+                    android:importantForAutofill="no"
+                    android:inputType="textMultiLine|textCapSentences"
+                    android:maxLines="3"
+                    android:minHeight="48dp"
+                    android:padding="12dp"
+                    android:textColor="@color/glass_ink"
+                    android:textColorHint="@color/glass_ink_dim"
+                    android:textSize="14sp" />
             </LinearLayout>
 
             <!-- History -->

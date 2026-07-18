@@ -258,6 +258,7 @@ public class Whisper {
             AsrEngine engine = mEngine; // capture once: unloadModel() may null the field concurrently
             byte[] pcm = RecordBuffer.getOutputBuffer();
             if (engine != null && engine.isLoaded() && pcm != null) {
+                engine.setInitialPrompt(readInitialPrompt());   // user's vocabulary bias, if any (A3)
                 long startTime = System.currentTimeMillis();
                 sendUpdate(MSG_PROCESSING);
 
@@ -287,6 +288,16 @@ public class Whisper {
             sendUpdate(MSG_TRANSCRIBE_FAILED + ": " + e.getMessage());
         } finally {
             mInProgress.set(false);
+        }
+    }
+
+    /** The user's optional custom vocabulary/prompt (names, jargon) to bias recognition (A3). */
+    private String readInitialPrompt() {
+        try {
+            return androidx.preference.PreferenceManager.getDefaultSharedPreferences(mContext)
+                    .getString("customVocabulary", "");
+        } catch (Exception e) {
+            return "";
         }
     }
 

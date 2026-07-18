@@ -344,7 +344,11 @@ public class Recorder {
                     // Always use the last VAD_FRAME_SIZE * 2 bytes (16 bit) from outputBuffer for VAD
                     System.arraycopy(outputBufferByteArray, outputBufferByteArray.length - VAD_FRAME_SIZE * 2, vadAudioBuffer, 0, VAD_FRAME_SIZE * 2);
 
-                    isSpeech = vad.isSpeech(vadAudioBuffer);
+                    // Feed the VAD a normalized copy, matching the chunked path — otherwise a quiet mic
+                    // (VOICE_RECOGNITION source) never crosses the speech threshold here (A8).
+                    byte[] vadFrame = vadAudioBuffer.clone();
+                    normalizePcm(vadFrame);
+                    isSpeech = vad.isSpeech(vadFrame);
                     if (isSpeech) {
                         if (!isRecording) {
                             Log.d(TAG, "VAD Speech detected: recording starts");
@@ -485,8 +489,11 @@ public class Recorder {
         // threshold), fall back to transcribing the captured audio anyway once it's ~0.5 s+, so quiet
         // speech is not silently dropped — the legacy single-buffer path always transcribed.
         boolean trailing = chunkHasSpeech && chunk.size() > 6400;   // 0.2 s of detected speech
-        boolean softFallback = chunksEmitted == 0 && chunk.size() > 16000; // ~0.5 s, VAD never fired
-        if (trailing || softFallback) {
+        // Any substantial residual (~0.5 s+) left after the last split, even with chunkHasSpeech==false:
+        // a soft trailing fragment after an earlier chunk (VAD stopped firing on quiet tail speech) used
+        // to match neither branch and was silently dropped. Subsumes the old VAD-never-fired fallback (A5).
+        boolean residual = chunk.size() > 16000;
+        if (trailing || residual) {
             byte[] out = chunk.toByteArray();
             normalizePcm(out);
             mChunkListener.onChunk(out);

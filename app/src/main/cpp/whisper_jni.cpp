@@ -150,6 +150,7 @@ Java_com_whispertflite_engine_WhisperCpp_nativeTranscribe(JNIEnv *env, jclass, j
     wparams.print_timestamps = false;
     wparams.no_context      = true;
     wparams.single_segment  = false;
+    wparams.suppress_nst    = true;   // suppress non-speech tokens ([BLANK_AUDIO], music) — anti-hallucination (A2/A11)
     // Let Java stop a slow run (large models take minutes on mobile CPUs).
     g_cancel.store(false);
     wparams.abort_callback  = abort_callback;
@@ -179,11 +180,21 @@ Java_com_whispertflite_engine_WhisperCpp_nativeTranscribe(JNIEnv *env, jclass, j
 
     std::string result;
     int n_segments = whisper_full_n_segments(ctx);
+    // A2 (silence-conditional suppression, ref arXiv 2501.11378): whisper's own no-speech drop fires
+    // only when no_speech_prob is high AND avg_logprob is low, so a *confident* silence hallucination
+    // ("Bye.", "I'm", "Thank you") still leaks through. Gate on no_speech_prob alone — if not a single
+    // segment looks like real speech, the whole result is a silence/noise hallucination: return empty.
+    bool any_speech = false;
     for (int i = 0; i < n_segments; ++i) {
+        if (whisper_full_get_segment_no_speech_prob(ctx, i) < 0.6f) any_speech = true;
         const char *text = whisper_full_get_segment_text(ctx, i);
         if (text != nullptr) {
             result += text;
         }
+    }
+    if (n_segments > 0 && !any_speech) {
+        LOGI("suppressed no-speech hallucination across %d segment(s)", n_segments);
+        return env->NewStringUTF("");
     }
 
     return env->NewStringUTF(result.c_str());

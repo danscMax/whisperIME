@@ -79,7 +79,9 @@ public class WhisperRecognitionService extends RecognitionService {
         } else {
             ensureModel(selectedTfliteFile, callback, langToken);
 
-            mRecorder = new Recorder(this);
+            // Reuse one Recorder across requests (its worker thread is expensive and was leaked when
+            // a fresh one was created per request); rebind the listener to this request's callback.
+            if (mRecorder == null) mRecorder = new Recorder(this);
             mRecorder.setListener(message -> {
                 if (message.equals(Recorder.MSG_RECORDING)){
                     try {
@@ -218,6 +220,10 @@ public class WhisperRecognitionService extends RecognitionService {
     @Override
     public void onDestroy (){
         deinitModel();
+        if (mRecorder != null) {
+            mRecorder.shutdown();   // ends the worker thread (was leaked: one per recognition request)
+            mRecorder = null;
+        }
     }
     private void deinitModel() {
         if (mWhisper != null) {

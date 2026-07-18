@@ -161,7 +161,33 @@ public class HistoryActivity extends AppCompatActivity {
         public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             View v = LayoutInflater.from(parent.getContext())
                     .inflate(R.layout.item_history, parent, false);
-            return new VH(v);
+            VH vh = new VH(v);
+            // TalkBack / switch access: expose copy, share and delete as first-class custom actions —
+            // the long-press PopupMenu is invisible to screen readers. Added ONCE per view here (not
+            // per bind, which accumulated stale actions on recycled rows); each resolves the live row
+            // by its current bound position at invocation time.
+            ViewCompat.addAccessibilityAction(v, getString(R.string.copy_to_clipboard), (view, a) -> {
+                HistoryDb.Entry e = entryAt(vh);
+                if (e != null) copy(e.text);
+                return e != null;
+            });
+            ViewCompat.addAccessibilityAction(v, getString(R.string.history_share), (view, a) -> {
+                HistoryDb.Entry e = entryAt(vh);
+                if (e != null) share(e.text);
+                return e != null;
+            });
+            ViewCompat.addAccessibilityAction(v, getString(R.string.history_delete), (view, a) -> {
+                HistoryDb.Entry e = entryAt(vh);
+                if (e != null) { db.delete(e.id); reload(); }
+                return e != null;
+            });
+            return vh;
+        }
+
+        /** The entry currently bound to a holder, or null if it is unbound/recycling. */
+        private HistoryDb.Entry entryAt(VH vh) {
+            int pos = vh.getBindingAdapterPosition();
+            return (pos != RecyclerView.NO_POSITION && pos < items.size()) ? items.get(pos) : null;
         }
 
         @Override
@@ -186,15 +212,7 @@ public class HistoryActivity extends AppCompatActivity {
                 menu.show();
                 return true;
             });
-
-            // TalkBack / switch access: expose copy, share and delete as first-class custom actions —
-            // the long-press PopupMenu above is invisible to screen readers.
-            ViewCompat.addAccessibilityAction(h.itemView,
-                    getString(R.string.copy_to_clipboard), (view, a) -> { copy(e.text); return true; });
-            ViewCompat.addAccessibilityAction(h.itemView,
-                    getString(R.string.history_share), (view, a) -> { share(e.text); return true; });
-            ViewCompat.addAccessibilityAction(h.itemView,
-                    getString(R.string.history_delete), (view, a) -> { db.delete(e.id); reload(); return true; });
+            // Screen-reader custom actions (copy/share/delete) are attached once in onCreateViewHolder.
         }
 
         @Override

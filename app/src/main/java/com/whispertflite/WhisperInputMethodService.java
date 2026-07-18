@@ -101,8 +101,8 @@ public class WhisperInputMethodService extends InputMethodService {
     @Override
     public void onDestroy() {
         deinitModel();
-        if (mRecorder != null && mRecorder.isInProgress()) {
-            mRecorder.stop();
+        if (mRecorder != null) {
+            mRecorder.shutdown();   // ends the worker thread; stop() alone left it parked (leak)
         }
         super.onDestroy();
     }

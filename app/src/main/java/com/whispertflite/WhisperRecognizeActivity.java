@@ -391,7 +391,9 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
 
     private void deinitModel() {
         if (mWhisper != null) {
-            mWhisper.unloadModel();
+            // shutdown() (not unloadModel()) also stops the worker thread; unloadModel leaves it
+            // parked. Matches the fix already shipped in the two services.
+            mWhisper.shutdown();
             mWhisper = null;
         }
     }
@@ -403,8 +405,8 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
         if (blurListener != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             getWindowManager().removeCrossWindowBlurEnabledListener(blurListener);
         }
-        if (mRecorder != null && mRecorder.isInProgress()) {
-            mRecorder.stop();
+        if (mRecorder != null) {
+            mRecorder.shutdown();   // ends the worker thread; stop() alone left it parked (leak)
         }
         super.onDestroy();
     }

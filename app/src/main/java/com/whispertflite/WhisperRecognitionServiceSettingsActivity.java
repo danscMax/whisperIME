@@ -153,11 +153,6 @@ public class WhisperRecognitionServiceSettingsActivity extends AppCompatActivity
             permissions.add(Manifest.permission.RECORD_AUDIO);
             Toast.makeText(this, R.string.need_record_audio_permission, Toast.LENGTH_SHORT).show();
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
-                && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-                != PackageManager.PERMISSION_GRANTED) {
-            permissions.add(Manifest.permission.POST_NOTIFICATIONS);
-        }
         if (!permissions.isEmpty()) requestPermissions(permissions.toArray(new String[0]), 0);
     }
 

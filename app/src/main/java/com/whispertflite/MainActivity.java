@@ -81,7 +81,6 @@ public class MainActivity extends AppCompatActivity {
     private ImageButton btnRecord;
     private ImageButton btnInfo;
     private ImageButton btnOverflow;
-    private com.google.android.material.chip.Chip append;
     private com.google.android.material.chip.Chip translate;
     private LivingSignalView orb;
     private TextView tvReadyHint;
@@ -225,7 +224,6 @@ public class MainActivity extends AppCompatActivity {
                     : R.drawable.ic_expand_more_24dp);
         });
 
-        append = findViewById(R.id.mode_append);
         translate = findViewById(R.id.mode_translate);
 
         sdcardDataFolder = this.getExternalFilesDir(null);
@@ -351,6 +349,10 @@ public class MainActivity extends AppCompatActivity {
             tvResult.setText("");
             applyState(UiState.READY);
         });
+        findViewById(R.id.btnClear).setOnClickListener(v -> {
+            tvResult.setText("");   // deliberate wipe — recordings otherwise accumulate now (D2)
+            applyState(UiState.READY);
+        });
 
         // Audio recording functionality
         mRecorder = new Recorder(this);
@@ -365,7 +367,8 @@ public class MainActivity extends AppCompatActivity {
             public void onUpdateReceived(String message) {
                 Log.d(TAG, "Update is received, Message: " + message);
                 if (message.equals(Recorder.MSG_RECORDING)) {
-                    if (!append.isChecked()) runOnUiThread(() -> tvResult.setText(""));
+                    // Do NOT wipe the field on a new recording — dictation-by-parts kept losing the
+                    // previous result. New speech appends; the trash button clears deliberately (D2).
                 } else if (message.equals(Recorder.MSG_RECORDING_DONE) || message.equals(Recorder.MSG_RECORDING_ERROR)) {
                     HapticFeedback.vibrate(mContext);
                     recordingStopped = true;

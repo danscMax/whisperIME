@@ -179,9 +179,10 @@ public class Recorder {
     }
 
     /**
-     * Peak-normalize 16-bit little-endian PCM in place. Phone mics on VOICE_RECOGNITION deliver a
-     * raw, often very quiet signal (no AGC); Whisper and the VAD both degrade on it. Gain is capped
-     * so noise-only audio is not blown up.
+     * Peak-normalize 16-bit little-endian PCM in place. Used ONLY on a throwaway copy fed to the VAD:
+     * a quiet frame otherwise never crosses the webrtc speech threshold. The Whisper-bound audio is no
+     * longer normalized here — it rides the VOICE_RECOGNITION source + platform AGC instead (A9). Gain
+     * is capped so noise-only audio is not blown up.
      */
     private static void normalizePcm(byte[] pcm) {
         AudioMath.normalizeInPlace(pcm);
@@ -294,7 +295,9 @@ public class Recorder {
         int sampleRateInHz = 16000;
         int channelConfig = AudioFormat.CHANNEL_IN_MONO;
         int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
-        int audioSource = MediaRecorder.AudioSource.MIC;
+        // VOICE_RECOGNITION applies the platform's ASR-tuned capture path (speech AGC, echo/music
+        // suppression) and yields a less-raw signal than MIC — best practice for dictation (A1).
+        int audioSource = MediaRecorder.AudioSource.VOICE_RECOGNITION;
 
         int bufferSize = AudioRecord.getMinBufferSize(sampleRateInHz, channelConfig, audioFormat);
         if (bufferSize < VAD_FRAME_SIZE * 2) bufferSize = VAD_FRAME_SIZE * 2;
@@ -383,9 +386,10 @@ public class Recorder {
             audioManager.setBluetoothScoOn(false);
         }
 
-        // Save recorded audio data to BufferStore (up to 30 seconds)
+        // Save recorded audio data to BufferStore (up to 30 seconds). No manual normalization: the
+        // VOICE_RECOGNITION source + platform AGC already level the signal; a second manual gain stage
+        // fought the AGC and rescaled each buffer differently (A9).
         byte[] recorded = outputBuffer.toByteArray();
-        normalizePcm(recorded);
         RecordBuffer.setOutputBuffer(recorded);
         if (totalBytesRead > 6400){  //min 0.2s
             sendUpdate(MSG_RECORDING_DONE);
@@ -411,7 +415,9 @@ public class Recorder {
         int channelConfig = AudioFormat.CHANNEL_IN_MONO;
         int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
         int sampleRateInHz = 16000;
-        int audioSource = MediaRecorder.AudioSource.MIC;
+        // VOICE_RECOGNITION applies the platform's ASR-tuned capture path (speech AGC, echo/music
+        // suppression) and yields a less-raw signal than MIC — best practice for dictation (A1).
+        int audioSource = MediaRecorder.AudioSource.VOICE_RECOGNITION;
 
         int bufferSize = AudioRecord.getMinBufferSize(sampleRateInHz, channelConfig, audioFormat);
         if (bufferSize < VAD_FRAME_SIZE * 2) bufferSize = VAD_FRAME_SIZE * 2;
@@ -475,7 +481,8 @@ public class Recorder {
             boolean capSplit = chunk.size() >= CHUNK_HARD_CAP_BYTES;
             if (pauseSplit || capSplit) {
                 byte[] out = chunk.toByteArray();
-                normalizePcm(out);
+                // No manual normalization — trust the VOICE_RECOGNITION source + platform AGC so every
+                // chunk of a phrase reaches Whisper at a consistent level, not rescaled per chunk (A6/A9).
                 mChunkListener.onChunk(out);
                 chunksEmitted++;
                 chunk.reset();
@@ -495,7 +502,6 @@ public class Recorder {
         boolean residual = chunk.size() > 16000;
         if (trailing || residual) {
             byte[] out = chunk.toByteArray();
-            normalizePcm(out);
             mChunkListener.onChunk(out);
             chunksEmitted++;
         }

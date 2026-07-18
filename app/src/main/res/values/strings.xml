@@ -94,6 +94,7 @@
     <string name="main_cd_menu">More options</string>
     <string name="main_cd_speak">Speak result</string>
     <string name="main_cd_share">Share</string>
+    <string name="main_clear">Clear</string>
     <string name="main_local_badge">Private · on device</string>
     <string name="main_state_ready">Ready · hold the signal</string>
     <string name="main_state_listening">Listening · release to finish</string>

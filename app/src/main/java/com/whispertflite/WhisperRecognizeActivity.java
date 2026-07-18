@@ -200,8 +200,16 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
         });
 
         applyModeUi();
-        // Auto mode starts listening on open; push-to-talk waits calmly for the user to hold.
-        if (modeAuto && checkRecordPermission()) startListening(true);
+        // Auto mode starts listening shortly after open (not the instant the dialog appears, so it isn't
+        // capturing the room before the user reacts — D12); push-to-talk waits calmly for the user to hold.
+        if (modeAuto && checkRecordPermission()) {
+            orb.postDelayed(() -> {
+                if (!isFinishing() && mRecorder != null && !mRecorder.isInProgress()
+                        && mWhisper != null && !mWhisper.isInProgress()) {
+                    startListening(true);
+                }
+            }, 700);
+        }
     }
 
     /** Reflect the current mode on the toggle pill and the idle prompt (when not busy). */

@@ -74,6 +74,14 @@ public class WhisperInputMethodService extends InputMethodService {
     private static boolean translate = false;
     private boolean modeAuto = false;
 
+    // Auto (VAD) mode grabs the mic on open; delay it a beat so the strip isn't recording the room the
+    // instant it appears (D12). Cancelled if the view goes away before it fires.
+    private static final long AUTO_START_DELAY_MS = 700;
+    private final Runnable autoStartRunnable = () -> {
+        HapticFeedback.vibrate(mContext);
+        startRecording();
+    };
+
     // Recording/transcription session state.
     private volatile boolean recordingStopped = false;
     private long recordStartMs = 0;
@@ -100,6 +108,7 @@ public class WhisperInputMethodService extends InputMethodService {
 
     @Override
     public void onDestroy() {
+        handler.removeCallbacks(autoStartRunnable);   // don't fire a pending auto-start after teardown (D12)
         deinitModel();
         if (mRecorder != null) {
             mRecorder.shutdown();   // ends the worker thread; stop() alone left it parked (leak)
@@ -112,6 +121,7 @@ public class WhisperInputMethodService extends InputMethodService {
         currentInputType = attribute.inputType;
         if (attribute.inputType == EditorInfo.TYPE_NULL) {
             Log.d(TAG, "Cancelling: onStartInput: inputType=" + attribute.inputType + ", package=" + attribute.packageName);
+            handler.removeCallbacks(autoStartRunnable);
             deinitModel();
             if (mRecorder != null && mRecorder.isInProgress()) {
                 mRecorder.stop();
@@ -234,8 +244,8 @@ public class WhisperInputMethodService extends InputMethodService {
         applyState(UiState.IDLE);
 
         if (modeAuto) {
-            HapticFeedback.vibrate(this);
-            startRecording();
+            handler.removeCallbacks(autoStartRunnable);
+            handler.postDelayed(autoStartRunnable, AUTO_START_DELAY_MS);   // D12: brief delay, not instant
         }
 
         btnDel.setOnTouchListener(new View.OnTouchListener() {

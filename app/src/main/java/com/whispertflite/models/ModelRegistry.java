@@ -40,31 +40,26 @@ public final class ModelRegistry {
                 TFLITE_BASE + "whisper-small.TOP_WORLD.tflite", 307408944L,
                 "whisper-small.TOP_WORLD.tflite", 78, false, 2, 2));
 
-        // --- whisper.cpp GGUF (stored under gguf/ subdir; sizes approximate for display) ---
+        // --- whisper.cpp GGUF (stored under gguf/). The Q5-quantized variants were removed (they
+        // recognise noticeably worse). tiny/base/small are f16. medium/large-v3-turbo are Q8_0, NOT f16:
+        // f16 medium/large (1.4-1.6 GB) exceed a phone's RAM headroom -> swap thrashing (measured 13 s +
+        // corrupted output). Q8_0 is documented as no-perceptible-accuracy-loss (unlike the lossy Q5),
+        // ~half the size (785/833 MB), and fits in RAM. ---
         m.add(ModelInfo.of("gguf-tiny", "tiny", Engine.WHISPER_CPP,
                 GGUF_BASE + "ggml-tiny.bin", 75L * MB,
                 "gguf/ggml-tiny.bin", 99, false, 1, 1));
-        m.add(ModelInfo.of("gguf-tiny-q5", "tiny · Q5", Engine.WHISPER_CPP,
-                GGUF_BASE + "ggml-tiny-q5_1.bin", 32L * MB,
-                "gguf/ggml-tiny-q5_1.bin", 99, false, 1, 1));
         m.add(ModelInfo.of("gguf-base", "base", Engine.WHISPER_CPP,
                 GGUF_BASE + "ggml-base.bin", 142L * MB,
                 "gguf/ggml-base.bin", 99, false, 1, 2));
-        m.add(ModelInfo.of("gguf-base-q5", "base · Q5", Engine.WHISPER_CPP,
-                GGUF_BASE + "ggml-base-q5_1.bin", 57L * MB,
-                "gguf/ggml-base-q5_1.bin", 99, false, 1, 2));
         m.add(ModelInfo.of("gguf-small", "small", Engine.WHISPER_CPP,
-                GGUF_BASE + "ggml-small.bin", 466L * MB,
+                GGUF_BASE + "ggml-small.bin", 487601967L,
                 "gguf/ggml-small.bin", 99, false, 2, 2));
-        m.add(ModelInfo.of("gguf-small-q5", "small · Q5", Engine.WHISPER_CPP,
-                GGUF_BASE + "ggml-small-q5_1.bin", 190L * MB,
-                "gguf/ggml-small-q5_1.bin", 99, false, 2, 2));
-        m.add(ModelInfo.of("gguf-medium-q5", "medium · Q5", Engine.WHISPER_CPP,
-                GGUF_BASE + "ggml-medium-q5_0.bin", 514L * MB,
-                "gguf/ggml-medium-q5_0.bin", 99, false, 3, 3));
-        m.add(ModelInfo.of("gguf-large-v3-turbo-q5", "large-v3-turbo · Q5", Engine.WHISPER_CPP,
-                GGUF_BASE + "ggml-large-v3-turbo-q5_0.bin", 547L * MB,
-                "gguf/ggml-large-v3-turbo-q5_0.bin", 99, false, 2, 3));
+        m.add(ModelInfo.of("gguf-medium", "medium", Engine.WHISPER_CPP,
+                GGUF_BASE + "ggml-medium-q8_0.bin", 823369779L,
+                "gguf/ggml-medium-q8_0.bin", 99, false, 3, 3));
+        m.add(ModelInfo.of("gguf-large-v3-turbo", "large-v3-turbo", Engine.WHISPER_CPP,
+                GGUF_BASE + "ggml-large-v3-turbo-q8_0.bin", 874188075L,
+                "gguf/ggml-large-v3-turbo-q8_0.bin", 99, false, 2, 3));
 
         return m;
     }

@@ -22,12 +22,13 @@ class DownloadActivity : AppCompatActivity(), ModelDownloadManager.Listener {
     private var binding: ActivityDownloadBinding? = null
     private lateinit var manager: ModelDownloadManager
 
-    // Recommended default: whisper.cpp base Q5_1. On this build's runtime-dispatched CPU backend it
-    // transcribes a short clip ~3x faster than the TFLite base (≈0.95s vs ≈2.9s warm on a flagship),
-    // is ~half the size (57 vs 108 MB), covers 99 languages, and stays silent on silence instead of
-    // hallucinating. Q5_1 is the standard production quant — accuracy cost is small. (Measured on a
-    // Galaxy Tab S9; low-end/armv7 devices fall back to the baseline backend, where TFLite may match it.)
-    private val base by lazy { ModelRegistry.byId("gguf-base-q5")!! }
+    // Recommended default: whisper.cpp base (f16, non-quantized). On this build's runtime-dispatched
+    // accelerated CPU backend (armv8.x dotprod/i8mm) it transcribes noticeably faster than TFLite
+    // (measured ~2.4x faster than TFLite at equal size), covers 99 languages, and stays silent on
+    // silence instead of hallucinating. Quantized (Q5) variants were removed — they recognise worse,
+    // especially on the RecognitionService provider path. (armv7/low-end devices fall back to the
+    // baseline CPU backend, where TFLite may match it.)
+    private val base by lazy { ModelRegistry.byId("gguf-base")!! }
     private val small by lazy { ModelRegistry.byId("tflite-small-topworld")!! }
     private val tiny by lazy { ModelRegistry.byId("tflite-tiny-en")!! }
     private var selected: ModelInfo? = null

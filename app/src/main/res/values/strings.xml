@@ -58,7 +58,7 @@
     <string name="settings_theme_dark">Dark</string>
     <string name="settings_orb">Signal style</string>
     <string name="settings_orb_cloud">Cloud</string>
-    <string name="settings_orb_plasma">Plasma</string>
+    <string name="settings_orb_plasma">Glow</string>
     <string name="settings_recognition">Recognition</string>
     <string name="settings_haptic">Haptic feedback</string>
     <string name="settings_tts">Speak result</string>

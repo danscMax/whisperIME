@@ -158,5 +158,5 @@
     <string name="settings_vocabulary_hint">Имена, термины, жаргон — помогает распознаванию (необязательно)</string>
     <string name="settings_orb">Стиль сигнала</string>
     <string name="settings_orb_cloud">Облако</string>
-    <string name="settings_orb_plasma">Плазма</string>
+    <string name="settings_orb_plasma">Сияние</string>
 </resources>

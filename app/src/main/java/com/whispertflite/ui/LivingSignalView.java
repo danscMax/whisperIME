@@ -221,7 +221,7 @@ public class LivingSignalView extends TextureView implements TextureView.Surface
             float speed, targetAct, tint;
             float[] pal;
             switch (state) {
-                case LISTENING:  speed = 0.72f + level * 0.9f; targetAct = 0.28f + level * 0.34f; pal = PAL_CYAN; tint = 0.30f; break;
+                case LISTENING:  speed = 0.72f + level * 0.9f; targetAct = 0.20f + level * 0.75f; pal = PAL_CYAN; tint = 0.30f; break;
                 case PROCESSING: speed = 0.70f;                targetAct = 0.34f;                 pal = PAL_BLUE; tint = 0.24f; break;
                 case RESULT:     speed = 1.40f;                targetAct = 0.60f;                 pal = PAL_CYAN; tint = 0.30f; break;
                 case ERROR:      speed = 0.30f;                targetAct = 0.14f;                 pal = PAL_WARM; tint = 0.00f; break;  // stay semantic warm-red
@@ -247,7 +247,9 @@ public class LivingSignalView extends TextureView implements TextureView.Surface
                 pal = tinted;
             }
             flow += dt * speed;
-            act += (targetAct - act) * Math.min(1f, dt * 6f);
+            // Snappy so the orb pulses in time with the voice ("в такт"); the level itself already has
+            // a fast attack / slow decay, this just keeps u_activity close behind it.
+            act += (targetAct - act) * Math.min(1f, dt * 11f);
 
             GLES20.glClearColor(0f, 0f, 0f, 0f);
             GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
@@ -403,53 +405,45 @@ public class LivingSignalView extends TextureView implements TextureView.Surface
             "  gl_FragColor=vec4(col*edge, edge);\n" +   // premultiplied alpha
             "}\n";
 
-    // Plasma / plexus energy-ball style (selectable). Same uniforms as FRAG: u_milk = brightest
-    // (core, nodes, corona), u_upper = body blue, u_lower = mid, u_deep = rim. u_activity energises
-    // the network. A drifting grid of nodes is linked to its neighbours (a "plexus"), over a blue
-    // sphere with a bright stretched core and a glowing rim corona that spills just past the disk.
+    // Siri-style voice orb (selectable). One SOLID glowing sphere (no rings/gaps): a saturated accent
+    // body from u_lower (centre) to u_deep (rim) with a bright u_milk core, wrapped in a soft glow.
+    // Voice IS the animation: the radius, the core brightness, the glow bloom and an in-sync ripple all
+    // scale with u_activity (the smoothed mic level), so it grows and pulses in time with your voice and
+    // sits nearly still — only a faint breath — when you are silent. Colours come from the app palette.
     private static final String FRAG_PLASMA =
             "precision highp float;\n" +
             "uniform vec2 u_resolution; uniform float u_time, u_activity;\n" +
             "uniform vec3 u_deep, u_upper, u_lower, u_milk;\n" +
             "float hash(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }\n" +
-            "vec2 hash2(vec2 p){ float n=hash(p); return vec2(n, hash(p+n+17.1)); }\n" +
-            "float seg(vec2 p, vec2 a, vec2 b){ vec2 pa=p-a, ba=b-a; float h=clamp(dot(pa,ba)/max(dot(ba,ba),1e-4),0.0,1.0); return length(pa-ba*h); }\n" +
+            "float noise(vec2 p){ vec2 i=floor(p),f=fract(p); vec2 u=f*f*(3.0-2.0*f);\n" +
+            "  return mix(mix(hash(i),hash(i+vec2(1.0,0.0)),u.x),mix(hash(i+vec2(0.0,1.0)),hash(i+vec2(1.0,1.0)),u.x),u.y); }\n" +
+            "float fbm(vec2 p){ float s=0.0,a=0.55; mat2 r=mat2(0.80,0.60,-0.60,0.80);\n" +
+            "  for(int o=0;o<3;o++){ s+=a*noise(p); p=r*p*1.9+vec2(3.1,1.7); a*=0.5; } return s; }\n" +
             "void main(){\n" +
             "  vec2 uv=gl_FragCoord.xy/u_resolution; vec2 c=uv-0.5;\n" +
             "  float aspect=u_resolution.x/max(u_resolution.y,1.0);\n" +
-            "  vec2 cc=vec2(c.x*aspect, c.y); float rad=length(cc);\n" +
-            "  if(rad>0.52) discard;\n" +
-            "  float t=u_time; float energy=0.6+u_activity*1.5;\n" +
-            // fixed electric-blue palette (independent of the app palette, matching the plasma reference)
-            "  vec3 cDeep=vec3(0.05,0.15,0.60), cBody=vec3(0.22,0.42,0.98), cBright=vec3(0.82,0.91,1.0);\n" +
-            "  float body=1.0-smoothstep(0.0,0.42,rad);\n" +
-            "  vec3 col=mix(cDeep,cBody,body);\n" +
-            // bright horizontally-stretched core (lens-flare-like)
-            "  float core=exp(-pow(length(vec2(cc.x*0.85,cc.y*2.0))*4.2,2.0));\n" +
-            "  col=mix(col,cBright,clamp(core*1.3,0.0,1.0));\n" +
-            "  float disk=1.0-smoothstep(0.40,0.44,rad);\n" +
-            // denser plexus: 10-cell grid, thinner brighter links + nodes
-            "  float grid=10.0; vec2 gp=cc*grid; vec2 gi=floor(gp);\n" +
-            "  vec2 p0=gi+0.5+0.4*sin(t*0.5+hash2(gi)*6.2831);\n" +
-            "  float net=0.0, dots=0.0;\n" +
-            "  for(int y=-1;y<=1;y++){ for(int x=-1;x<=1;x++){\n" +
-            "    vec2 gn=gi+vec2(float(x),float(y));\n" +
-            "    vec2 pn=gn+0.5+0.4*sin(t*0.5+hash2(gn)*6.2831);\n" +
-            "    float d=length(gp-pn); dots+=smoothstep(0.10,0.0,d);\n" +
-            "    if(x!=0||y!=0){ float ls=seg(gp,p0,pn);\n" +
-            "      net+=smoothstep(0.032,0.0,ls)*smoothstep(1.5,0.5,length(p0-pn)); }\n" +
-            "  }}\n" +
-            "  float netB=(net*0.95+dots*1.35)*(0.4+body*0.9)*energy;\n" +
-            "  col=mix(col,cBright,clamp(netB,0.0,0.95)); col*=disk;\n" +
-            // diffuse, slightly wispy corona around the (smaller) sphere, spilling out to the view edge
-            "  float ang=atan(cc.y,cc.x);\n" +
-            "  float wob=0.55+0.45*sin(ang*7.0+t*0.55)*sin(ang*3.0-t*0.4);\n" +
-            "  float ring=exp(-pow((rad-0.43)*34.0,2.0));\n" +
-            "  float halo=smoothstep(0.52,0.42,rad)*wob;\n" +
-            "  vec3 rimCol=vec3(0.72,0.87,1.0);\n" +
-            "  col+=rimCol*(ring*1.25+halo*0.75*(1.0-disk))*(0.9+u_activity*0.6);\n" +
-            "  float alpha=clamp(disk+ring*0.95+halo*0.55*(1.0-disk),0.0,1.0);\n" +
+            "  vec2 cc=vec2(c.x*aspect, c.y); float rad=length(cc); float ang=atan(cc.y,cc.x);\n" +
+            "  float t=u_time; float v=clamp(u_activity,0.0,1.0);\n" +
+            // radius grows with voice (obvious pulse), plus an in-sync ripple + faint edge wobble that
+            // both fade to ~0 when silent, so the orb is nearly still until you speak
+            "  float ripple=(0.010+v*0.035)*sin(t*3.2);\n" +
+            "  float wob=(fbm(vec2(cos(ang),sin(ang))*2.0+t*0.4)-0.5)*(0.006+v*0.035);\n" +
+            // clamp so the sphere + its glow never exceed the view: max R 0.36, glow tail ~0.12 -> < 0.5
+            "  float R=min(0.22+v*0.10+ripple+wob, 0.36);\n" +
+            // ONE solid sphere with a single soft edge — no gaps, no rim lines
+            "  float edge=0.045+v*0.025;\n" +
+            "  float disk=smoothstep(R+edge, R-edge, rad);\n" +
+            // saturated accent gradient (reads on the light glass): mid centre -> dark rim
+            "  float d=clamp(rad/max(R,0.001),0.0,1.0);\n" +
+            "  vec3 col=mix(u_lower,u_deep,smoothstep(0.15,1.0,d));\n" +
+            // bright core hotspot, brighter with voice
+            "  float core=(0.32+v*0.6)*exp(-pow(rad*3.4,2.0));\n" +
+            "  col=mix(col,u_milk,clamp(core,0.0,1.0));\n" +
+            // soft outer glow that blooms with voice (tight falloff so it stays inside the view)
+            "  float glow=exp(-pow(max(rad-R,0.0)*13.0,2.0))*(0.28+v*0.70);\n" +
+            "  col+=u_upper*glow*(1.0-disk);\n" +
+            "  float a=clamp(disk+glow*(0.5+v*0.5),0.0,1.0);\n" +
             "  col+=(hash(gl_FragCoord.xy*0.7)-0.5)/255.0;\n" +
-            "  gl_FragColor=vec4(col*alpha, alpha);\n" +
+            "  gl_FragColor=vec4(col*a, a);\n" +   // premultiplied alpha
             "}\n";
 }

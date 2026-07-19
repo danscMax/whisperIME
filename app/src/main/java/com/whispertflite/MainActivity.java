@@ -683,6 +683,7 @@ public class MainActivity extends AppCompatActivity {
      */
     private ArrayAdapter<String> noFilterAdapter(android.widget.AutoCompleteTextView host,
                                                  List<String> items) {
+        final int accent = ThemeUtils.orbColors(this)[0];   // palette accent, so the current pick matches the UI
         return new ArrayAdapter<String>(this, R.layout.menu_item, new ArrayList<>(items)) {
             @Override public android.widget.Filter getFilter() {
                 return new android.widget.Filter() {
@@ -700,10 +701,10 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public View getView(int position, View convertView, ViewGroup parent) {
                 TextView row = (TextView) super.getView(position, convertView, parent);
-                // Mark the active choice: warm ink + a check, so the open list shows the current pick.
+                // Mark the active choice: palette accent + a check, so the open list shows the current pick.
                 boolean selected = row.getText().toString().contentEquals(host.getText());
-                row.setTextColor(ContextCompat.getColor(MainActivity.this,
-                        selected ? R.color.glass_warm : R.color.glass_ink));
+                row.setTextColor(selected ? accent
+                        : ContextCompat.getColor(MainActivity.this, R.color.glass_ink));
                 row.setCompoundDrawablesRelativeWithIntrinsicBounds(
                         0, 0, selected ? R.drawable.ic_check_20dp : 0, 0);
                 return row;

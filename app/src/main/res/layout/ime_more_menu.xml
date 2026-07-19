@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Custom glass overflow menu for the voice keyboard (replaces the native PopupMenu). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="@drawable/menu_sheet"
+    android:minWidth="248dp"
+    android:orientation="vertical"
+    android:paddingVertical="8dp">
+
+    <!-- Translate toggle -->
+    <LinearLayout
+        android:id="@+id/row_translate"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?android:attr/selectableItemBackground"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="18dp"
+        android:paddingVertical="13dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:fontFamily="@font/space_grotesk"
+            android:text="@string/translate_short"
+            android:textColor="@color/glass_ink"
+            android:textSize="15sp" />
+
+        <ImageView
+            android:id="@+id/check_translate"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_check_20dp"
+            app:tint="@color/glass_warm" />
+    </LinearLayout>
+
+    <!-- Auto (hands-free) toggle -->
+    <LinearLayout
+        android:id="@+id/row_auto"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?android:attr/selectableItemBackground"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="18dp"
+        android:paddingVertical="13dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:fontFamily="@font/space_grotesk"
+            android:text="@string/auto_button"
+            android:textColor="@color/glass_ink"
+            android:textSize="15sp" />
+
+        <ImageView
+            android:id="@+id/check_auto"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_check_20dp"
+            app:tint="@color/glass_warm" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginVertical="5dp"
+        android:layout_marginHorizontal="14dp"
+        android:background="@color/menu_sheet_brd" />
+
+    <!-- Quick language -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="18dp"
+        android:layout_marginBottom="4dp"
+        android:fontFamily="@font/space_mono_regular"
+        android:letterSpacing="0.04"
+        android:text="@string/language"
+        android:textAllCaps="true"
+        android:textColor="@color/glass_ink_dim"
+        android:textSize="10sp" />
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="14dp"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:id="@+id/lang_chips"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal" />
+    </HorizontalScrollView>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginVertical="5dp"
+        android:layout_marginHorizontal="14dp"
+        android:background="@color/menu_sheet_brd" />
+
+    <!-- Settings -->
+    <LinearLayout
+        android:id="@+id/row_settings"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?android:attr/selectableItemBackground"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="18dp"
+        android:paddingVertical="13dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:fontFamily="@font/space_grotesk"
+            android:text="@string/settings_title"
+            android:textColor="@color/glass_ink"
+            android:textSize="15sp" />
+
+        <ImageView
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:contentDescription="@null"
+            android:rotation="180"
+            android:src="@drawable/ic_arrow_back_24dp"
+            app:tint="@color/glass_ink_dim" />
+    </LinearLayout>
+</LinearLayout>

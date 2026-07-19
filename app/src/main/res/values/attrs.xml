@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The chosen palette's accent colour, kept readable even after ThemeUtils.applyGlass repoints
+         colorPrimary at the ink token. "On"/selected controls (switches, segmented toggles) point here
+         so they follow the palette the user picked, instead of the fixed glass ink / warm amber. -->
+    <attr name="paletteAccent" format="color" />
+    <attr name="paletteOnAccent" format="color" />
+</resources>

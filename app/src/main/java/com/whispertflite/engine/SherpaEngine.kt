@@ -1,6 +1,7 @@
 package com.whispertflite.engine
 
 import com.k2fsa.sherpa.onnx.OfflineModelConfig
+import com.k2fsa.sherpa.onnx.OfflineNemoEncDecCtcModelConfig
 import com.k2fsa.sherpa.onnx.OfflineRecognizer
 import com.k2fsa.sherpa.onnx.OfflineRecognizerConfig
 import com.k2fsa.sherpa.onnx.OfflineTransducerModelConfig
@@ -33,21 +34,22 @@ class SherpaEngine : AsrEngine {
         val dir = modelFile ?: throw IOException("sherpa model directory missing")
         if (!dir.isDirectory) throw IOException("sherpa model directory not found: $dir")
 
-        val encoder = File(dir, "encoder.int8.onnx")
-        // Parakeet ships decoder.int8.onnx / joiner.int8.onnx; GigaAM ships fp32 decoder.onnx / joiner.onnx.
-        val decoder = firstExisting(dir, "decoder.int8.onnx", "decoder.onnx")
-        val joiner = firstExisting(dir, "joiner.int8.onnx", "joiner.onnx")
         val tokens = File(dir, "tokens.txt")
-        if (!encoder.exists() || decoder == null || joiner == null || !tokens.exists()) {
-            throw IOException("sherpa model incomplete in $dir")
-        }
+        if (!tokens.exists()) throw IOException("sherpa tokens.txt missing in $dir")
 
         // sherpa/onnxruntime has no spin-wait barrier (unlike ggml), so a modest thread count is safe.
         val cores = Runtime.getRuntime().availableProcessors()
         val threads = minOf(4, maxOf(2, cores - 1))
 
-        val config = OfflineRecognizerConfig(
-            modelConfig = OfflineModelConfig(
+        // Two shapes: a 3-file transducer (Parakeet TDT / GigaAM RNN-T -> encoder + decoder + joiner) or a
+        // single-file NeMo CTC (GigaAM CTC -> model.int8.onnx). Detect by which files are present.
+        val encoder = File(dir, "encoder.int8.onnx")
+        val modelConfig: OfflineModelConfig = if (encoder.exists()) {
+            // Parakeet ships decoder.int8.onnx / joiner.int8.onnx; GigaAM RNN-T ships fp32 decoder.onnx / joiner.onnx.
+            val decoder = firstExisting(dir, "decoder.int8.onnx", "decoder.onnx")
+            val joiner = firstExisting(dir, "joiner.int8.onnx", "joiner.onnx")
+            if (decoder == null || joiner == null) throw IOException("sherpa transducer incomplete in $dir")
+            OfflineModelConfig(
                 transducer = OfflineTransducerModelConfig(
                     encoder = encoder.absolutePath,
                     decoder = decoder.absolutePath,
@@ -56,8 +58,20 @@ class SherpaEngine : AsrEngine {
                 tokens = tokens.absolutePath,
                 modelType = "nemo_transducer",
                 numThreads = threads,
-            ),
-        )
+            )
+        } else {
+            // NeMo CTC (GigaAM CTC): a single model file. modelType is left empty — sherpa infers CTC from
+            // the populated nemo config (unlike NeMo transducers, which need the explicit "nemo_transducer").
+            val ctc = firstExisting(dir, "model.int8.onnx", "model.onnx")
+                ?: throw IOException("sherpa model incomplete in $dir")
+            OfflineModelConfig(
+                nemo = OfflineNemoEncDecCtcModelConfig(model = ctc.absolutePath),
+                tokens = tokens.absolutePath,
+                numThreads = threads,
+            )
+        }
+
+        val config = OfflineRecognizerConfig(modelConfig = modelConfig)
         try {
             recognizer = OfflineRecognizer(config = config)
         } catch (e: Throwable) {

@@ -91,6 +91,16 @@ public final class ModelRegistry {
                         new ModelInfo.Asset(GIGAAM + "tokens.txt", "sherpa/gigaam-rnnt-v3/tokens.txt", 196L)),
                 1, 1, 3));
 
+        // GigaAM CTC v3 — a lighter/faster Russian option for weaker devices: a single-file NeMo CTC model
+        // (no encoder/decoder/joiner split). Trades punctuation + casing for speed; ~225 MB total.
+        final String GIGAAM_CTC =
+                "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-ctc-giga-am-v3-russian-2025-12-16/resolve/main/";
+        m.add(ModelInfo.ofSherpa("sherpa-gigaam-ctc-ru", "GigaAM CTC · русский", "sherpa/gigaam-ctc-v3",
+                java.util.Arrays.asList(
+                        new ModelInfo.Asset(GIGAAM_CTC + "model.int8.onnx", "sherpa/gigaam-ctc-v3/model.int8.onnx", 224721476L),
+                        new ModelInfo.Asset(GIGAAM_CTC + "tokens.txt", "sherpa/gigaam-ctc-v3/tokens.txt", 196L)),
+                1, 2, 2));
+
         return m;
     }
 

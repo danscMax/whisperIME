@@ -290,6 +290,11 @@ public class Whisper {
 
                 long timeTaken = System.currentTimeMillis() - startTime;
                 Log.d(TAG, "Time Taken for transcription: " + timeTaken + "ms");
+                // Clear the in-progress flag BEFORE announcing done: listeners gate finalize on
+                // isInProgress(), and with a fast engine the DONE message is delivered before the
+                // finally-block below runs, leaving the UI stuck in PROCESSING (composing text never
+                // committed). The finally still clears it on the exception path.
+                mInProgress.set(false);
                 sendUpdate(MSG_PROCESSING_DONE);
             } else {
                 sendUpdate(MSG_ENGINE_NOT_INIT);

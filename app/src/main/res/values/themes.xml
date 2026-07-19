@@ -9,6 +9,10 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:enforceStatusBarContrast">false</item>
         <item name="android:enforceNavigationBarContrast">false</item>
+        <!-- Palette accent fallback (overridden per-palette below; used as-is only for "dynamic", which
+             has no static overlay). Selected/"on" controls read this so they follow the palette. -->
+        <item name="paletteAccent">@color/palette_teal_primary</item>
+        <item name="paletteOnAccent">@color/palette_teal_onPrimary</item>
     </style>
 
     <!-- Base application theme. -->
@@ -182,6 +186,15 @@
         <item name="android:textFontWeight">600</item>
     </style>
 
+    <!-- Segmented toggle (theme / orb-style pickers): selected segment fills with the palette accent
+         and its label flips to on-accent; unselected stays an outlined glass pill. -->
+    <style name="Widget.Glass.SegButton" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="backgroundTint">@color/seg_button_bg</item>
+        <item name="android:textColor">@color/seg_button_text</item>
+        <item name="strokeColor">@color/glass_outline</item>
+        <item name="rippleColor">@color/glass_outline</item>
+    </style>
+
     <!-- Warm toggle: on = the same amber that makes the active card glow. -->
     <style name="Widget.Glass.Switch" parent="Widget.Material3.CompoundButton.MaterialSwitch">
         <item name="trackTint">@color/glass_switch_track</item>
@@ -213,6 +226,8 @@
         <item name="colorOnPrimary">@color/palette_teal_onPrimary</item>
         <item name="colorPrimaryContainer">@color/palette_teal_primaryContainer</item>
         <item name="colorOnPrimaryContainer">@color/palette_teal_onPrimaryContainer</item>
+        <item name="paletteAccent">@color/palette_teal_primary</item>
+        <item name="paletteOnAccent">@color/palette_teal_onPrimary</item>
         <item name="colorSecondaryContainer">@color/palette_teal_secondaryContainer</item>
         <item name="colorOnSecondaryContainer">@color/palette_teal_onSecondaryContainer</item>
         <item name="android:colorBackground">@color/palette_teal_surface</item>
@@ -228,6 +243,8 @@
         <item name="colorOnPrimary">@color/palette_terracotta_onPrimary</item>
         <item name="colorPrimaryContainer">@color/palette_terracotta_primaryContainer</item>
         <item name="colorOnPrimaryContainer">@color/palette_terracotta_onPrimaryContainer</item>
+        <item name="paletteAccent">@color/palette_terracotta_primary</item>
+        <item name="paletteOnAccent">@color/palette_terracotta_onPrimary</item>
         <item name="colorSecondaryContainer">@color/palette_terracotta_secondaryContainer</item>
         <item name="colorOnSecondaryContainer">@color/palette_terracotta_onSecondaryContainer</item>
         <item name="android:colorBackground">@color/palette_terracotta_surface</item>
@@ -243,6 +260,8 @@
         <item name="colorOnPrimary">@color/palette_indigo_onPrimary</item>
         <item name="colorPrimaryContainer">@color/palette_indigo_primaryContainer</item>
         <item name="colorOnPrimaryContainer">@color/palette_indigo_onPrimaryContainer</item>
+        <item name="paletteAccent">@color/palette_indigo_primary</item>
+        <item name="paletteOnAccent">@color/palette_indigo_onPrimary</item>
         <item name="colorSecondaryContainer">@color/palette_indigo_secondaryContainer</item>
         <item name="colorOnSecondaryContainer">@color/palette_indigo_onSecondaryContainer</item>
         <item name="android:colorBackground">@color/palette_indigo_surface</item>
@@ -258,6 +277,8 @@
         <item name="colorOnPrimary">@color/palette_forest_onPrimary</item>
         <item name="colorPrimaryContainer">@color/palette_forest_primaryContainer</item>
         <item name="colorOnPrimaryContainer">@color/palette_forest_onPrimaryContainer</item>
+        <item name="paletteAccent">@color/palette_forest_primary</item>
+        <item name="paletteOnAccent">@color/palette_forest_onPrimary</item>
         <item name="colorSecondaryContainer">@color/palette_forest_secondaryContainer</item>
         <item name="colorOnSecondaryContainer">@color/palette_forest_onSecondaryContainer</item>
         <item name="android:colorBackground">@color/palette_forest_surface</item>

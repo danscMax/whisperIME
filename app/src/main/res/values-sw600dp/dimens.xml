@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tablets / large foldables (smallest width >=600dp): the orb is a bigger hero and the keys grow
+         to match. Kept moderate so the dock stays compact and the orb stays within thumb reach. -->
+    <dimen name="ime_orb_size">240dp</dimen>
+    <dimen name="ime_key_size">60dp</dimen>
+    <dimen name="ime_caption_pull">-40dp</dimen>
+</resources>

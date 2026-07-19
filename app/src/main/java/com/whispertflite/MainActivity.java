@@ -639,8 +639,9 @@ public class MainActivity extends AppCompatActivity {
     /** Registry models present on disk (TFLite entries also require their vocab file). */
     private List<ModelInfo> loadDownloadedModels() {
         List<ModelInfo> out = new ArrayList<>();
+        ModelDownloadManager dm = ModelDownloadManager.get(this);
         for (ModelInfo m : ModelRegistry.all()) {
-            if (!new File(sdcardDataFolder, m.filename).exists()) continue;
+            if (!dm.isPresent(m)) continue; // all files present (sherpa models have several)
             if (m.engine == ModelInfo.Engine.TFLITE
                     && !new File(sdcardDataFolder, ModelRegistry.vocabFor(m)).exists()) continue;
             out.add(m);
@@ -660,8 +661,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void updateEngineBadge() {
-        badgeEngine.setText(selectedModel.engine == ModelInfo.Engine.WHISPER_CPP
-                ? R.string.catalog_engine_whispercpp : R.string.main_badge_tflite);
+        int badge = selectedModel.engine == ModelInfo.Engine.SHERPA ? R.string.main_badge_sherpa
+                : selectedModel.engine == ModelInfo.Engine.WHISPER_CPP ? R.string.catalog_engine_whispercpp
+                : R.string.main_badge_tflite;
+        badgeEngine.setText(badge);
         updateContextPill();
     }
 
@@ -735,8 +738,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private String modelLabel(ModelInfo m) {
-        String engine = m.engine == ModelInfo.Engine.WHISPER_CPP
-                ? getString(R.string.catalog_engine_whispercpp) : getString(R.string.main_badge_tflite);
+        String engine = m.engine == ModelInfo.Engine.SHERPA ? getString(R.string.main_badge_sherpa)
+                : m.engine == ModelInfo.Engine.WHISPER_CPP ? getString(R.string.catalog_engine_whispercpp)
+                : getString(R.string.main_badge_tflite);
         // Drop the noisy "· TOP_WORLD" training-set tag from the spinner; the engine badge already
         // shows the engine so the collapsed pill stays short (e.g. "base · TFLite").
         String name = m.displayName.replace(" · TOP_WORLD", "");

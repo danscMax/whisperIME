@@ -172,7 +172,9 @@ public class WhisperInputMethodService extends InputMethodService {
     }
 
     private boolean isPresent(ModelInfo m) {
-        if (!new File(sdcardDataFolder, m.filename).exists()) return false;
+        for (ModelInfo.Asset a : m.files) { // all files present (sherpa models have several)
+            if (!new File(sdcardDataFolder, a.relPath).exists()) return false;
+        }
         if (m.engine == ModelInfo.Engine.TFLITE
                 && !new File(sdcardDataFolder, ModelRegistry.vocabFor(m)).exists()) return false;
         return true;

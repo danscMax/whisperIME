@@ -86,6 +86,7 @@
     <string name="onboarding_downloading">Downloading… %1$d%%</string>
     <!-- Main screen -->
     <string name="main_badge_tflite" translatable="false">TFLite</string>
+    <string name="main_badge_sherpa" translatable="false">sherpa</string>
     <string name="main_hint_ready">Your transcript will appear here</string>
     <string name="main_error_title">Didn\'t catch that</string>
     <string name="main_error_hint">Speak closer to the mic or check that it isn\'t used by another app.</string>
@@ -136,6 +137,8 @@
     <string name="catalog_filter_whispercpp" translatable="false">whisper.cpp</string>
     <string name="catalog_engine_tflite" translatable="false">TFLite</string>
     <string name="catalog_engine_whispercpp" translatable="false">whisper.cpp</string>
+    <string name="catalog_engine_sherpa" translatable="false">sherpa-onnx</string>
+    <string name="catalog_filter_sherpa" translatable="false">sherpa</string>
     <string name="catalog_active">Active</string>
     <string name="catalog_engine_soon">engine soon</string>
     <string name="catalog_engine_soon_hint">whisper.cpp engine lands soon</string>
@@ -151,6 +154,7 @@
     <string name="catalog_hint_best">best quality</string>
     <string name="catalog_section_cpp_sub">local · fast</string>
     <string name="catalog_section_tflite_sub">compatible</string>
+    <string name="catalog_section_sherpa_sub">fastest · multilingual</string>
     <string name="catalog_speed_fast">fast</string>
     <string name="catalog_speed_mid">medium</string>
     <string name="catalog_speed_slow">slow</string>

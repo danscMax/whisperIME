@@ -34,6 +34,7 @@ import com.whispertflite.asr.Recorder;
 import com.whispertflite.asr.Whisper;
 import com.whispertflite.asr.WhisperResult;
 import com.whispertflite.history.HistoryDb;
+import com.whispertflite.models.ModelDownloadManager;
 import com.whispertflite.models.ModelInfo;
 import com.whispertflite.models.ModelRegistry;
 import com.whispertflite.ui.LivingSignalView;
@@ -83,10 +84,11 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
         if (selId != null) sel = ModelRegistry.byId(selId);
         // Fall back to any actually-downloaded model when none is selected OR the selected model's
         // file isn't on disk (stale pref) — otherwise the dialog would wrongly report "no model".
-        if (sel == null || !new File(sdcardDataFolder, sel.filename).exists()) {
+        ModelDownloadManager dm = ModelDownloadManager.get(this);
+        if (sel == null || !dm.isPresent(sel)) {
             sel = null;
             for (ModelInfo m : ModelRegistry.all()) {
-                if (new File(sdcardDataFolder, m.filename).exists()) { sel = m; break; }
+                if (dm.isPresent(m)) { sel = m; break; } // all files present (sherpa models have several)
             }
         }
         selectedTfliteFile = new File(sdcardDataFolder, sel != null ? sel.filename : "none");

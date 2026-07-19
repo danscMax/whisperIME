@@ -124,8 +124,10 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
         long total = 0;
         File dir = getExternalFilesDir(null);
         for (ModelInfo m : ModelRegistry.all()) {
-            File f = new File(dir, m.filename);
-            if (f.exists()) total += f.length();
+            for (ModelInfo.Asset a : m.files) { // sum every file (sherpa models have several)
+                File f = new File(dir, a.relPath);
+                if (f.exists()) total += f.length();
+            }
         }
         storageUsed.setText(getString(R.string.catalog_storage_used,
                 Formatter.formatShortFileSize(this, total)));
@@ -174,9 +176,7 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
                 .setMessage(getString(R.string.catalog_delete_confirm, model.displayName))
                 .setNegativeButton(android.R.string.cancel, null)
                 .setPositiveButton(R.string.catalog_delete, (d, w) -> {
-                    File f = new File(getExternalFilesDir(null), model.filename);
-                    //noinspection ResultOfMethodCallIgnored
-                    f.delete();
+                    manager.delete(model); // removes all files + prunes the sherpa dir
                     if (model.id.equals(prefs.getString(ModelDownloadManager.PREF_SELECTED_MODEL, null))) {
                         prefs.edit().remove(ModelDownloadManager.PREF_SELECTED_MODEL).apply();
                     }
@@ -191,9 +191,8 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
     /** Number of models currently on disk (to hide delete on the last one). */
     private int downloadedCount() {
         int n = 0;
-        File dir = getExternalFilesDir(null);
         for (ModelInfo m : ModelRegistry.all()) {
-            if (new File(dir, m.filename).exists()) n++;
+            if (manager.isPresent(m)) n++;
         }
         return n;
     }
@@ -215,6 +214,9 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
         /** Group the visible models by engine under a header each; whisper.cpp first (the default). */
         void setItems(List<ModelInfo> newItems) {
             rows.clear();
+            // sherpa-onnx first — the modern, fastest, multilingual engine (Parakeet & GigaAM).
+            addSection(newItems, Engine.SHERPA,
+                    getString(R.string.catalog_engine_sherpa), getString(R.string.catalog_section_sherpa_sub));
             addSection(newItems, Engine.WHISPER_CPP,
                     getString(R.string.catalog_engine_whispercpp), getString(R.string.catalog_section_cpp_sub));
             addSection(newItems, Engine.TFLITE,

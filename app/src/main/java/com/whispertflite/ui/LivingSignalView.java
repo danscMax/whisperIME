@@ -81,18 +81,6 @@ public class LivingSignalView extends TextureView implements TextureView.Surface
         state = SignalState.READY;
     }
 
-    /** Re-read the orb-style pref; if it changed, the render thread recompiles to the new shader so a
-     *  choice made in Settings takes effect when the screen resumes, without a restart. */
-    public void refreshStyle() {
-        int s = androidx.preference.PreferenceManager
-                .getDefaultSharedPreferences(getContext()).getInt("orbStyle", 0);
-        if (s != orbStyle) {
-            orbStyle = s;
-            RenderThread rt = thread;
-            if (rt != null) rt.styleDirty = true;
-        }
-    }
-
     /** Recolour the cloud toward the app palette's hue (colorPrimary) so the orb follows the palette. */
     public void setColors(int bright, int soft) {
         float[] hsv = new float[3];
@@ -119,13 +107,38 @@ public class LivingSignalView extends TextureView implements TextureView.Surface
 
     @Override
     public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+        stopThread();
+        return true;
+    }
+
+    private void stopThread() {
         running = false;
         if (thread != null) {
             thread.finish();
             try { thread.join(400); } catch (InterruptedException ignored) { }
             thread = null;
         }
-        return true;
+    }
+
+    /**
+     * Re-arm rendering when the host activity resumes. Some devices (and some OEM window managers) keep
+     * the SurfaceTexture alive across an activity stop — onSurfaceTextureDestroyed is never called — but
+     * detach it from the compositor, so the still-running render thread swaps frames that go nowhere and
+     * the orb goes blank after e.g. a trip to Settings. Rebuilding the thread (and its EGL surface) on
+     * the still-live SurfaceTexture re-attaches it. Also re-reads the orb-style pref so a change made in
+     * Settings takes effect on return. No-op if the surface was properly destroyed (the callback path
+     * recreates it).
+     */
+    public void resumeRender() {
+        orbStyle = androidx.preference.PreferenceManager
+                .getDefaultSharedPreferences(getContext()).getInt("orbStyle", 0);
+        if (!isAvailable() || thread == null) return;   // no live surface, or already torn down
+        SurfaceTexture st = getSurfaceTexture();
+        if (st == null) return;
+        stopThread();
+        running = true;
+        thread = new RenderThread(st, getWidth(), getHeight());
+        thread.start();
     }
 
     @Override
@@ -137,7 +150,6 @@ public class LivingSignalView extends TextureView implements TextureView.Surface
         private final SurfaceTexture surface;
         private volatile int width, height;
         private volatile boolean sizeDirty;
-        private volatile boolean styleDirty;   // set when the orb style changed → recompile the shader
 
         RenderThread(SurfaceTexture surface, int w, int h) {
             this.surface = surface;
@@ -202,7 +214,6 @@ public class LivingSignalView extends TextureView implements TextureView.Surface
         }
 
         private void drawFrame(float dt) {
-            if (styleDirty) { GLES20.glDeleteProgram(program); initGL(); styleDirty = false; }
             if (sizeDirty) { GLES20.glViewport(0, 0, width, height); sizeDirty = false; }
 
             // smooth audio level (fast attack, slow decay) + per-state flow speed / activity

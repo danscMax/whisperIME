@@ -4,4 +4,15 @@
          large foldables; on phones (narrower than this) the content still fills the width. Used as
          app:layout_constraintWidth_max on a ConstraintLayout wrapper. -->
     <dimen name="content_max_width">640dp</dimen>
+
+    <!-- IME voice dock. The orb is a GLES TextureView that blanks in the IME window above a height
+         budget on phones (~150dp renders safely); tablets get a much larger hero orb via
+         values-sw600dp. Backspace/enter scale with it. -->
+    <dimen name="ime_orb_size">150dp</dimen>
+    <dimen name="ime_key_size">52dp</dimen>
+    <!-- The orb's glow fills only ~half its box (shader clamp), leaving transparent padding. The
+         status caption is pulled up by this (negative) margin so it sits just under the visible glow
+         instead of a box-height below it. ponytail: calibration knob — scales with orb size, tune per
+         form factor if the shader's glow ratio changes. -->
+    <dimen name="ime_caption_pull">-18dp</dimen>
 </resources>

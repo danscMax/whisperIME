@@ -11,13 +11,8 @@ import android.util.Log;
 
 import androidx.core.app.ActivityCompat;
 
-import com.konovalov.vad.webrtc.Vad;
-import com.konovalov.vad.webrtc.VadWebRTC;
-import com.konovalov.vad.webrtc.config.FrameSize;
-import com.konovalov.vad.webrtc.config.Mode;
-import com.konovalov.vad.webrtc.config.SampleRate;
 import com.whispertflite.R;
-import com.whispertflite.util.AudioMath;
+import com.whispertflite.engine.SileroVad;
 
 import java.io.ByteArrayOutputStream;
 
@@ -67,11 +62,8 @@ public class Recorder {
 
     private volatile boolean shouldStartRecording = false;
     private boolean useVAD = false;
-    private VadWebRTC vad = null;
-    private static final int VAD_FRAME_SIZE = 480;                 // 30 ms @ 16 kHz
-    // ~550 ms pause splits a chunk. ponytail: calibration knob — lower = faster first result, higher =
-    // fewer mid-phrase splits; tune with an on-device latency/accuracy check (B1, device-tunable).
-    private static final int CHUNK_SILENCE_FRAMES = 550 / 30;
+    private SileroVad vad = null;
+    private static final int VAD_FRAME_SIZE = 480;                 // 30 ms @ 16 kHz read granularity
     private static final int CHUNK_HARD_CAP_BYTES = 16000 * 2 * 28; // 28 s force-split mid-speech
 
     private final Thread workerThread;
@@ -114,21 +106,11 @@ public class Recorder {
         }
     }
 
-    // B5 (deferred, scoped): whisper.cpp v1.9.1 ships a native Silero VAD (whisper_vad_* in whisper.h)
-    // that is more accurate than webrtc on speech/noise. Adopting it is a large change AND needs a
-    // bundled Silero ggml model (~1-2 MB asset) plus on-device WER/latency validation before it can
-    // replace the webrtc path here — it is NOT wired up. Kept as webrtc until that model + device test
-    // are available; tracked as its own task, not blind-swapped.
+    // Arm auto-stop. The Silero VAD itself is built at capture start on the worker thread (recordAudio),
+    // NOT here — this runs on the caller's UI thread and constructing the VAD loads an ONNX model.
     public void initVad(){
-        vad = Vad.builder()
-                .setSampleRate(SampleRate.SAMPLE_RATE_16K)
-                .setFrameSize(FrameSize.FRAME_SIZE_480)
-                .setMode(Mode.AGGRESSIVE)   // was VERY_AGGRESSIVE: too rejective for quiet speech (A4, device-tunable knob)
-                .setSilenceDurationMs(800)
-                .setSpeechDurationMs(200)
-                .build();
         useVAD = true;
-        Log.d(TAG, "VAD initialized");
+        Log.d(TAG, "Auto-stop VAD armed");
     }
 
 
@@ -183,16 +165,6 @@ public class Recorder {
     private void sendUpdate(String message) {
         if (mListener != null)
             mListener.onUpdateReceived(message);
-    }
-
-    /**
-     * Peak-normalize 16-bit little-endian PCM in place. Used ONLY on a throwaway copy fed to the VAD:
-     * a quiet frame otherwise never crosses the webrtc speech threshold. The Whisper-bound audio is no
-     * longer normalized here — it rides the VOICE_RECOGNITION source + platform AGC instead (A9). Gain
-     * is capped so noise-only audio is not blown up.
-     */
-    private static void normalizePcm(byte[] pcm) {
-        AudioMath.normalizeInPlace(pcm);
     }
 
     /**
@@ -327,20 +299,13 @@ public class Recorder {
         byte[] audioData = new byte[bufferSize];
         int totalBytesRead = 0;
 
-        boolean isSpeech;
         boolean isRecording = false;
-        byte[] vadAudioBuffer = new byte[VAD_FRAME_SIZE * 2];  //VAD needs 16 bit
-
-        // Adaptive auto-stop. The webrtc VAD is fed an 8x-normalized frame (so quiet speech crosses the
-        // threshold), which can also blow AGC-boosted pause noise up to speech level -> the VAD never flips
-        // to silence and recording runs to the 30 s cap. So don't rely on the VAD alone: track the room's
-        // noise floor as the running MINIMUM raw peak (a pre-speech average wrongly absorbed the first ~200 ms
-        // of speech before the VAD confirmed it, inflating the floor so the stop fired mid-utterance), then
-        // stop once the RAW signal sits near that floor for ~1.8 s.
-        int ambientFloor = 0;
-        int quietFrames = 0;
         boolean speechStarted = false;
-        final int STOP_QUIET_FRAMES = 1800 / 30;   // ~1.8 s near the floor ends the utterance (tolerates pauses)
+
+        // Built here (worker thread) so the ONNX model load stays off the caller's UI thread. 0.8 s of
+        // trailing silence ends the utterance — tolerant of breath/thinking pauses. ponytail: pause knob,
+        // lower = snappier stop, higher = safer against early cutoff (device-tune).
+        if (useVAD && vad == null) vad = new SileroVad(mContext, 0.8f);
 
         while (mInProgress.get() && totalBytesRead < bytesForThirtySeconds) {
             int bytesRead = audioRecord.read(audioData, 0, VAD_FRAME_SIZE * 2);
@@ -355,53 +320,22 @@ public class Recorder {
 
             if (useVAD){
                 if (bytesRead == VAD_FRAME_SIZE * 2) {
-                    // The just-read frame IS the latest VAD window — copy it directly instead of
-                    // outputBuffer.toByteArray() (a full copy of the growing buffer) every 30 ms frame,
-                    // which was O(n) per frame -> O(n^2) over a long recording (B4).
-                    System.arraycopy(audioData, 0, vadAudioBuffer, 0, VAD_FRAME_SIZE * 2);
-
-                    // Raw RMS BEFORE normalization drives the auto-stop — smooth, not spiked by a single
-                    // loud sample (a peak-based test was reset by every inter-word transient and never stopped).
-                    int rawRms = AudioMath.rms(vadAudioBuffer);
-
-                    // Feed the VAD a normalized copy, matching the chunked path — otherwise a quiet mic
-                    // (VOICE_RECOGNITION source) never crosses the speech threshold here (A8).
-                    byte[] vadFrame = vadAudioBuffer.clone();
-                    normalizePcm(vadFrame);
-                    // Running minimum RMS = the true room floor (immune to speech-onset frames). Floored so
-                    // one ultra-quiet frame can't drag the stop threshold to zero.
-                    if (ambientFloor == 0 || rawRms < ambientFloor) ambientFloor = Math.max(rawRms, 40);
-                    int stopThreshold = Math.max(ambientFloor * 4, 180);
-
-                    isSpeech = vad.isSpeech(vadFrame);
+                    // Feed Silero the RAW frame — it is level-robust, no normalization. isSpeech() stays true
+                    // through short pauses and flips false only after ~0.8 s of trailing silence, so the
+                    // false-after-speech edge IS the end of the utterance: stop there. No RMS floor needed.
+                    vad.accept(audioData, bytesRead);
+                    boolean isSpeech = vad.isSpeech();
                     if (isSpeech) {
                         if (!isRecording) {
-                            Log.d(TAG, "VAD Speech detected: recording starts");
+                            Log.d(TAG, "VAD speech detected: recording starts");
                             sendUpdate(MSG_RECORDING);
                         }
                         isRecording = true;
                         speechStarted = true;
-                    } else {
-                        if (isRecording) {
-                            isRecording = false;
-                            mInProgress.set(false);
-                        }
-                    }
-
-                    // Adaptive auto-stop, independent of the (possibly stuck) VAD: once speech has been heard,
-                    // stop when RMS sits below the floor threshold for STOP_QUIET_FRAMES. The counter DECAYS on
-                    // a loud frame instead of hard-resetting, so an isolated spike (breath, click) mid-silence
-                    // doesn't restart the whole wait — only sustained sound does.
-                    if (isRecording && speechStarted) {
-                        if (rawRms < stopThreshold) {
-                            if (++quietFrames >= STOP_QUIET_FRAMES) {
-                                Log.d(TAG, "Adaptive auto-stop: floor=" + ambientFloor + " thr=" + stopThreshold);
-                                isRecording = false;
-                                mInProgress.set(false);
-                            }
-                        } else {
-                            quietFrames = Math.max(0, quietFrames - 3);
-                        }
+                    } else if (speechStarted) {
+                        Log.d(TAG, "Silero auto-stop: end of speech");
+                        isRecording = false;
+                        mInProgress.set(false);
                     }
                 }
             } else {
@@ -413,7 +347,7 @@ public class Recorder {
 
         if (useVAD){
             useVAD = false;
-            vad.close();
+            vad.release();
             vad = null;
             Log.d(TAG, "Closing VAD");
         }
@@ -476,17 +410,12 @@ public class Recorder {
         attachEffects(audioRecord);
         audioRecord.startRecording();
 
-        VadWebRTC chunkVad = Vad.builder()
-                .setSampleRate(SampleRate.SAMPLE_RATE_16K)
-                .setFrameSize(FrameSize.FRAME_SIZE_480)
-                .setMode(Mode.AGGRESSIVE)   // was VERY_AGGRESSIVE: too rejective for quiet speech (A4, device-tunable knob)
-                .setSilenceDurationMs(300)
-                .setSpeechDurationMs(100)
-                .build();
+        // 0.4 s of silence splits a phrase here (snappier than the auto path's 0.8 s) so partial results
+        // surface fast; 0.10 s min-speech rejects clicks. ponytail: device-tune both knobs.
+        SileroVad chunkVad = new SileroVad(mContext, 0.4f, 0.10f);
 
         ByteArrayOutputStream chunk = new ByteArrayOutputStream();
         byte[] frame = new byte[VAD_FRAME_SIZE * 2];
-        int silenceFrames = 0;
         boolean chunkHasSpeech = false;
         boolean announced = false;
         int chunksEmitted = 0;
@@ -500,23 +429,20 @@ public class Recorder {
             chunk.write(frame, 0, bytesRead);
             emitRms(frame, bytesRead);
 
-            // VAD sees a normalized copy: quiet mics (raw VOICE_RECOGNITION path) otherwise never
-            // cross the speech threshold. webrtc VAD is spectral, so amplified noise stays rejected.
+            // Silero on the RAW frame (level-robust, no normalization). It holds isSpeech() true through
+            // short pauses and flips false only after ~0.4 s of silence — that edge marks a phrase boundary.
             boolean isSpeech = false;
             if (bytesRead == VAD_FRAME_SIZE * 2) {
-                byte[] vadFrame = frame.clone();
-                normalizePcm(vadFrame);
-                isSpeech = chunkVad.isSpeech(vadFrame);
+                chunkVad.accept(frame, bytesRead);
+                isSpeech = chunkVad.isSpeech();
             }
             if (isSpeech) {
                 if (!announced) { announced = true; sendUpdate(MSG_RECORDING); }
                 chunkHasSpeech = true;
-                silenceFrames = 0;
-            } else if (chunkHasSpeech) {
-                silenceFrames++;
             }
 
-            boolean pauseSplit = chunkHasSpeech && silenceFrames >= CHUNK_SILENCE_FRAMES;
+            // Split at a confirmed pause (speech then Silero-confirmed silence) or the mid-speech hard cap.
+            boolean pauseSplit = chunkHasSpeech && !isSpeech;
             boolean capSplit = chunk.size() >= CHUNK_HARD_CAP_BYTES;
             if (pauseSplit || capSplit) {
                 byte[] out = chunk.toByteArray();
@@ -526,7 +452,6 @@ public class Recorder {
                 chunksEmitted++;
                 chunk.reset();
                 chunkHasSpeech = false;
-                silenceFrames = 0;
             }
         }
 
@@ -549,7 +474,7 @@ public class Recorder {
             chunksEmitted++;
         }
 
-        chunkVad.close();
+        chunkVad.release();
         audioRecord.stop();
         audioRecord.release();
         releaseEffects();

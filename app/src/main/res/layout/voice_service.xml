@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- IME voice dock (orb-forward): the orb is the hero and dominates; backspace + enter hug it. A short
-     status/model line sits up top; the keyboard-switch and overflow are small icons tucked into the
-     top-right corner (inset off the edges). -->
+<!-- IME voice dock (orb-forward): the orb is the hero and dominates; backspace + enter hug it. The
+     keyboard-switch and overflow are small icons tucked into the top-right corner. The status/model
+     line sits directly UNDER the orb (compact) so nothing floats far above it. Orb + keys scale up on
+     tablets via @dimen (values-sw600dp). -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -11,70 +12,70 @@
     android:gravity="center_horizontal"
     android:orientation="vertical"
     android:paddingHorizontal="14dp"
-    android:paddingTop="6dp"
+    android:paddingTop="4dp"
     android:paddingBottom="8dp">
 
-    <!-- TOP: compact status/model line, centred; small keyboard-switch + overflow inset in the corner -->
+    <!-- ORB ZONE: centred cluster — backspace · [ BIG ORB ] · enter. The keyboard-switch + overflow
+         float in the top-right corner (they sit above the orb's centre line, so they never collide
+         with the enter key). -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
         <LinearLayout
-            android:id="@+id/idle_group"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="top|center_horizontal"
-            android:layout_marginHorizontal="108dp"
-            android:layout_marginTop="4dp"
-            android:gravity="center_horizontal"
-            android:orientation="vertical">
-
-            <TextView
-                android:id="@+id/tv_hint"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:fontFamily="@font/space_grotesk"
-                android:gravity="center"
-                android:maxLines="1"
-                android:text="@string/ime_hint"
-                android:textColor="@color/glass_ink"
-                android:textFontWeight="600"
-                android:textSize="13sp" />
-
-            <TextView
-                android:id="@+id/tv_model_chip"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:fontFamily="@font/space_mono_regular"
-                android:gravity="center"
-                android:letterSpacing="0.02"
-                android:maxLines="1"
-                android:textColor="@color/glass_ink_dim"
-                android:textSize="10sp" />
-
-            <TextView
-                android:id="@+id/tvTimer"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:fontFamily="@font/space_mono_regular"
-                android:text="0:00"
-                android:textColor="@color/living_magenta"
-                android:textSize="11sp"
-                android:visibility="gone" />
-        </LinearLayout>
-
-        <TextView
-            android:id="@+id/tv_status"
+            android:id="@+id/layout_buttons"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
-            android:layout_marginHorizontal="108dp"
-            android:gravity="center"
-            android:textColor="?attr/colorError"
-            android:textSize="12sp"
-            android:visibility="gone" />
+            android:layout_marginTop="2dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <androidx.appcompat.widget.AppCompatImageButton
+                android:id="@+id/btnDel"
+                android:layout_width="@dimen/ime_key_size"
+                android:layout_height="@dimen/ime_key_size"
+                android:background="@drawable/living_glass_circle"
+                android:contentDescription="@string/delete_button"
+                android:padding="14dp"
+                android:src="@drawable/ic_ime_backspace_24dp"
+                app:tint="@color/glass_ink" />
+
+            <Space
+                android:layout_width="16dp"
+                android:layout_height="1dp" />
+
+            <FrameLayout
+                android:layout_width="@dimen/ime_orb_size"
+                android:layout_height="@dimen/ime_orb_size">
+
+                <com.whispertflite.ui.LivingSignalView
+                    android:id="@+id/orb"
+                    android:layout_width="@dimen/ime_orb_size"
+                    android:layout_height="@dimen/ime_orb_size" />
+
+                <androidx.appcompat.widget.AppCompatImageButton
+                    android:id="@+id/btnRecord"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@android:color/transparent"
+                    android:contentDescription="@string/record_button" />
+            </FrameLayout>
+
+            <Space
+                android:layout_width="16dp"
+                android:layout_height="1dp" />
+
+            <androidx.appcompat.widget.AppCompatImageButton
+                android:id="@+id/btnEnter"
+                android:layout_width="@dimen/ime_key_size"
+                android:layout_height="@dimen/ime_key_size"
+                android:background="@drawable/living_glass_circle"
+                android:contentDescription="@string/return_button"
+                android:padding="14dp"
+                android:src="@drawable/ic_ime_return_24dp"
+                app:tint="@color/glass_ink" />
+        </LinearLayout>
 
         <LinearLayout
             android:layout_width="wrap_content"
@@ -108,68 +109,58 @@
         </LinearLayout>
     </FrameLayout>
 
-    <!-- MAIN ROW: centred cluster — backspace · [ BIG ORB ] · enter (buttons hug the orb) -->
+    <!-- Status / model line — directly under the orb, compact -->
     <LinearLayout
-        android:id="@+id/layout_buttons"
-        android:layout_width="match_parent"
+        android:id="@+id/idle_group"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
+        android:layout_marginTop="@dimen/ime_caption_pull"
+        android:layout_marginBottom="2dp"
+        android:gravity="center_horizontal"
+        android:orientation="vertical">
 
-        <Space
-            android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1" />
+        <TextView
+            android:id="@+id/tv_hint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="@font/space_grotesk"
+            android:gravity="center"
+            android:maxLines="1"
+            android:text="@string/ime_hint"
+            android:textColor="@color/glass_ink"
+            android:textFontWeight="600"
+            android:textSize="13sp" />
 
-        <androidx.appcompat.widget.AppCompatImageButton
-            android:id="@+id/btnDel"
-            android:layout_width="52dp"
-            android:layout_height="52dp"
-            android:background="@drawable/living_glass_circle"
-            android:contentDescription="@string/delete_button"
-            android:padding="14dp"
-            android:src="@drawable/ic_ime_backspace_24dp"
-            app:tint="@color/glass_ink" />
+        <TextView
+            android:id="@+id/tv_model_chip"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="@font/space_mono_regular"
+            android:gravity="center"
+            android:letterSpacing="0.02"
+            android:maxLines="1"
+            android:textColor="@color/glass_ink_dim"
+            android:textSize="10sp" />
 
-        <Space
-            android:layout_width="12dp"
-            android:layout_height="1dp" />
-
-        <FrameLayout
-            android:layout_width="150dp"
-            android:layout_height="150dp">
-
-            <com.whispertflite.ui.LivingSignalView
-                android:id="@+id/orb"
-                android:layout_width="150dp"
-                android:layout_height="150dp" />
-
-            <androidx.appcompat.widget.AppCompatImageButton
-                android:id="@+id/btnRecord"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="@android:color/transparent"
-                android:contentDescription="@string/record_button" />
-        </FrameLayout>
-
-        <Space
-            android:layout_width="12dp"
-            android:layout_height="1dp" />
-
-        <androidx.appcompat.widget.AppCompatImageButton
-            android:id="@+id/btnEnter"
-            android:layout_width="52dp"
-            android:layout_height="52dp"
-            android:background="@drawable/living_glass_circle"
-            android:contentDescription="@string/return_button"
-            android:padding="14dp"
-            android:src="@drawable/ic_ime_return_24dp"
-            app:tint="@color/glass_ink" />
-
-        <Space
-            android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1" />
+        <TextView
+            android:id="@+id/tvTimer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/space_mono_regular"
+            android:text="0:00"
+            android:textColor="@color/living_magenta"
+            android:textSize="11sp"
+            android:visibility="gone" />
     </LinearLayout>
+
+    <TextView
+        android:id="@+id/tv_status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:textColor="?attr/colorError"
+        android:textSize="12sp"
+        android:visibility="gone" />
 </LinearLayout>

@@ -40,9 +40,11 @@ public final class ModelRegistry {
                 TFLITE_BASE + "whisper-small.TOP_WORLD.tflite", 307408944L,
                 "whisper-small.TOP_WORLD.tflite", 78, false, 2, 2));
 
-        // --- whisper.cpp GGUF, f16 non-quantized only (stored under gguf/ subdir). The Q5-quantized
-        // variants were removed: they recognise noticeably worse, especially on the RecognitionService
-        // provider path. medium/large are the full f16 files (1.4-1.6 GB) — heavy, but non-quantized. ---
+        // --- whisper.cpp GGUF (stored under gguf/). The Q5-quantized variants were removed (they
+        // recognise noticeably worse). tiny/base/small are f16. medium/large-v3-turbo are Q8_0, NOT f16:
+        // f16 medium/large (1.4-1.6 GB) exceed a phone's RAM headroom -> swap thrashing (measured 13 s +
+        // corrupted output). Q8_0 is documented as no-perceptible-accuracy-loss (unlike the lossy Q5),
+        // ~half the size (785/833 MB), and fits in RAM. ---
         m.add(ModelInfo.of("gguf-tiny", "tiny", Engine.WHISPER_CPP,
                 GGUF_BASE + "ggml-tiny.bin", 75L * MB,
                 "gguf/ggml-tiny.bin", 99, false, 1, 1));
@@ -53,11 +55,11 @@ public final class ModelRegistry {
                 GGUF_BASE + "ggml-small.bin", 487601967L,
                 "gguf/ggml-small.bin", 99, false, 2, 2));
         m.add(ModelInfo.of("gguf-medium", "medium", Engine.WHISPER_CPP,
-                GGUF_BASE + "ggml-medium.bin", 1533763059L,
-                "gguf/ggml-medium.bin", 99, false, 3, 3));
+                GGUF_BASE + "ggml-medium-q8_0.bin", 823369779L,
+                "gguf/ggml-medium-q8_0.bin", 99, false, 3, 3));
         m.add(ModelInfo.of("gguf-large-v3-turbo", "large-v3-turbo", Engine.WHISPER_CPP,
-                GGUF_BASE + "ggml-large-v3-turbo.bin", 1624555275L,
-                "gguf/ggml-large-v3-turbo.bin", 99, false, 2, 3));
+                GGUF_BASE + "ggml-large-v3-turbo-q8_0.bin", 874188075L,
+                "gguf/ggml-large-v3-turbo-q8_0.bin", 99, false, 2, 3));
 
         return m;
     }

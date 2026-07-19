@@ -28,6 +28,7 @@ import androidx.preference.PreferenceManager;
 
 import com.github.houbb.opencc4j.util.ZhConverterUtil;
 import com.whispertflite.asr.Recorder;
+import com.whispertflite.asr.WarmWhisper;
 import com.whispertflite.asr.Whisper;
 import com.whispertflite.asr.WhisperResult;
 import com.whispertflite.history.HistoryDb;
@@ -418,22 +419,43 @@ public class WhisperInputMethodService extends InputMethodService {
         boolean isMultilingual = !selectedModel.englishOnly;
         File vocabFile = selectedModel.engine == ModelInfo.Engine.TFLITE
                 ? new File(sdcardDataFolder, ModelRegistry.vocabFor(selectedModel)) : null;
+        final String wantId = selectedModel.id;
 
-        mWhisper = new Whisper(this);
-        if (!mWhisper.loadModel(modelFile, vocabFile, isMultilingual)) {
-            // Load failed: tear down and leave loadedModelId null so the next input view retries
-            // instead of treating a dead engine as "loaded" and no-opping (C2); tell the user (C4/C13).
-            Log.e(TAG, "Model load failed: " + selectedModel.id);
-            deinitModel();
-            handler.post(() -> {
-                tvStatus.setText(getString(R.string.error_model_load));
-                tvStatus.setVisibility(View.VISIBLE);
-                idleGroup.setVisibility(View.GONE);
-            });
+        // Warm hit (the process already holds this model — used earlier here or by the recognize dialog):
+        // attach instantly, no wait.
+        if (WarmWhisper.isWarm(modelFile)) {
+            attachModel(WarmWhisper.get(this, modelFile, vocabFile, isMultilingual), wantId);
             return;
         }
-        loadedModelId = selectedModel.id;
-        Log.d(TAG, "Initialized: " + selectedModel.id + " (" + selectedModel.engine + ")");
+        // Cold: loading a 640 MB model takes ~1 s. Do it OFF the main thread so the keyboard strip appears
+        // immediately (was a synchronous freeze on the first open), with a "loading" status until ready.
+        handler.post(() -> {
+            tvStatus.setText(getString(R.string.dialog_loading));
+            tvStatus.setVisibility(View.VISIBLE);
+            idleGroup.setVisibility(View.GONE);
+        });
+        new Thread(() -> {
+            Whisper w = WarmWhisper.get(this, modelFile, vocabFile, isMultilingual);
+            handler.post(() -> {
+                if (w == null) {
+                    Log.e(TAG, "Model load failed: " + wantId);
+                    tvStatus.setText(getString(R.string.error_model_load));
+                    tvStatus.setVisibility(View.VISIBLE);
+                    idleGroup.setVisibility(View.GONE);
+                    return;
+                }
+                if (!wantId.equals(selectedModel.id)) return;   // model switched while loading — drop this
+                attachModel(w, wantId);
+                applyState(UiState.IDLE);
+            });
+        }).start();
+    }
+
+    /** Point the keyboard at the (warm) shared Whisper and install our status/result listener. */
+    private void attachModel(Whisper w, String modelId) {
+        mWhisper = w;
+        loadedModelId = modelId;
+        Log.d(TAG, "Initialized: " + modelId);
         mWhisper.setListener(new Whisper.WhisperListener() {
             @Override
             public void onUpdateReceived(String message) {
@@ -586,7 +608,12 @@ public class WhisperInputMethodService extends InputMethodService {
 
     private void deinitModel() {
         if (mWhisper != null) {
-            mWhisper.shutdown();   // free the engine AND stop the worker thread (unloadModel leaks it)
+            mWhisper.stop();   // abort any in-flight run, but keep the model warm (shared, not shut down)
+            // Drop our listener so this service isn't retained through the long-lived warm instance.
+            mWhisper.setListener(new Whisper.WhisperListener() {
+                @Override public void onUpdateReceived(String message) { }
+                @Override public void onResultReceived(WhisperResult whisperResult) { }
+            });
             mWhisper = null;
         }
         loadedModelId = null;

@@ -31,6 +31,7 @@ import androidx.preference.PreferenceManager;
 
 import com.github.houbb.opencc4j.util.ZhConverterUtil;
 import com.whispertflite.asr.Recorder;
+import com.whispertflite.asr.WarmWhisper;
 import com.whispertflite.asr.Whisper;
 import com.whispertflite.asr.WhisperResult;
 import com.whispertflite.history.HistoryDb;
@@ -318,8 +319,32 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
         String vocabFileName = isMultilingualModel ? MULTILINGUAL_VOCAB_FILE : ENGLISH_ONLY_VOCAB_FILE;
         File vocabFile = new File(sdcardDataFolder, vocabFileName);
 
-        mWhisper = new Whisper(this);
-        mWhisper.loadModel(modelFile, vocabFile, isMultilingualModel);
+        // Warm hit (the process already holds this model): attach instantly, no wait.
+        if (WarmWhisper.isWarm(modelFile)) {
+            attachModel(WarmWhisper.get(this, modelFile, vocabFile, isMultilingualModel), langToken);
+            return;
+        }
+        // Cold: loading a 640 MB model takes ~1 s. Do it OFF the main thread so the dialog appears
+        // immediately (was a synchronous UI freeze), with a "loading" status until it is ready.
+        setStatus(R.string.dialog_loading);
+        new Thread(() -> {
+            Whisper w = WarmWhisper.get(this, modelFile, vocabFile, isMultilingualModel);
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) return;
+                if (w == null) { setStatus(R.string.error_model_load); return; }
+                attachModel(w, langToken);
+                applyModeUi();                                  // idle prompt now that we are ready
+                if (modeAuto && checkRecordPermission()
+                        && mRecorder != null && !mRecorder.isInProgress()) {
+                    startListening(true);                       // auto mode: begin once the model loads
+                }
+            });
+        }).start();
+    }
+
+    /** Point this dialog's session at the (warm) shared Whisper and install our result listener. */
+    private void attachModel(Whisper w, int langToken) {
+        mWhisper = w;
         mWhisper.setLanguage(langToken);
         mWhisper.setListener(new Whisper.WhisperListener() {
             @Override
@@ -420,10 +445,13 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
 
     private void deinitModel() {
         if (mWhisper != null) {
-            // shutdown() (not unloadModel()) also stops the worker thread; unloadModel leaves it
-            // parked. Matches the fix already shipped in the two services.
-            mWhisper.shutdown();
-            mWhisper = null;
+            mWhisper.stop();   // abort any in-flight run, but keep the model warm (shared, not shut down)
+            // Drop our listener so this Activity is not retained through the long-lived warm instance.
+            mWhisper.setListener(new Whisper.WhisperListener() {
+                @Override public void onUpdateReceived(String message) { }
+                @Override public void onResultReceived(WhisperResult whisperResult) { }
+            });
+            mWhisper = null;   // detach; WarmWhisper keeps the engine loaded for the next open
         }
     }
 

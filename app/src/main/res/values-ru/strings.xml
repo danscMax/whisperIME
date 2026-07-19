@@ -109,6 +109,7 @@
     <string name="dialog_tap_to_talk">Коснитесь, чтобы говорить</string>
     <string name="dialog_listening">Слушаю…</string>
     <string name="dialog_processing">Обрабатываю…</string>
+    <string name="dialog_loading">Загрузка модели…</string>
     <string name="dialog_mode_auto">Авто</string>
     <string name="dialog_mode_hold">Зажать</string>
     <string name="dialog_mode_cd">Режим распознавания: автоматический или по нажатию</string>

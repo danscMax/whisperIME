@@ -19,6 +19,21 @@ public final class AudioMath {
     }
 
     /**
+     * RMS (root-mean-square) amplitude of 16-bit little-endian PCM, 0..32767. Smoother than {@link #peak}
+     * for silence detection — a single loud sample (click, breath) barely moves it, unlike the peak.
+     */
+    public static int rms(byte[] pcm16le) {
+        long sumSq = 0;
+        int n = 0;
+        for (int i = 0; i + 1 < pcm16le.length; i += 2) {
+            int s = (short) ((pcm16le[i] & 0xff) | (pcm16le[i + 1] << 8));
+            sumSq += (long) s * s;
+            n++;
+        }
+        return n == 0 ? 0 : (int) Math.sqrt((double) sumSq / n);
+    }
+
+    /**
      * Peak-normalize in place. Gain is capped at 8x so noise-only audio is not blown up; buffers
      * that are already loud (gain < 1.2) or effectively silent (peak < 100) are left untouched.
      */

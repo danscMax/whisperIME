@@ -6,3 +6,4 @@
 .playwright-mcp/
 plans/
 /build/
+app/libs/*.aar

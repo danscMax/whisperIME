@@ -75,12 +75,40 @@ public class ModelDownloadManager {
         return active.containsKey(modelId);
     }
 
-    /** True if at least one registry model file is present on disk (usable by an engine). */
+    /** True if at least one registry model is present on disk (usable by an engine). */
     public boolean hasAnyModel() {
         for (ModelInfo m : ModelRegistry.all()) {
-            if (targetFile(m).exists()) return true;
+            if (isPresent(m)) return true;
         }
         return false;
+    }
+
+    /** True once EVERY file of the model is present on disk. Single-file models have one file; sherpa
+     *  models have several (encoder/decoder/joiner/tokens) — all must be present to be usable. */
+    public boolean isPresent(ModelInfo model) {
+        for (ModelInfo.Asset a : model.files) {
+            if (!new File(filesDir, a.relPath).exists()) return false;
+        }
+        return true;
+    }
+
+    /** Remove every file of a model (plus any leftover .part siblings) and prune its now-empty dir. */
+    public void delete(ModelInfo model) {
+        for (ModelInfo.Asset a : model.files) {
+            File f = new File(filesDir, a.relPath);
+            //noinspection ResultOfMethodCallIgnored
+            if (f.exists()) f.delete();
+            File part = new File(f.getPath() + ".part");
+            //noinspection ResultOfMethodCallIgnored
+            if (part.exists()) part.delete();
+        }
+        // sherpa models live in their own subdirectory (filename = the dir) — prune it if now empty.
+        File dir = new File(filesDir, model.filename);
+        if (dir.isDirectory()) {
+            String[] kids = dir.list();
+            //noinspection ResultOfMethodCallIgnored
+            if (kids == null || kids.length == 0) dir.delete();
+        }
     }
 
     // Obsolete model files shipped by older app versions; deleted once on app start.
@@ -109,7 +137,7 @@ public class ModelDownloadManager {
 
     /** ACTIVE if selected and present; DOWNLOADED if present; DOWNLOADING if in flight; else AVAILABLE. */
     public ModelState stateOf(ModelInfo model) {
-        if (targetFile(model).exists()) {
+        if (isPresent(model)) {
             String selected = prefs().getString(PREF_SELECTED_MODEL, null);
             return model.id.equals(selected) ? ModelState.ACTIVE : ModelState.DOWNLOADED;
         }
@@ -185,22 +213,42 @@ public class ModelDownloadManager {
     }
 
     private void runDownload(ModelInfo model) throws IOException {
-        File target = targetFile(model);
-        if (target.exists()) { emitDone(model.id); return; }
+        if (isPresent(model)) { emitDone(model.id); return; }
+        final long total = model.sizeBytes;        // sum across all files, for aggregate progress
+        long doneBase = 0;                          // bytes contributed by already-complete files
+        for (ModelInfo.Asset a : model.files) {
+            File target = new File(filesDir, a.relPath);
+            if (target.exists()) { doneBase += a.size; continue; } // already downloaded (resume across files)
+            if (!downloadAsset(model.id, a, doneBase, total)) return; // stopped (cancel/wifi/incomplete), reason emitted
+            doneBase += a.size;
+        }
+        emitDone(model.id);
+    }
+
+    /**
+     * Download ONE file to its own {@code .part}, verify, and promote it. Progress is reported against
+     * the whole model ({@code doneBase} = bytes from files already complete, {@code total} = model total).
+     * Returns true on success; false when stopped without a retry (user cancel / Wi-Fi lost / truncated)
+     * after emitting the reason. Throws IOException on retryable transport errors — runWithRetry re-runs
+     * runDownload, which skips files already promoted (per-file resume via {@code target.exists()}).
+     */
+    private boolean downloadAsset(String modelId, ModelInfo.Asset asset, long doneBase, long total)
+            throws IOException {
+        File target = new File(filesDir, asset.relPath);
         File parent = target.getParentFile();
         if (parent != null) parent.mkdirs();
         File part = new File(target.getPath() + ".part");
 
         long existing = part.exists() ? part.length() : 0L;
-        HttpURLConnection conn = (HttpURLConnection) new URL(model.url).openConnection();
+        HttpURLConnection conn = (HttpURLConnection) new URL(asset.url).openConnection();
         conn.setConnectTimeout(10000);
         conn.setReadTimeout(15000);
         if (existing > 0) conn.setRequestProperty("Range", "bytes=" + existing + "-");
 
         InputStream in = null;
         OutputStream out = null;
-        long total = model.sizeBytes; // approximate until the server reports an exact size
-        boolean exactTotal = false;   // true once total is the server's content length
+        long assetTotal = asset.size; // approximate until the server reports an exact size
+        boolean exactTotal = false;   // true once assetTotal is the server's content length
         try {
             conn.connect();
             int code = conn.getResponseCode();
@@ -213,7 +261,7 @@ public class ModelDownloadManager {
             }
 
             long remaining = conn.getContentLengthLong(); // may be -1
-            if (remaining > 0) { total = existing + remaining; exactTotal = true; }
+            if (remaining > 0) { assetTotal = existing + remaining; exactTotal = true; }
 
             in = conn.getInputStream();
             out = new FileOutputStream(part, existing > 0); // append when resuming
@@ -225,8 +273,8 @@ public class ModelDownloadManager {
             long windowBytes = 0;
             int len;
             while ((len = in.read(buf)) != -1) {
-                if (Boolean.TRUE.equals(active.get(model.id))) { // cancelled: keep .part
-                    return;
+                if (Boolean.TRUE.equals(active.get(modelId))) { // cancelled: keep .part
+                    return false;
                 }
                 out.write(buf, 0, len);
                 done += len;
@@ -236,12 +284,12 @@ public class ModelDownloadManager {
                     // Wi-Fi-only can flip to metered mid-transfer (Wi-Fi→cellular handover); stop before
                     // burning the user's mobile data on a 500 MB model. .part is kept for later resume (C8).
                     if (isWifiOnly() && !isOnWifi()) {
-                        emitError(model.id, ERR_WIFI);
-                        return;
+                        emitError(modelId, ERR_WIFI);
+                        return false;
                     }
                     long elapsed = Math.max(1, now - windowStart);
                     long bps = windowBytes * 1000 / elapsed;
-                    emitProgress(model.id, done, total, bps);
+                    emitProgress(modelId, doneBase + done, total, bps);
                     lastEmit = now;
                     windowStart = now;
                     windowBytes = 0;
@@ -258,18 +306,18 @@ public class ModelDownloadManager {
         // proxy socket): the stream ending is not proof of completeness. When the server gave an exact
         // Content-Length, require the full byte count; otherwise fall back to a floor of the registry's
         // approximate size (gross truncation only) so we never promote a short file. Keep .part so a
-        // retry resumes via HTTP Range instead of silently promoting a corrupt model.
-        long floor = exactTotal ? total : (long) (model.sizeBytes * 0.85);
+        // retry resumes via HTTP Range instead of silently promoting a corrupt file.
+        long floor = exactTotal ? assetTotal : (long) (asset.size * 0.85);
         if (part.length() < floor) {
-            emitError(model.id, "incomplete");
-            return;
+            emitError(modelId, "incomplete");
+            return false;
         }
 
         // completed without cancel: promote .part -> final name
         if (!part.renameTo(target)) {
             throw new IOException("rename_failed");
         }
-        emitDone(model.id);
+        return true;
     }
 
     /** Copy a bundled vocab file from assets into the external dir if not already present. */
@@ -289,10 +337,6 @@ public class ModelDownloadManager {
             closeQuietly(in);
             closeQuietly(out);
         }
-    }
-
-    private File targetFile(ModelInfo model) {
-        return new File(filesDir, model.filename);
     }
 
     private SharedPreferences prefs() {

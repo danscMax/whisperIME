@@ -170,7 +170,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (orb != null) orb.refreshStyle();   // pick up an orb-style change made in Settings
+        if (orb != null) orb.resumeRender();   // re-arm the orb surface (+ pick up a style change) on resume
         // The catalog can add/remove/select models while we're backgrounded. Re-sync the spinner
         // and, if the active model changed, reload the engine — without this the main screen keeps
         // showing/using the old model until the app is restarted.
@@ -639,8 +639,9 @@ public class MainActivity extends AppCompatActivity {
     /** Registry models present on disk (TFLite entries also require their vocab file). */
     private List<ModelInfo> loadDownloadedModels() {
         List<ModelInfo> out = new ArrayList<>();
+        ModelDownloadManager dm = ModelDownloadManager.get(this);
         for (ModelInfo m : ModelRegistry.all()) {
-            if (!new File(sdcardDataFolder, m.filename).exists()) continue;
+            if (!dm.isPresent(m)) continue; // all files present (sherpa models have several)
             if (m.engine == ModelInfo.Engine.TFLITE
                     && !new File(sdcardDataFolder, ModelRegistry.vocabFor(m)).exists()) continue;
             out.add(m);
@@ -660,8 +661,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void updateEngineBadge() {
-        badgeEngine.setText(selectedModel.engine == ModelInfo.Engine.WHISPER_CPP
-                ? R.string.catalog_engine_whispercpp : R.string.main_badge_tflite);
+        int badge = selectedModel.engine == ModelInfo.Engine.SHERPA ? R.string.main_badge_sherpa
+                : selectedModel.engine == ModelInfo.Engine.WHISPER_CPP ? R.string.catalog_engine_whispercpp
+                : R.string.main_badge_tflite;
+        badgeEngine.setText(badge);
         updateContextPill();
     }
 
@@ -680,6 +683,7 @@ public class MainActivity extends AppCompatActivity {
      */
     private ArrayAdapter<String> noFilterAdapter(android.widget.AutoCompleteTextView host,
                                                  List<String> items) {
+        final int accent = ThemeUtils.orbColors(this)[0];   // palette accent, so the current pick matches the UI
         return new ArrayAdapter<String>(this, R.layout.menu_item, new ArrayList<>(items)) {
             @Override public android.widget.Filter getFilter() {
                 return new android.widget.Filter() {
@@ -697,10 +701,10 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public View getView(int position, View convertView, ViewGroup parent) {
                 TextView row = (TextView) super.getView(position, convertView, parent);
-                // Mark the active choice: warm ink + a check, so the open list shows the current pick.
+                // Mark the active choice: palette accent + a check, so the open list shows the current pick.
                 boolean selected = row.getText().toString().contentEquals(host.getText());
-                row.setTextColor(ContextCompat.getColor(MainActivity.this,
-                        selected ? R.color.glass_warm : R.color.glass_ink));
+                row.setTextColor(selected ? accent
+                        : ContextCompat.getColor(MainActivity.this, R.color.glass_ink));
                 row.setCompoundDrawablesRelativeWithIntrinsicBounds(
                         0, 0, selected ? R.drawable.ic_check_20dp : 0, 0);
                 return row;
@@ -735,8 +739,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private String modelLabel(ModelInfo m) {
-        String engine = m.engine == ModelInfo.Engine.WHISPER_CPP
-                ? getString(R.string.catalog_engine_whispercpp) : getString(R.string.main_badge_tflite);
+        String engine = m.engine == ModelInfo.Engine.SHERPA ? getString(R.string.main_badge_sherpa)
+                : m.engine == ModelInfo.Engine.WHISPER_CPP ? getString(R.string.catalog_engine_whispercpp)
+                : getString(R.string.main_badge_tflite);
         // Drop the noisy "· TOP_WORLD" training-set tag from the spinner; the engine badge already
         // shows the engine so the collapsed pill stays short (e.g. "base · TFLite").
         String name = m.displayName.replace(" · TOP_WORLD", "");

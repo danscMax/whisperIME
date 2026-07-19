@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Palette accent when on (follows the chosen palette), frosted ink when off. -->
+<!-- Segmented toggle fill: palette accent when selected, transparent (outlined) otherwise. -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:color="?attr/paletteAccent" android:state_checked="true" />
-    <item android:alpha="0.14" android:color="@color/glass_solid" />
+    <item android:color="@android:color/transparent" />
 </selector>

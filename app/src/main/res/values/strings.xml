@@ -58,7 +58,7 @@
     <string name="settings_theme_dark">Dark</string>
     <string name="settings_orb">Signal style</string>
     <string name="settings_orb_cloud">Cloud</string>
-    <string name="settings_orb_plasma">Plasma</string>
+    <string name="settings_orb_plasma">Glow</string>
     <string name="settings_recognition">Recognition</string>
     <string name="settings_haptic">Haptic feedback</string>
     <string name="settings_tts">Speak result</string>
@@ -86,6 +86,7 @@
     <string name="onboarding_downloading">Downloading… %1$d%%</string>
     <!-- Main screen -->
     <string name="main_badge_tflite" translatable="false">TFLite</string>
+    <string name="main_badge_sherpa" translatable="false">sherpa</string>
     <string name="main_hint_ready">Your transcript will appear here</string>
     <string name="main_error_title">Didn\'t catch that</string>
     <string name="main_error_hint">Speak closer to the mic or check that it isn\'t used by another app.</string>
@@ -118,6 +119,7 @@
     <string name="dialog_tap_to_talk">Tap to talk</string>
     <string name="dialog_listening">Listening…</string>
     <string name="dialog_processing">Processing…</string>
+    <string name="dialog_loading">Loading model…</string>
     <string name="dialog_no_model_title">Model not downloaded yet</string>
     <string name="dialog_no_model_desc">Voice input needs a recognition model.</string>
     <string name="dialog_open_catalog">Open catalog</string>
@@ -136,6 +138,14 @@
     <string name="catalog_filter_whispercpp" translatable="false">whisper.cpp</string>
     <string name="catalog_engine_tflite" translatable="false">TFLite</string>
     <string name="catalog_engine_whispercpp" translatable="false">whisper.cpp</string>
+    <string name="catalog_engine_sherpa" translatable="false">sherpa-onnx</string>
+    <string name="catalog_filter_sherpa" translatable="false">sherpa</string>
+    <string name="catalog_filter_parakeet" translatable="false">Parakeet</string>
+    <string name="catalog_filter_gigaam" translatable="false">GigaAM</string>
+    <string name="catalog_group_parakeet" translatable="false">Parakeet</string>
+    <string name="catalog_group_parakeet_sub">multilingual · 25 languages</string>
+    <string name="catalog_group_gigaam" translatable="false">GigaAM</string>
+    <string name="catalog_group_gigaam_sub">Russian only</string>
     <string name="catalog_active">Active</string>
     <string name="catalog_engine_soon">engine soon</string>
     <string name="catalog_engine_soon_hint">whisper.cpp engine lands soon</string>
@@ -149,8 +159,9 @@
     <string name="catalog_hint_fast">fast</string>
     <string name="catalog_hint_balanced">balanced</string>
     <string name="catalog_hint_best">best quality</string>
-    <string name="catalog_section_cpp_sub">local · fast</string>
+    <string name="catalog_section_cpp_sub">fallback · slower</string>
     <string name="catalog_section_tflite_sub">compatible</string>
+    <string name="catalog_section_sherpa_sub">fastest · multilingual</string>
     <string name="catalog_speed_fast">fast</string>
     <string name="catalog_speed_mid">medium</string>
     <string name="catalog_speed_slow">slow</string>

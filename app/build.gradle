@@ -16,6 +16,8 @@ android {
     packagingOptions {
         jniLibs {
             excludes += ['**/libparakeet.so']
+            // Both sherpa-onnx and the app's own cpp build ship libc++_shared.so — take one.
+            pickFirsts += ['**/libc++_shared.so']
         }
     }
     
@@ -98,6 +100,11 @@ dependencies {
     implementation 'com.github.gkonovalov.android-vad:webrtc:2.0.9'
     implementation 'com.github.houbb:opencc4j:1.8.1'
     implementation 'com.github.woheller69:FreeDroidWarn:+'
+
+    // sherpa-onnx (k2-fsa) — ONNX ASR runtime for the sherpa engine (Parakeet TDT / GigaAM RNN-T).
+    // From JitPack (k2-fsa/sherpa-onnx ships a jitpack.yml); bundles onnxruntime, the arm64/armv7 .so
+    // and the com.k2fsa.sherpa.onnx Kotlin API. libc++_shared.so collision handled by packagingOptions.
+    implementation 'com.github.k2-fsa:sherpa-onnx:v1.13.4'
 
     testImplementation 'junit:junit:4.13.2'
 }

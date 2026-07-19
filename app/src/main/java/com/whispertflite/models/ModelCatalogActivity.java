@@ -46,7 +46,11 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
     private SharedPreferences prefs;
     private Adapter adapter;
     private TextView storageUsed;
-    private Engine filter; // null = all
+    private int filterId = R.id.filterAll; // which filter chip is checked
+    // The chosen palette accent (bypasses the glass overlay), so the "active" highlight matches the
+    // toggles and orb instead of the old fixed amber. [0] = accent, [1] = its soft container tint.
+    private int paletteAccent;
+    private int paletteAccentSoft;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,6 +66,10 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
 
         manager = ModelDownloadManager.get(this);
         prefs = PreferenceManager.getDefaultSharedPreferences(this);
+
+        int[] pal = ThemeUtils.orbColors(this);   // palette accent + its soft container, bypassing glass
+        paletteAccent = pal[0];
+        paletteAccentSoft = pal[1];
 
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
         toolbar.setNavigationOnClickListener(v -> finish());
@@ -80,10 +88,7 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
 
         ChipGroup filterGroup = findViewById(R.id.filterGroup);
         filterGroup.setOnCheckedStateChangeListener((group, ids) -> {
-            int id = ids.isEmpty() ? R.id.filterAll : ids.get(0);
-            if (id == R.id.filterTflite) filter = Engine.TFLITE;
-            else if (id == R.id.filterWhisperCpp) filter = Engine.WHISPER_CPP;
-            else filter = null;
+            filterId = ids.isEmpty() ? R.id.filterAll : ids.get(0);
             refresh();
         });
 
@@ -114,18 +119,29 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
     private void refresh() {
         List<ModelInfo> visible = new ArrayList<>();
         for (ModelInfo m : ModelRegistry.all()) {
-            if (filter == null || m.engine == filter) visible.add(m);
+            if (matches(m, filterId)) visible.add(m);
         }
         adapter.setItems(visible);
         updateStorage();
+    }
+
+    /** Which filter chip shows which models. Parakeet & GigaAM are both SHERPA — split by model id. */
+    private boolean matches(ModelInfo m, int id) {
+        if (id == R.id.filterParakeet) return m.engine == Engine.SHERPA && m.id.contains("parakeet");
+        if (id == R.id.filterGigaam)   return m.engine == Engine.SHERPA && m.id.contains("gigaam");
+        if (id == R.id.filterTflite)   return m.engine == Engine.TFLITE;
+        if (id == R.id.filterWhisperCpp) return m.engine == Engine.WHISPER_CPP;
+        return true; // filterAll
     }
 
     private void updateStorage() {
         long total = 0;
         File dir = getExternalFilesDir(null);
         for (ModelInfo m : ModelRegistry.all()) {
-            File f = new File(dir, m.filename);
-            if (f.exists()) total += f.length();
+            for (ModelInfo.Asset a : m.files) { // sum every file (sherpa models have several)
+                File f = new File(dir, a.relPath);
+                if (f.exists()) total += f.length();
+            }
         }
         storageUsed.setText(getString(R.string.catalog_storage_used,
                 Formatter.formatShortFileSize(this, total)));
@@ -174,9 +190,7 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
                 .setMessage(getString(R.string.catalog_delete_confirm, model.displayName))
                 .setNegativeButton(android.R.string.cancel, null)
                 .setPositiveButton(R.string.catalog_delete, (d, w) -> {
-                    File f = new File(getExternalFilesDir(null), model.filename);
-                    //noinspection ResultOfMethodCallIgnored
-                    f.delete();
+                    manager.delete(model); // removes all files + prunes the sherpa dir
                     if (model.id.equals(prefs.getString(ModelDownloadManager.PREF_SELECTED_MODEL, null))) {
                         prefs.edit().remove(ModelDownloadManager.PREF_SELECTED_MODEL).apply();
                     }
@@ -191,9 +205,8 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
     /** Number of models currently on disk (to hide delete on the last one). */
     private int downloadedCount() {
         int n = 0;
-        File dir = getExternalFilesDir(null);
         for (ModelInfo m : ModelRegistry.all()) {
-            if (new File(dir, m.filename).exists()) n++;
+            if (manager.isPresent(m)) n++;
         }
         return n;
     }
@@ -212,19 +225,35 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
         // modelId -> {bytes, total, bytesPerSec}
         final java.util.HashMap<String, long[]> progress = new java.util.HashMap<>();
 
-        /** Group the visible models by engine under a header each; whisper.cpp first (the default). */
+        /**
+         * Group the visible models into headed sections. Parakeet (multilingual lead) first, then GigaAM
+         * (Russian specialist), then TFLite, and whisper.cpp last — kept as the slower fallback.
+         */
         void setItems(List<ModelInfo> newItems) {
             rows.clear();
-            addSection(newItems, Engine.WHISPER_CPP,
-                    getString(R.string.catalog_engine_whispercpp), getString(R.string.catalog_section_cpp_sub));
+            addSherpaSection(newItems, "parakeet",
+                    getString(R.string.catalog_group_parakeet), getString(R.string.catalog_group_parakeet_sub));
+            addSherpaSection(newItems, "gigaam",
+                    getString(R.string.catalog_group_gigaam), getString(R.string.catalog_group_gigaam_sub));
             addSection(newItems, Engine.TFLITE,
                     getString(R.string.catalog_engine_tflite), getString(R.string.catalog_section_tflite_sub));
+            addSection(newItems, Engine.WHISPER_CPP,
+                    getString(R.string.catalog_engine_whispercpp), getString(R.string.catalog_section_cpp_sub));
             notifyDataSetChanged();
         }
 
         private void addSection(List<ModelInfo> all, Engine engine, String title, String sub) {
             List<ModelInfo> group = new ArrayList<>();
             for (ModelInfo m : all) if (m.engine == engine) group.add(m);
+            if (group.isEmpty()) return;
+            rows.add(new Header(title, sub));
+            rows.addAll(group);
+        }
+
+        /** A sherpa sub-group (Parakeet vs GigaAM) — both are Engine.SHERPA, split by model id. */
+        private void addSherpaSection(List<ModelInfo> all, String idContains, String title, String sub) {
+            List<ModelInfo> group = new ArrayList<>();
+            for (ModelInfo m : all) if (m.engine == Engine.SHERPA && m.id.contains(idContains)) group.add(m);
             if (group.isEmpty()) return;
             rows.add(new Header(title, sub));
             rows.addAll(group);
@@ -278,23 +307,23 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
             h.name.setText(m.displayName);
             h.meta.setText(meta(m));
 
-            // Warm liquid glass: the active model glows warm (warm sheen + warm shadow); the rest are
-            // light frosted cards. The engine is shown by the section header, not a per-card badge.
+            // The active model glows in the CHOSEN PALETTE accent (matching the toggles and orb); the
+            // rest are light frosted cards. The engine is shown by the section header, not a per-card badge.
             boolean active = state == ModelState.ACTIVE;
-            h.cardSheen.setBackgroundResource(active ? R.drawable.card_sheen_warm : R.drawable.card_sheen_glass);
-            h.card.setCardBackgroundColor(color(active ? R.color.glass_card_active : R.color.glass_card));
+            h.cardSheen.setBackgroundResource(R.drawable.card_sheen_glass);
+            h.card.setCardBackgroundColor(active ? withAlpha(paletteAccentSoft, 0xD8) : color(R.color.glass_card));
             h.card.setStrokeWidth(Math.round(getResources().getDisplayMetrics().density));
-            h.card.setStrokeColor(color(active ? R.color.glass_card_active_brd : R.color.glass_card_brd));
+            h.card.setStrokeColor(active ? withAlpha(paletteAccent, 0x8A) : color(R.color.glass_card_brd));
             if (android.os.Build.VERSION.SDK_INT >= 28) {
-                h.card.setOutlineSpotShadowColor(
-                        color(active ? R.color.glass_shadow_active : R.color.glass_shadow));
+                h.card.setOutlineSpotShadowColor(active ? paletteAccent : color(R.color.glass_shadow));
             }
 
-            // status chip: shown only for the active model (warm, echoing the card)
+            // status chip: shown only for the active model, echoing the card's palette accent
             h.statusChip.setVisibility(active ? View.VISIBLE : View.GONE);
             if (active) {
                 h.statusChip.setText(R.string.catalog_active);
-                tint(h.statusChip, R.color.glass_warm_bg, R.color.glass_warm_ink);
+                h.statusChip.setChipBackgroundColor(ColorStateList.valueOf(withAlpha(paletteAccentSoft, 0xFF)));
+                h.statusChip.setTextColor(paletteAccent);
             }
 
             boolean downloading = state == ModelState.DOWNLOADING;
@@ -395,7 +424,7 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
     /** Three dots: filled (warm accent) up to qualityClass, the rest hollow (faint) — a quality scale. */
     private void appendQualityDots(SpannableStringBuilder sb, int qualityClass) {
         int q = Math.max(1, Math.min(3, qualityClass));
-        int filled = color(R.color.glass_warm);
+        int filled = paletteAccent;   // the chosen palette accent, matching the rest of the UI
         int hollow = color(R.color.glass_ink_faint);
         for (int i = 1; i <= 3; i++) {
             int start = sb.length();
@@ -407,6 +436,11 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
 
     private int color(@ColorRes int res) {
         return ContextCompat.getColor(this, res);
+    }
+
+    /** The colour with a fixed alpha (0..255), keeping its RGB. */
+    private static int withAlpha(int argb, int alpha) {
+        return (alpha << 24) | (argb & 0x00FFFFFF);
     }
 
     /** Paint a chip as a soft tinted pill. */

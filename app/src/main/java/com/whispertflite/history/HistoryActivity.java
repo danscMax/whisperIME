@@ -166,8 +166,9 @@ public class HistoryActivity extends AppCompatActivity {
     private String modelLabel(String stored) {
         ModelInfo m = ModelRegistry.byId(stored);
         if (m == null) return stored;
-        String engine = getString(m.engine == ModelInfo.Engine.WHISPER_CPP
-                ? R.string.catalog_engine_whispercpp : R.string.main_badge_tflite);
+        String engine = getString(m.engine == ModelInfo.Engine.SHERPA ? R.string.main_badge_sherpa
+                : m.engine == ModelInfo.Engine.WHISPER_CPP ? R.string.catalog_engine_whispercpp
+                : R.string.main_badge_tflite);
         return m.displayName + " · " + engine;
     }
 

@@ -38,6 +38,20 @@
             android:text="@string/catalog_filter_all" />
 
         <com.google.android.material.chip.Chip
+            android:id="@+id/filterParakeet"
+            style="@style/Widget.Glass.Chip.Filter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/catalog_filter_parakeet" />
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/filterGigaam"
+            style="@style/Widget.Glass.Chip.Filter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/catalog_filter_gigaam" />
+
+        <com.google.android.material.chip.Chip
             android:id="@+id/filterTflite"
             style="@style/Widget.Glass.Chip.Filter"
             android:layout_width="wrap_content"

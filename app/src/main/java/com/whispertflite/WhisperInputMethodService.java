@@ -11,16 +11,19 @@ import android.inputmethodservice.InputMethodService;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.InputType;
+import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
-import android.widget.PopupMenu;
+import android.widget.PopupWindow;
 import android.widget.TextView;
 
 import androidx.core.content.ContextCompat;
@@ -28,6 +31,7 @@ import androidx.preference.PreferenceManager;
 
 import com.github.houbb.opencc4j.util.ZhConverterUtil;
 import com.whispertflite.asr.Recorder;
+import com.whispertflite.asr.WarmWhisper;
 import com.whispertflite.asr.Whisper;
 import com.whispertflite.asr.WhisperResult;
 import com.whispertflite.history.HistoryDb;
@@ -81,10 +85,32 @@ public class WhisperInputMethodService extends InputMethodService {
 
     // Curated quick-pick languages for the IME menu (D11); the full 100-language list stays in the app.
     private static final String[] QUICK_LANGS = {"auto", "en", "ru", "es", "de", "fr", "zh", "ja", "pt", "it"};
-    private final Runnable autoStartRunnable = () -> {
+    private int autoStartRetries = 0;
+    // Assigned in onCreate (a field initializer can't self-reference for the cold-start retry below).
+    private Runnable autoStartRunnable;
+
+    private void autoStartTick() {
+        if (!modeAuto) return;
+        if (mRecorder != null && mRecorder.isInProgress()) return;   // already listening
+        if (!checkRecordPermission()) return;
+        if (mWhisper == null || mWhisper.isInProgress()) {
+            // Model still warming (cold start): retry a few times before giving up to a manual tap.
+            if (autoStartRetries++ < 6) handler.postDelayed(autoStartRunnable, 300);
+            return;
+        }
+        autoStartRetries = 0;
         HapticFeedback.vibrate(mContext);
         startRecording();
-    };
+    }
+
+    /** Kick off hands-free listening if auto mode is on. Safe to call on every keyboard show — the
+     *  runnable self-guards against a double start / an unready model. */
+    private void maybeAutoStart() {
+        if (!modeAuto) return;
+        autoStartRetries = 0;
+        handler.removeCallbacks(autoStartRunnable);
+        handler.postDelayed(autoStartRunnable, AUTO_START_DELAY_MS);
+    }
 
     // Recording/transcription session state.
     private volatile boolean recordingStopped = false;
@@ -107,6 +133,7 @@ public class WhisperInputMethodService extends InputMethodService {
     @Override
     public void onCreate() {
         mContext = this;
+        autoStartRunnable = this::autoStartTick;
         super.onCreate();
     }
 
@@ -158,6 +185,7 @@ public class WhisperInputMethodService extends InputMethodService {
         }
         updateModelChip();
         applyState(UiState.IDLE);
+        maybeAutoStart();   // hands-free: start listening on every keyboard show when auto mode is on
     }
 
     /** Selected model from prefs, else the first downloaded one; null when nothing is usable. */
@@ -172,7 +200,9 @@ public class WhisperInputMethodService extends InputMethodService {
     }
 
     private boolean isPresent(ModelInfo m) {
-        if (!new File(sdcardDataFolder, m.filename).exists()) return false;
+        for (ModelInfo.Asset a : m.files) { // all files present (sherpa models have several)
+            if (!new File(sdcardDataFolder, a.relPath).exists()) return false;
+        }
         if (m.engine == ModelInfo.Engine.TFLITE
                 && !new File(sdcardDataFolder, ModelRegistry.vocabFor(m)).exists()) return false;
         return true;
@@ -204,6 +234,13 @@ public class WhisperInputMethodService extends InputMethodService {
         orb = rootView.findViewById(R.id.orb);
         int[] orbTint = ThemeUtils.orbColors(this);
         orb.setColors(orbTint[0], orbTint[1]);
+        // Tint the action keys with the palette accent so the chosen palette visibly reaches the strip
+        // (the glass ink alone ignored it). The overflow/keyboard keys stay dimmer (secondary).
+        int accent = orbTint[0];
+        btnDel.setColorFilter(accent);
+        btnEnter.setColorFilter(accent);
+        btnKeyboard.setColorFilter(accent);
+        btnMore.setColorFilter(accent);
 
         modeAuto = sp.getBoolean("imeModeAuto", false);
         // Keys (keyboard-exit above all) stay visible in both modes: auto must never trap the user.
@@ -247,10 +284,8 @@ public class WhisperInputMethodService extends InputMethodService {
 
         applyState(UiState.IDLE);
 
-        if (modeAuto) {
-            handler.removeCallbacks(autoStartRunnable);
-            handler.postDelayed(autoStartRunnable, AUTO_START_DELAY_MS);   // D12: brief delay, not instant
-        }
+        // Auto-start is driven from onStartInputView (every keyboard show), not here — onCreateInputView
+        // is cached and runs at most once per process, so posting it here missed later opens (D12).
 
         btnDel.setOnTouchListener(new View.OnTouchListener() {
             private Runnable initialDeleteRunnable;
@@ -332,54 +367,100 @@ public class WhisperInputMethodService extends InputMethodService {
         return rootView;
     }
 
+    private PopupWindow imeMenuWindow;
+
+    /** Custom glass overflow menu (replaces the native PopupMenu): translate / auto toggles, a quick
+     *  language row and settings — styled in-theme and popping up from the bottom strip. */
     private void showImeMenu(View anchor) {
-        PopupMenu menu = new PopupMenu(ThemeUtils.serviceContext(this), anchor);
-        android.view.MenuItem translateItem = menu.getMenu().add(0, 1, 0, R.string.translate_short);
-        translateItem.setCheckable(true);
-        translateItem.setChecked(translate);
-        android.view.MenuItem autoItem = menu.getMenu().add(0, 2, 1, R.string.auto_button);
-        autoItem.setCheckable(true);
-        autoItem.setChecked(modeAuto);
-        // Quick language pick without leaving the keyboard (D11); takes effect on the next dictation.
-        android.view.SubMenu langMenu = menu.getMenu().addSubMenu(0, 4, 2, R.string.language);
-        String currentLang = sp.getString("language", "auto");
-        for (int i = 0; i < QUICK_LANGS.length; i++) {
-            String label = QUICK_LANGS[i].equals("auto")
-                    ? getString(R.string.auto_lang) : QUICK_LANGS[i].toUpperCase();
-            android.view.MenuItem li = langMenu.add(2, 100 + i, i, label);
-            li.setCheckable(true);
-            li.setChecked(QUICK_LANGS[i].equals(currentLang));
-        }
-        langMenu.setGroupCheckable(2, true, true);
-        menu.getMenu().add(0, 3, 3, R.string.settings_title);
-        menu.setOnMenuItemClickListener(item -> {
-            if (item.getGroupId() == 2) {
-                int idx = item.getItemId() - 100;
-                if (idx >= 0 && idx < QUICK_LANGS.length) {
-                    sp.edit().putString("language", QUICK_LANGS[idx]).apply();
-                }
-                return true;
-            }
-            if (item.getItemId() == 1) {
-                translate = !translate;
-                updateModelChip();
-                return true;
-            }
-            if (item.getItemId() == 2) {
-                modeAuto = !modeAuto;
-                sp.edit().putBoolean("imeModeAuto", modeAuto).apply();
-                updateModelChip();
-                return true;
-            }
-            if (item.getItemId() == 3) {
-                Intent intent = new Intent(this, SettingsActivity.class);
-                intent.addFlags(FLAG_ACTIVITY_NEW_TASK);
-                startActivity(intent);
-                return true;
-            }
-            return false;
+        Context themed = ThemeUtils.serviceContext(this);
+        View v = LayoutInflater.from(themed).inflate(R.layout.ime_more_menu, null);
+
+        final View checkTranslate = v.findViewById(R.id.check_translate);
+        checkTranslate.setVisibility(translate ? View.VISIBLE : View.INVISIBLE);
+        v.findViewById(R.id.row_translate).setOnClickListener(x -> {
+            translate = !translate;
+            updateModelChip();
+            checkTranslate.setVisibility(translate ? View.VISIBLE : View.INVISIBLE);
         });
-        menu.show();
+
+        final View checkAuto = v.findViewById(R.id.check_auto);
+        checkAuto.setVisibility(modeAuto ? View.VISIBLE : View.INVISIBLE);
+        v.findViewById(R.id.row_auto).setOnClickListener(x -> {
+            modeAuto = !modeAuto;
+            sp.edit().putBoolean("imeModeAuto", modeAuto).apply();
+            updateModelChip();
+            checkAuto.setVisibility(modeAuto ? View.VISIBLE : View.INVISIBLE);
+            if (modeAuto) {
+                if (imeMenuWindow != null) imeMenuWindow.dismiss();   // let the user see listening begin
+                maybeAutoStart();
+            } else if (mRecorder != null && mRecorder.isInProgress()) {
+                mRecorder.stop();   // leaving auto mid-listen: stop cleanly
+            }
+        });
+
+        buildLangChips(themed, v.findViewById(R.id.lang_chips));
+
+        v.findViewById(R.id.row_settings).setOnClickListener(x -> {
+            if (imeMenuWindow != null) imeMenuWindow.dismiss();
+            Intent intent = new Intent(this, SettingsActivity.class);
+            intent.addFlags(FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+        });
+
+        // Fixed width: WRAP_CONTENT let the language HorizontalScrollView measure to its full content
+        // (all 10 chips), blowing the menu far wider than the screen so it drifted off the left edge and
+        // clipped the language row. Pin the width instead — the chips scroll inside it.
+        DisplayMetrics dm = getResources().getDisplayMetrics();
+        int menuW = Math.min(Math.round(280 * dm.density), dm.widthPixels - Math.round(24 * dm.density));
+
+        PopupWindow pw = new PopupWindow(v, menuW,
+                ViewGroup.LayoutParams.WRAP_CONTENT, true);
+        pw.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0x00000000)); // outside-tap dismiss
+        pw.setClippingEnabled(false);   // the strip is short — let the menu pop up beyond its bounds, not clip
+        pw.setElevation(24f);
+        imeMenuWindow = pw;
+        // The strip sits at the bottom, so pop UP: measure height at the fixed width, then place above the
+        // anchor, right-aligned to it.
+        v.measure(View.MeasureSpec.makeMeasureSpec(menuW, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+        int mh = v.getMeasuredHeight();
+        pw.showAsDropDown(anchor, anchor.getWidth() - menuW, -(mh + anchor.getHeight()), Gravity.NO_GRAVITY);
+    }
+
+    /** Quick-language pills; the current one is warm-highlighted. Takes effect on the next dictation (D11). */
+    private void buildLangChips(Context themed, LinearLayout chips) {
+        chips.removeAllViews();
+        String cur = sp.getString("language", "auto");
+        int[] pal = ThemeUtils.orbColors(this);   // palette accent, so the active chip matches the orb/toggles
+        float d = getResources().getDisplayMetrics().density;
+        int padH = Math.round(d * 13), padV = Math.round(d * 6), gap = Math.round(d * 6);
+        for (int i = 0; i < QUICK_LANGS.length; i++) {
+            final String lang = QUICK_LANGS[i];
+            boolean active = lang.equals(cur);
+            TextView chip = new TextView(themed);
+            chip.setText(lang.equals("auto") ? getString(R.string.auto_lang) : lang.toUpperCase());
+            chip.setTextSize(13f);
+            chip.setPadding(padH, padV, padH, padV);
+            chip.setBackgroundResource(R.drawable.living_glass_pill);
+            // mutate() so tinting the active chip doesn't leak onto the shared pill drawable.
+            android.graphics.drawable.Drawable bg = chip.getBackground();
+            if (bg != null) {
+                bg = bg.mutate();
+                chip.setBackground(bg);
+                bg.setTintList(active ? android.content.res.ColorStateList.valueOf(
+                        (0x33 << 24) | (pal[0] & 0x00FFFFFF)) : null);   // soft palette-accent wash when active
+            }
+            chip.setTextColor(active ? pal[0] : ContextCompat.getColor(this, R.color.glass_ink));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            if (i > 0) lp.setMarginStart(gap);
+            chip.setLayoutParams(lp);
+            chip.setOnClickListener(x -> {
+                sp.edit().putString("language", lang).apply();
+                buildLangChips(themed, chips);   // re-highlight in place
+            });
+            chips.addView(chip);
+        }
     }
 
 
@@ -416,22 +497,43 @@ public class WhisperInputMethodService extends InputMethodService {
         boolean isMultilingual = !selectedModel.englishOnly;
         File vocabFile = selectedModel.engine == ModelInfo.Engine.TFLITE
                 ? new File(sdcardDataFolder, ModelRegistry.vocabFor(selectedModel)) : null;
+        final String wantId = selectedModel.id;
 
-        mWhisper = new Whisper(this);
-        if (!mWhisper.loadModel(modelFile, vocabFile, isMultilingual)) {
-            // Load failed: tear down and leave loadedModelId null so the next input view retries
-            // instead of treating a dead engine as "loaded" and no-opping (C2); tell the user (C4/C13).
-            Log.e(TAG, "Model load failed: " + selectedModel.id);
-            deinitModel();
-            handler.post(() -> {
-                tvStatus.setText(getString(R.string.error_model_load));
-                tvStatus.setVisibility(View.VISIBLE);
-                idleGroup.setVisibility(View.GONE);
-            });
+        // Warm hit (the process already holds this model — used earlier here or by the recognize dialog):
+        // attach instantly, no wait.
+        if (WarmWhisper.isWarm(modelFile)) {
+            attachModel(WarmWhisper.get(this, modelFile, vocabFile, isMultilingual), wantId);
             return;
         }
-        loadedModelId = selectedModel.id;
-        Log.d(TAG, "Initialized: " + selectedModel.id + " (" + selectedModel.engine + ")");
+        // Cold: loading a 640 MB model takes ~1 s. Do it OFF the main thread so the keyboard strip appears
+        // immediately (was a synchronous freeze on the first open), with a "loading" status until ready.
+        handler.post(() -> {
+            tvStatus.setText(getString(R.string.dialog_loading));
+            tvStatus.setVisibility(View.VISIBLE);
+            idleGroup.setVisibility(View.GONE);
+        });
+        new Thread(() -> {
+            Whisper w = WarmWhisper.get(this, modelFile, vocabFile, isMultilingual);
+            handler.post(() -> {
+                if (w == null) {
+                    Log.e(TAG, "Model load failed: " + wantId);
+                    tvStatus.setText(getString(R.string.error_model_load));
+                    tvStatus.setVisibility(View.VISIBLE);
+                    idleGroup.setVisibility(View.GONE);
+                    return;
+                }
+                if (!wantId.equals(selectedModel.id)) return;   // model switched while loading — drop this
+                attachModel(w, wantId);
+                applyState(UiState.IDLE);
+            });
+        }).start();
+    }
+
+    /** Point the keyboard at the (warm) shared Whisper and install our status/result listener. */
+    private void attachModel(Whisper w, String modelId) {
+        mWhisper = w;
+        loadedModelId = modelId;
+        Log.d(TAG, "Initialized: " + modelId);
         mWhisper.setListener(new Whisper.WhisperListener() {
             @Override
             public void onUpdateReceived(String message) {
@@ -567,9 +669,10 @@ public class WhisperInputMethodService extends InputMethodService {
     private void updateModelChip() {
         if (tvModelChip == null || selectedModel == null) return;
         String langCode = sp.getString("language", "auto");
-        String mode = modeAuto ? getString(R.string.auto_button) : getString(R.string.dialog_hold_to_speak);
         String action = translate ? getString(R.string.translate_short) : langCode;
-        tvModelChip.setText(selectedModel.displayName + " · " + action + " · " + mode);
+        // Keep the chip short: model + language only. The mode (auto/hold) is shown by the orb behaviour
+        // and the overflow menu; repeating it here made the chip a long, redundant line.
+        tvModelChip.setText(selectedModel.displayName + " · " + action);
     }
 
     private boolean checkRecordPermission() {
@@ -584,7 +687,12 @@ public class WhisperInputMethodService extends InputMethodService {
 
     private void deinitModel() {
         if (mWhisper != null) {
-            mWhisper.shutdown();   // free the engine AND stop the worker thread (unloadModel leaks it)
+            mWhisper.stop();   // abort any in-flight run, but keep the model warm (shared, not shut down)
+            // Drop our listener so this service isn't retained through the long-lived warm instance.
+            mWhisper.setListener(new Whisper.WhisperListener() {
+                @Override public void onUpdateReceived(String message) { }
+                @Override public void onResultReceived(WhisperResult whisperResult) { }
+            });
             mWhisper = null;
         }
         loadedModelId = null;

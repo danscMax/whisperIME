@@ -1,21 +1,44 @@
 package com.whispertflite.models;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 /** Immutable description of a downloadable ASR model. */
 public final class ModelInfo {
-    public enum Engine { TFLITE, WHISPER_CPP }
+    public enum Engine { TFLITE, WHISPER_CPP, SHERPA }
 
-    public final String id;           // "tflite-base-topworld", "gguf-large-v3-turbo-q5"
+    /**
+     * One downloadable file of a model. Single-file models (TFLite / whisper.cpp) have exactly one;
+     * sherpa-onnx models have several (encoder / decoder / joiner / tokens). {@code relPath} is the
+     * on-disk path relative to {@code getExternalFilesDir(null)}.
+     */
+    public static final class Asset {
+        public final String url;
+        public final String relPath;
+        public final long size;
+
+        public Asset(String url, String relPath, long size) {
+            this.url = url;
+            this.relPath = relPath;
+            this.size = size;
+        }
+    }
+
+    public final String id;           // "tflite-base-topworld", "sherpa-parakeet-v3"
     public final String displayName;  // "base · TOP_WORLD"
     public final Engine engine;
-    public final String url;          // direct HF resolve URL
-    public final long sizeBytes;
-    public final String filename;     // on-disk name relative to getExternalFilesDir(null)
-    public final int languages;       // 78, 99, 1
+    public final String url;          // primary file URL (single-file: the file; sherpa: files.get(0))
+    public final long sizeBytes;      // total across all files
+    public final String filename;     // on-disk path relative to getExternalFilesDir(null): a FILE (single) or a DIRECTORY (sherpa)
+    public final List<Asset> files;   // all downloadable files (>= 1) — source of truth for download + presence
+    public final int languages;       // 78, 99, 25, 1
     public final boolean englishOnly;
     public final int speedClass;      // 1 fast .. 3 slow
     public final int qualityClass;    // 1 basic .. 3 best
     public final boolean heavy;       // slow on a phone CPU (gguf medium/large-class)
 
+    /** Single-file model (TFLite / whisper.cpp). */
     public ModelInfo(String id, String displayName, Engine engine, String url, long sizeBytes,
                      String filename, int languages, boolean englishOnly,
                      int speedClass, int qualityClass) {
@@ -25,6 +48,7 @@ public final class ModelInfo {
         this.url = url;
         this.sizeBytes = sizeBytes;
         this.filename = filename;
+        this.files = Collections.singletonList(new Asset(url, filename, sizeBytes));
         this.languages = languages;
         this.englishOnly = englishOnly;
         this.speedClass = speedClass;
@@ -35,16 +59,46 @@ public final class ModelInfo {
         this.heavy = sizeBytes >= 500L * 1024 * 1024 || id.contains("medium") || id.contains("large");
     }
 
+    /** Multi-file model (sherpa-onnx: encoder/decoder/joiner/tokens under {@code dirName}). */
+    private ModelInfo(String id, String displayName, Engine engine, String dirName,
+                      List<Asset> files, int languages, boolean englishOnly,
+                      int speedClass, int qualityClass) {
+        long sum = 0;
+        for (Asset a : files) sum += a.size;
+        this.id = id;
+        this.displayName = displayName;
+        this.engine = engine;
+        this.url = files.isEmpty() ? "" : files.get(0).url;
+        this.sizeBytes = sum;
+        this.filename = dirName;
+        this.files = Collections.unmodifiableList(new ArrayList<>(files));
+        this.languages = languages;
+        this.englishOnly = englishOnly;
+        this.speedClass = speedClass;
+        this.qualityClass = qualityClass;
+        // sherpa-onnx transducers run at RTF ~0.03-0.04 on a phone regardless of file size (Parakeet is
+        // 672 MB yet fast), so the gguf ">= 500 MB = slow" rule does not apply — never flag them heavy.
+        this.heavy = false;
+    }
+
     /** True when the model is slow on a phone CPU (catalog UI shows a "slow on phone" chip). */
     public boolean isHeavy() {
         return heavy;
     }
 
-    /** Convenience factory to keep registry entries compact. */
+    /** Convenience factory to keep single-file registry entries compact. */
     public static ModelInfo of(String id, String displayName, Engine engine, String url,
                                long sizeBytes, String filename, int languages, boolean englishOnly,
                                int speedClass, int qualityClass) {
         return new ModelInfo(id, displayName, engine, url, sizeBytes, filename, languages,
                 englishOnly, speedClass, qualityClass);
+    }
+
+    /** Factory for a multi-file sherpa-onnx model: {@code dirName} is the on-disk directory, {@code files} its contents. */
+    public static ModelInfo ofSherpa(String id, String displayName, String dirName,
+                                     List<Asset> files, int languages,
+                                     int speedClass, int qualityClass) {
+        return new ModelInfo(id, displayName, Engine.SHERPA, dirName, files, languages,
+                false, speedClass, qualityClass);
     }
 }

@@ -5,6 +5,7 @@ import android.util.Log;
 
 
 import com.whispertflite.engine.AsrEngine;
+import com.whispertflite.engine.SherpaEngine;
 import com.whispertflite.engine.TfliteEngine;
 import com.whispertflite.engine.WhisperCppEngine;
 import com.whispertflite.models.ModelInfo;
@@ -103,10 +104,20 @@ public class Whisper {
      */
     public boolean loadModel(File modelPath, File vocabPath, boolean isMultilingual) {
         ModelInfo hint = modelInfoForFile(modelPath); // registry match by filename, may be null
-        boolean cpp = modelPath.getName().endsWith(".bin"); // GGUF whisper.cpp model files are .bin
         try {
-            AsrEngine engine = cpp ? new WhisperCppEngine() : new TfliteEngine(mContext);
-            engine.load(hint, modelPath, cpp ? null : vocabPath);
+            // Route on the registry engine when known (a sherpa model is a DIRECTORY, not a file, so it
+            // can't be recognised by extension); fall back to the filename extension for unknown files.
+            AsrEngine engine;
+            if (hint != null && hint.engine == ModelInfo.Engine.SHERPA) {
+                engine = new SherpaEngine();
+            } else if (modelPath.getName().endsWith(".bin")) { // GGUF whisper.cpp model files are .bin
+                engine = new WhisperCppEngine();
+            } else {
+                engine = new TfliteEngine(mContext);
+            }
+            // Only TFLite needs the mel-filter vocab file; whisper.cpp and sherpa read none.
+            File vocab = (engine instanceof TfliteEngine) ? vocabPath : null;
+            engine.load(hint, modelPath, vocab);
             if (!engine.isLoaded()) {
                 // load() returned without an exception but the engine isn't ready (e.g. TFLite init
                 // failed) — do NOT publish it, or callers would mark the model "loaded" and no-op (C2).
@@ -279,6 +290,11 @@ public class Whisper {
 
                 long timeTaken = System.currentTimeMillis() - startTime;
                 Log.d(TAG, "Time Taken for transcription: " + timeTaken + "ms");
+                // Clear the in-progress flag BEFORE announcing done: listeners gate finalize on
+                // isInProgress(), and with a fast engine the DONE message is delivered before the
+                // finally-block below runs, leaving the UI stuck in PROCESSING (composing text never
+                // committed). The finally still clears it on the exception path.
+                mInProgress.set(false);
                 sendUpdate(MSG_PROCESSING_DONE);
             } else {
                 sendUpdate(MSG_ENGINE_NOT_INIT);

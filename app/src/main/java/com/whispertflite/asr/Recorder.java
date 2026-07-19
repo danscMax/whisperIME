@@ -331,6 +331,17 @@ public class Recorder {
         boolean isRecording = false;
         byte[] vadAudioBuffer = new byte[VAD_FRAME_SIZE * 2];  //VAD needs 16 bit
 
+        // Adaptive auto-stop. The webrtc VAD is fed an 8x-normalized frame (so quiet speech crosses the
+        // threshold), which can also blow AGC-boosted pause noise up to speech level -> the VAD never flips
+        // to silence and recording runs to the 30 s cap. So don't rely on the VAD alone: track the room's
+        // noise floor as the running MINIMUM raw peak (a pre-speech average wrongly absorbed the first ~200 ms
+        // of speech before the VAD confirmed it, inflating the floor so the stop fired mid-utterance), then
+        // stop once the RAW signal sits near that floor for ~1.8 s.
+        int ambientFloor = 0;
+        int quietFrames = 0;
+        boolean speechStarted = false;
+        final int STOP_QUIET_FRAMES = 1800 / 30;   // ~1.8 s near the floor ends the utterance (tolerates pauses)
+
         while (mInProgress.get() && totalBytesRead < bytesForThirtySeconds) {
             int bytesRead = audioRecord.read(audioData, 0, VAD_FRAME_SIZE * 2);
             if (bytesRead > 0) {
@@ -349,10 +360,19 @@ public class Recorder {
                     // which was O(n) per frame -> O(n^2) over a long recording (B4).
                     System.arraycopy(audioData, 0, vadAudioBuffer, 0, VAD_FRAME_SIZE * 2);
 
+                    // Raw RMS BEFORE normalization drives the auto-stop — smooth, not spiked by a single
+                    // loud sample (a peak-based test was reset by every inter-word transient and never stopped).
+                    int rawRms = AudioMath.rms(vadAudioBuffer);
+
                     // Feed the VAD a normalized copy, matching the chunked path — otherwise a quiet mic
                     // (VOICE_RECOGNITION source) never crosses the speech threshold here (A8).
                     byte[] vadFrame = vadAudioBuffer.clone();
                     normalizePcm(vadFrame);
+                    // Running minimum RMS = the true room floor (immune to speech-onset frames). Floored so
+                    // one ultra-quiet frame can't drag the stop threshold to zero.
+                    if (ambientFloor == 0 || rawRms < ambientFloor) ambientFloor = Math.max(rawRms, 40);
+                    int stopThreshold = Math.max(ambientFloor * 4, 180);
+
                     isSpeech = vad.isSpeech(vadFrame);
                     if (isSpeech) {
                         if (!isRecording) {
@@ -360,10 +380,27 @@ public class Recorder {
                             sendUpdate(MSG_RECORDING);
                         }
                         isRecording = true;
+                        speechStarted = true;
                     } else {
                         if (isRecording) {
                             isRecording = false;
                             mInProgress.set(false);
+                        }
+                    }
+
+                    // Adaptive auto-stop, independent of the (possibly stuck) VAD: once speech has been heard,
+                    // stop when RMS sits below the floor threshold for STOP_QUIET_FRAMES. The counter DECAYS on
+                    // a loud frame instead of hard-resetting, so an isolated spike (breath, click) mid-silence
+                    // doesn't restart the whole wait — only sustained sound does.
+                    if (isRecording && speechStarted) {
+                        if (rawRms < stopThreshold) {
+                            if (++quietFrames >= STOP_QUIET_FRAMES) {
+                                Log.d(TAG, "Adaptive auto-stop: floor=" + ambientFloor + " thr=" + stopThreshold);
+                                isRecording = false;
+                                mInProgress.set(false);
+                            }
+                        } else {
+                            quietFrames = Math.max(0, quietFrames - 3);
                         }
                     }
                 }

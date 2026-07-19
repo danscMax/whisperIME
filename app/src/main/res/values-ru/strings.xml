@@ -109,6 +109,7 @@
     <string name="dialog_tap_to_talk">Коснитесь, чтобы говорить</string>
     <string name="dialog_listening">Слушаю…</string>
     <string name="dialog_processing">Обрабатываю…</string>
+    <string name="dialog_loading">Загрузка модели…</string>
     <string name="dialog_mode_auto">Авто</string>
     <string name="dialog_mode_hold">Зажать</string>
     <string name="dialog_mode_cd">Режим распознавания: автоматический или по нажатию</string>
@@ -134,8 +135,10 @@
     <string name="catalog_hint_fast">быстро</string>
     <string name="catalog_hint_balanced">баланс</string>
     <string name="catalog_hint_best">лучшее качество</string>
-    <string name="catalog_section_cpp_sub">локально · быстро</string>
+    <string name="catalog_section_cpp_sub">запасной · медленнее</string>
     <string name="catalog_section_tflite_sub">совместимо</string>
+    <string name="catalog_group_parakeet_sub">мультиязычный · 25 языков</string>
+    <string name="catalog_group_gigaam_sub">только русский</string>
     <string name="catalog_speed_fast">быстро</string>
     <string name="catalog_speed_mid">средне</string>
     <string name="catalog_speed_slow">медленно</string>
@@ -158,5 +161,5 @@
     <string name="settings_vocabulary_hint">Имена, термины, жаргон — помогает распознаванию (необязательно)</string>
     <string name="settings_orb">Стиль сигнала</string>
     <string name="settings_orb_cloud">Облако</string>
-    <string name="settings_orb_plasma">Плазма</string>
+    <string name="settings_orb_plasma">Сияние</string>
 </resources>

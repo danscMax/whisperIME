@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Aurora: dark radial bg, frosted panels, Space Grotesk chrome. All view ids preserved for
-     SettingsActivity. Section cards are plain panels; the theme toggle + palette swatches stay live. -->
+     SettingsActivity. Newbie-first order: Model/language -> How to use -> Appearance -> Advanced
+     (collapsed). The theme toggle + palette swatches stay live. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -51,6 +52,7 @@
             android:layout_height="wrap_content">
 
         <LinearLayout
+            android:id="@+id/settings_content"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:orientation="vertical"
@@ -61,7 +63,135 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent">
 
-            <!-- Appearance -->
+            <!-- 1. Model & language — the first decision, surfaced to the top -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:background="@drawable/living_glass_panel"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/space_grotesk"
+                    android:text="@string/settings_model_language"
+                    android:textColor="?attr/colorPrimary"
+                    android:textFontWeight="600"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/settings_model_language_sub"
+                    android:textColor="@color/glass_ink_dim"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:id="@+id/row_models"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="48dp"
+                    android:text="@string/settings_models"
+                    android:textColor="@color/glass_ink"
+                    android:textAppearance="?attr/textAppearanceBodyLarge" />
+            </LinearLayout>
+
+            <!-- 2. How to use — enable the keyboard, then the voice-input surface -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:background="@drawable/living_glass_panel"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/space_grotesk"
+                    android:text="@string/settings_howto"
+                    android:textColor="?attr/colorPrimary"
+                    android:textFontWeight="600"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/settings_howto_sub"
+                    android:textColor="@color/glass_ink_dim"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:text="@string/record_mode_label"
+                    android:textColor="@color/glass_ink"
+                    android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+                <com.google.android.material.button.MaterialButtonToggleGroup
+                    android:id="@+id/record_mode_group"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    app:selectionRequired="true"
+                    app:singleSelection="true">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/mode_push"
+                        style="@style/Widget.Glass.SegButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/dialog_mode_hold" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/mode_auto"
+                        style="@style/Widget.Glass.SegButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/dialog_mode_auto" />
+                </com.google.android.material.button.MaterialButtonToggleGroup>
+
+                <TextView
+                    android:id="@+id/row_enable_keyboard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="48dp"
+                    android:text="@string/settings_enable_keyboard"
+                    android:textColor="@color/glass_ink"
+                    android:textAppearance="?attr/textAppearanceBodyLarge" />
+
+                <TextView
+                    android:id="@+id/row_voice_input"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="48dp"
+                    android:text="@string/settings_voice_input"
+                    android:textColor="@color/glass_ink"
+                    android:textAppearance="?attr/textAppearanceBodyLarge" />
+            </LinearLayout>
+
+            <!-- 3. Appearance -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -169,131 +299,7 @@
                 </com.google.android.material.button.MaterialButtonToggleGroup>
             </LinearLayout>
 
-            <!-- Recognition -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                android:background="@drawable/living_glass_panel"
-                android:orientation="vertical"
-                android:padding="18dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="8dp"
-                    android:fontFamily="@font/space_grotesk"
-                    android:text="@string/settings_recognition"
-                    android:textColor="?attr/colorPrimary"
-                    android:textFontWeight="600"
-                    android:textSize="16sp" />
-
-                <com.google.android.material.materialswitch.MaterialSwitch
-                    android:id="@+id/switch_haptic"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:minHeight="48dp"
-                    android:gravity="center_vertical"
-                    android:text="@string/settings_haptic"
-                    android:textColor="@color/glass_ink" />
-
-                <com.google.android.material.materialswitch.MaterialSwitch
-                    android:id="@+id/switch_tts"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:minHeight="48dp"
-                    android:gravity="center_vertical"
-                    android:text="@string/settings_tts"
-                    android:textColor="@color/glass_ink" />
-
-                <com.google.android.material.materialswitch.MaterialSwitch
-                    android:id="@+id/switch_simple_chinese"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:minHeight="48dp"
-                    android:gravity="center_vertical"
-                    android:text="@string/settings_simple_chinese"
-                    android:textColor="@color/glass_ink" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
-                    android:fontFamily="@font/space_grotesk"
-                    android:text="@string/settings_vocabulary"
-                    android:textColor="@color/glass_ink"
-                    android:textSize="14sp" />
-
-                <EditText
-                    android:id="@+id/edit_vocabulary"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:background="@drawable/living_glass_panel"
-                    android:fontFamily="@font/space_grotesk"
-                    android:hint="@string/settings_vocabulary_hint"
-                    android:importantForAutofill="no"
-                    android:inputType="textMultiLine|textCapSentences"
-                    android:maxLines="3"
-                    android:minHeight="48dp"
-                    android:padding="12dp"
-                    android:textColor="@color/glass_ink"
-                    android:textColorHint="@color/glass_ink_dim"
-                    android:textSize="14sp" />
-            </LinearLayout>
-
-            <!-- History -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                android:background="@drawable/living_glass_panel"
-                android:orientation="vertical"
-                android:padding="18dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="8dp"
-                    android:fontFamily="@font/space_grotesk"
-                    android:text="@string/settings_history"
-                    android:textColor="?attr/colorPrimary"
-                    android:textFontWeight="600"
-                    android:textSize="16sp" />
-
-                <com.google.android.material.materialswitch.MaterialSwitch
-                    android:id="@+id/switch_history"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:minHeight="48dp"
-                    android:gravity="center_vertical"
-                    android:text="@string/settings_history_save"
-                    android:textColor="@color/glass_ink" />
-
-                <com.google.android.material.materialswitch.MaterialSwitch
-                    android:id="@+id/switch_history_ime"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:minHeight="48dp"
-                    android:gravity="center_vertical"
-                    android:text="@string/settings_history_from_ime"
-                    android:textColor="@color/glass_ink" />
-
-                <TextView
-                    android:id="@+id/row_history_open"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="?attr/selectableItemBackground"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:minHeight="48dp"
-                    android:text="@string/settings_history_open"
-                    android:textColor="@color/glass_ink"
-                    android:textAppearance="?attr/textAppearanceBodyLarge" />
-            </LinearLayout>
-
-            <!-- System -->
+            <!-- 4. Advanced — collapsed by default; power settings live here -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -301,18 +307,8 @@
                 android:orientation="vertical"
                 android:padding="18dp">
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="8dp"
-                    android:fontFamily="@font/space_grotesk"
-                    android:text="@string/settings_system"
-                    android:textColor="?attr/colorPrimary"
-                    android:textFontWeight="600"
-                    android:textSize="16sp" />
-
-                <TextView
-                    android:id="@+id/row_models"
+                <LinearLayout
+                    android:id="@+id/advanced_header"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:background="?attr/selectableItemBackground"
@@ -320,48 +316,133 @@
                     android:focusable="true"
                     android:gravity="center_vertical"
                     android:minHeight="48dp"
-                    android:text="@string/settings_models"
-                    android:textColor="@color/glass_ink"
-                    android:textAppearance="?attr/textAppearanceBodyLarge" />
+                    android:orientation="horizontal">
 
-                <TextView
-                    android:id="@+id/row_enable_keyboard"
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:fontFamily="@font/space_grotesk"
+                        android:text="@string/settings_advanced"
+                        android:textColor="?attr/colorPrimary"
+                        android:textFontWeight="600"
+                        android:textSize="16sp" />
+
+                    <ImageView
+                        android:id="@+id/advanced_chevron"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_expand_more_24dp"
+                        android:contentDescription="@string/settings_advanced"
+                        app:tint="@color/glass_ink_dim" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/advanced_content"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:background="?attr/selectableItemBackground"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:minHeight="48dp"
-                    android:text="@string/settings_enable_keyboard"
-                    android:textColor="@color/glass_ink"
-                    android:textAppearance="?attr/textAppearanceBodyLarge" />
+                    android:orientation="vertical"
+                    android:visibility="gone">
 
-                <TextView
-                    android:id="@+id/row_voice_input"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="?attr/selectableItemBackground"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:minHeight="48dp"
-                    android:text="@string/settings_voice_input"
-                    android:textColor="@color/glass_ink"
-                    android:textAppearance="?attr/textAppearanceBodyLarge" />
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switch_haptic"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:minHeight="48dp"
+                        android:gravity="center_vertical"
+                        android:text="@string/settings_haptic"
+                        android:textColor="@color/glass_ink" />
 
-                <TextView
-                    android:id="@+id/row_github"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="?attr/selectableItemBackground"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:minHeight="48dp"
-                    android:text="@string/settings_github"
-                    android:textColor="@color/glass_ink"
-                    android:textAppearance="?attr/textAppearanceBodyLarge" />
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switch_tts"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="48dp"
+                        android:gravity="center_vertical"
+                        android:text="@string/settings_tts"
+                        android:textColor="@color/glass_ink" />
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switch_simple_chinese"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="48dp"
+                        android:gravity="center_vertical"
+                        android:text="@string/settings_simple_chinese"
+                        android:textColor="@color/glass_ink" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:fontFamily="@font/space_grotesk"
+                        android:text="@string/settings_vocabulary"
+                        android:textColor="@color/glass_ink"
+                        android:textSize="14sp" />
+
+                    <EditText
+                        android:id="@+id/edit_vocabulary"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:background="@drawable/living_glass_panel"
+                        android:fontFamily="@font/space_grotesk"
+                        android:hint="@string/settings_vocabulary_hint"
+                        android:importantForAutofill="no"
+                        android:inputType="textMultiLine|textCapSentences"
+                        android:maxLines="3"
+                        android:minHeight="48dp"
+                        android:padding="12dp"
+                        android:textColor="@color/glass_ink"
+                        android:textColorHint="@color/glass_ink_dim"
+                        android:textSize="14sp" />
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switch_history"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:minHeight="48dp"
+                        android:gravity="center_vertical"
+                        android:text="@string/settings_history_save"
+                        android:textColor="@color/glass_ink" />
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switch_history_ime"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="48dp"
+                        android:gravity="center_vertical"
+                        android:text="@string/settings_history_from_ime"
+                        android:textColor="@color/glass_ink" />
+
+                    <TextView
+                        android:id="@+id/row_history_open"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center_vertical"
+                        android:minHeight="48dp"
+                        android:text="@string/settings_history_open"
+                        android:textColor="@color/glass_ink"
+                        android:textAppearance="?attr/textAppearanceBodyLarge" />
+
+                    <TextView
+                        android:id="@+id/row_github"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center_vertical"
+                        android:minHeight="48dp"
+                        android:text="@string/settings_github"
+                        android:textColor="@color/glass_ink"
+                        android:textAppearance="?attr/textAppearanceBodyLarge" />
+                </LinearLayout>
             </LinearLayout>
         </LinearLayout>
         </androidx.constraintlayout.widget.ConstraintLayout>

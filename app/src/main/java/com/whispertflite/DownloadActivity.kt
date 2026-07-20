@@ -110,6 +110,14 @@ class DownloadActivity : AppCompatActivity(), ModelDownloadManager.Listener {
             )
         }
 
+        // Recording mode: hold (push-to-talk, default) vs auto (hands-free). Picked here, then the test
+        // above opens in that mode; shared with the IME + settings via the imeModeAuto pref.
+        val prefs = androidx.preference.PreferenceManager.getDefaultSharedPreferences(this)
+        b.onbModeGroup.check(if (prefs.getBoolean("imeModeAuto", false)) b.onbModeAuto.id else b.onbModePush.id)
+        b.onbModeGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (isChecked) prefs.edit().putBoolean("imeModeAuto", checkedId == b.onbModeAuto.id).apply()
+        }
+
         goTo(0)
     }
 

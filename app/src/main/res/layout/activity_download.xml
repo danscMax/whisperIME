@@ -312,6 +312,37 @@
                         android:textColor="@color/glass_ink_dim"
                         android:textSize="14sp" />
 
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:text="@string/record_mode_label"
+                        android:textColor="@color/glass_ink_dim"
+                        android:textSize="13sp" />
+
+                    <com.google.android.material.button.MaterialButtonToggleGroup
+                        android:id="@+id/onb_mode_group"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        app:selectionRequired="true"
+                        app:singleSelection="true">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/onb_mode_push"
+                            style="@style/Widget.Glass.SegButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/dialog_mode_hold" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/onb_mode_auto"
+                            style="@style/Widget.Glass.SegButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/dialog_mode_auto" />
+                    </com.google.android.material.button.MaterialButtonToggleGroup>
+
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btn_try"
                         android:layout_width="wrap_content"

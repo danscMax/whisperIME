@@ -60,6 +60,7 @@ public class WhisperInputMethodService extends InputMethodService {
     // the timer RIGHT of the orb (shown only while recording). Never drawn over the orb.
     private TextView tvStatusLeft;
     private TextView tvTimer;
+    private View statusRow;      // caption row under the orb; shown only while there is status text
     private LivingSignalView orb;
     private View rootView;
 
@@ -109,6 +110,10 @@ public class WhisperInputMethodService extends InputMethodService {
      *  runnable self-guards against a double start / an unready model. */
     private void maybeAutoStart() {
         if (!modeAuto) return;
+        // No editable field (system dialogs, the package installer, launchers) → there is nowhere to
+        // type, so never auto-arm the mic. onStartInput already bails on TYPE_NULL, but onStartInputView
+        // fires afterwards and would otherwise re-arm auto-start over the same field-less screen.
+        if (currentInputType == InputType.TYPE_NULL) return;
         autoStartRetries = 0;
         handler.removeCallbacks(autoStartRunnable);
         handler.postDelayed(autoStartRunnable, AUTO_START_DELAY_MS);
@@ -274,6 +279,7 @@ public class WhisperInputMethodService extends InputMethodService {
         btnMore = rootView.findViewById(R.id.btnMore);
         tvStatusLeft = rootView.findViewById(R.id.tv_status_left);
         tvTimer = rootView.findViewById(R.id.tv_timer);
+        statusRow = rootView.findViewById(R.id.status_row);
         orb = rootView.findViewById(R.id.orb);
         int[] orbTint = ThemeUtils.orbColors(this);
         orb.setColors(orbTint[0], orbTint[1]);
@@ -706,13 +712,15 @@ public class WhisperInputMethodService extends InputMethodService {
         // Status text (left) reflects the state; the timer (right) shows only while recording.
         if (recording) {
             recordStartMs = System.currentTimeMillis();
-            setStatus(getString(R.string.dialog_listening), R.color.living_cyan);
+            // PTT tells the user to release; hands-free just says "listening" (VAD ends it). Red = recording orb.
+            setStatus(getString(modeAuto ? R.string.dialog_listening : R.string.ime_listening_release),
+                    R.color.glass_danger);
             if (tvTimer != null) { tvTimer.setText("0:00"); tvTimer.setVisibility(View.VISIBLE); }
             timerHandler.post(timerTick);
         } else {
             timerHandler.removeCallbacks(timerTick);
             if (tvTimer != null) tvTimer.setVisibility(View.INVISIBLE);
-            if (processing) setStatus(getString(R.string.dialog_processing), R.color.glass_ink_dim);
+            if (processing) setStatus(getString(R.string.dialog_processing), R.color.glass_warm);   // amber — matches the transcribing orb
             else updateModelChip();
         }
     }
@@ -722,13 +730,21 @@ public class WhisperInputMethodService extends InputMethodService {
         if (tvStatusLeft == null) return;
         tvStatusLeft.setText(text);
         tvStatusLeft.setTextColor(androidx.core.content.ContextCompat.getColor(this, colorRes));
+        // Reserve the caption row's height even when empty (INVISIBLE, never GONE) so the orb above
+        // never jumps up as the text appears — the dock height is constant.
+        if (statusRow != null) {
+            statusRow.setVisibility(text != null && text.length() > 0 ? View.VISIBLE : View.INVISIBLE);
+        }
     }
 
     /** Idle status. The dock no longer shows the model name — it's unreadable in the narrow strip on
      *  phones (the orb already carries the recording/processing state); kept as a hook so the model-
      *  change and menu-toggle callers stay simple. */
     private void updateModelChip() {
-        setStatus("", R.color.glass_ink);
+        // Idle: instruct for the active mode (hold vs tap) so the user always knows what to do — the
+        // orb carries the live recording state and the strip is too narrow for a model name.
+        setStatus(getString(modeAuto ? R.string.dialog_tap_to_talk : R.string.dialog_hold_to_speak),
+                R.color.glass_ink_dim);
     }
 
     private boolean checkRecordPermission() {

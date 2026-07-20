@@ -47,6 +47,11 @@
     <string name="history_clear_all">Очистить всё</string>
     <string name="history_clear_all_confirm">Удалить всю историю распознавания? Это действие необратимо.</string>
     <string name="settings_title">Настройки</string>
+    <string name="settings_model_language">Модель и язык</string>
+    <string name="settings_model_language_sub">Выберите движок распознавания и скачайте модель для своего языка.</string>
+    <string name="settings_howto">Как вызвать</string>
+    <string name="settings_howto_sub">Включите клавиатуру, затем нажимайте микрофон в любом приложении, чтобы диктовать.</string>
+    <string name="settings_advanced">Дополнительно</string>
     <string name="settings_appearance">Внешний вид</string>
     <string name="settings_palette">Цветовая палитра</string>
     <string name="settings_theme">Тема</string>
@@ -108,6 +113,8 @@
     <string name="dialog_tap_to_talk">Коснитесь, чтобы говорить</string>
     <string name="dialog_listening">Слушаю…</string>
     <string name="dialog_processing">Обрабатываю…</string>
+    <string name="ime_listening_release">Слушаю… отпустите, когда закончите</string>
+    <string name="record_mode_label">Как записывать</string>
     <string name="dialog_loading">Загрузка модели…</string>
     <string name="dialog_mode_auto">Авто</string>
     <string name="dialog_mode_hold">Зажать</string>

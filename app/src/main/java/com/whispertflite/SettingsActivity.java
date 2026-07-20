@@ -42,6 +42,7 @@ public class SettingsActivity extends AppCompatActivity {
         buildPaletteRow();
         buildThemeToggle();
         buildOrbToggle();
+        buildModeToggle();
 
         // simpleChinese is an existing upstream key; hapticFeedback/speakResult are new
         // settings keys consumed when MainActivity is rewired in Task 1.3.
@@ -63,6 +64,22 @@ public class SettingsActivity extends AppCompatActivity {
         findViewById(R.id.row_github).setOnClickListener(
                 v -> startActivity(new Intent(Intent.ACTION_VIEW,
                         Uri.parse("https://github.com/danscMax/whisperIME"))));
+
+        bindAdvancedToggle();
+    }
+
+    /** Collapsible "Advanced" section: the header row shows/hides the power-settings block. */
+    private void bindAdvancedToggle() {
+        View header = findViewById(R.id.advanced_header);
+        View content = findViewById(R.id.advanced_content);
+        android.widget.ImageView chevron = findViewById(R.id.advanced_chevron);
+        android.view.ViewGroup root = findViewById(R.id.settings_content);
+        header.setOnClickListener(v -> {
+            boolean expand = content.getVisibility() != View.VISIBLE;
+            android.transition.TransitionManager.beginDelayedTransition(root);
+            content.setVisibility(expand ? View.VISIBLE : View.GONE);
+            chevron.animate().rotation(expand ? 180f : 0f).setDuration(180).start();
+        });
     }
 
     private void buildPaletteRow() {
@@ -101,6 +118,19 @@ public class SettingsActivity extends AppCompatActivity {
             g.setStroke(dp(3), ContextCompat.getColor(this, R.color.glass_ink));
         }
         return g;
+    }
+
+    /** Recording mode: push-to-talk (hold) vs hands-free auto (tap). Shared with the IME + recognizer via
+     *  the {@code imeModeAuto} pref. */
+    private void buildModeToggle() {
+        MaterialButtonToggleGroup group = findViewById(R.id.record_mode_group);
+        group.check(sp.getBoolean("imeModeAuto", false) ? R.id.mode_auto : R.id.mode_push);
+        group.addOnButtonCheckedListener((g, id, isChecked) -> {
+            if (!isChecked) return;
+            boolean auto = id == R.id.mode_auto;
+            if (auto == sp.getBoolean("imeModeAuto", false)) return;
+            sp.edit().putBoolean("imeModeAuto", auto).apply();
+        });
     }
 
     private void buildOrbToggle() {

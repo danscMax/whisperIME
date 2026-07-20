@@ -144,10 +144,16 @@ public class LivingSignalView extends View {
         float r = maxR * (0.60f + act * 0.32f);   // 0.60 (idle) .. 0.92 (loud) of the padded radius
         if (r < 1f) { postInvalidateOnAnimation(); return; }
 
-        float hue = accentValid ? accentHue : 190f;
-        // Airy, bright colours (hue from palette; the orb owns its S/V) so it glows instead of muddying.
-        int body = error ? 0xFFE0564B : hsv(hue, 0.55f, 0.99f);                        // saturated bright body
-        int rim = error ? 0xFFC24A40 : hsv(hue, 0.72f, 0.92f);                         // deeper rim for the glow edge
+        // Hue encodes STATE so the orb is glanceable at a glance: palette-tinted calm when idle, red while
+        // recording, amber while transcribing, green on a fresh result. Size/breathing alone read as "same
+        // colour, slightly bigger" — users couldn't tell listening from idle from processing.
+        float hue = listening ? 4f              // red — recording
+                : processing ? 38f              // amber — transcribing
+                : result ? 140f                 // green — done
+                : accentValid ? accentHue : 200f;   // ready — palette accent (calm)
+        // Airy, bright colours (the orb owns its S/V) so it glows instead of muddying.
+        int body = error ? 0xFFE0564B : hsv(hue, 0.62f, 0.99f);                        // saturated bright body
+        int rim = error ? 0xFFC24A40 : hsv(hue, 0.78f, 0.92f);                         // deeper rim for the glow edge
         int core = error ? 0xFFF7D2CE : hsv(hue, Math.max(0f, 0.16f - act * 0.12f), 1f); // near-white core, whiter on voice
 
         // white-ish core -> saturated body -> soft rim -> transparent glow tail

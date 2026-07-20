@@ -50,6 +50,11 @@
     <string name="history_clear_all">Clear all</string>
     <string name="history_clear_all_confirm">Delete all recognition history? This cannot be undone.</string>
     <string name="settings_title">Settings</string>
+    <string name="settings_model_language">Model &amp; language</string>
+    <string name="settings_model_language_sub">Pick a recognition engine and download a model for your language.</string>
+    <string name="settings_howto">How to use</string>
+    <string name="settings_howto_sub">Turn on the keyboard, then tap the mic in any app to dictate.</string>
+    <string name="settings_advanced">Advanced</string>
     <string name="settings_appearance">Appearance</string>
     <string name="settings_palette">Color palette</string>
     <string name="settings_theme">Theme</string>
@@ -119,6 +124,8 @@
     <string name="dialog_tap_to_talk">Tap to talk</string>
     <string name="dialog_listening">Listening…</string>
     <string name="dialog_processing">Processing…</string>
+    <string name="ime_listening_release">Listening… release when done</string>
+    <string name="record_mode_label">How to record</string>
     <string name="dialog_loading">Loading model…</string>
     <string name="dialog_no_model_title">Model not downloaded yet</string>
     <string name="dialog_no_model_desc">Voice input needs a recognition model.</string>

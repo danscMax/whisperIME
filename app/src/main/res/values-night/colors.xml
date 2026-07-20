@@ -8,6 +8,9 @@
     <color name="glass_screen_alt">#0A1020</color>
     <color name="glass_scrim">#99000000</color>
     <color name="living_bg_mid">#080C17</color>
+    <!-- IME voice-dock glass panel: translucent LIFTED navy (not near-black), so over a light host app
+         it reads as a dark frosted panel, never a black rectangle. -->
+    <color name="ime_dock_glass">#D91E2740</color>
     <color name="living_backdrop_glow">#277667FF</color>
     <color name="living_glass_pressed">#2EFFFFFF</color>
     <color name="living_glass_focus">#8A6DE7FF</color>

@@ -143,6 +143,42 @@
     <string name="catalog_speed_mid">средне</string>
     <string name="catalog_speed_slow">медленно</string>
     <string name="catalog_heavy">медленно на телефоне</string>
+
+    <!-- Онбординг: причины рекомендации модели (почему ИМЕННО эта модель для ЭТОГО устройства) -->
+    <string name="reco_gigaam_ru">Лучшее распознавание русского для вашего устройства — быстро, с пунктуацией.</string>
+    <string name="reco_parakeet">Самый точный, 25 языков — ваше устройство достаточно мощное.</string>
+    <string name="reco_parakeet_mid">Быстрый и точный, 25 языков — хорошо подходит вашему устройству.</string>
+    <string name="reco_base_safe">Лёгкий и надёжный выбор для вашего устройства — 99 языков, работает везде.</string>
+    <string name="reco_badge">Рекомендовано для вашего устройства</string>
+
+    <!-- Мастер онбординга -->
+    <string name="onb_step_of">Шаг %1$d из %2$d</string>
+    <string name="onb_back">Назад</string>
+    <string name="onb_next">Далее</string>
+    <string name="onb_welcome_title">Приватный голосовой ввод</string>
+    <string name="onb_welcome_body">Говорите вместо набора — в любом приложении. Всё распознаётся прямо на устройстве; ничего никуда не отправляется.</string>
+    <string name="onb_welcome_start">Начать</string>
+    <string name="onb_setup_title">Подготовка</string>
+    <string name="onb_mic_title">Доступ к микрофону</string>
+    <string name="onb_mic_body">Нужен, чтобы слышать голос. Аудио не покидает устройство.</string>
+    <string name="onb_grant">Разрешить</string>
+    <string name="onb_enable">Включить</string>
+    <string name="onb_done_check">Готово</string>
+    <string name="onb_kb_title">Включить голосовой ввод</string>
+    <string name="onb_kb_body">Включите Whisper в списке клавиатур системы — тогда его можно будет вызывать.</string>
+    <string name="onb_howto">Как пользоваться: на своей обычной клавиатуре нажмите кнопку микрофона — откроется голосовой ввод Whisper. Он не заменяет клавиатуру, а вызывается, когда нужно продиктовать.</string>
+    <string name="onb_model_title">Модель распознавания</string>
+    <string name="onb_model_change">Выбрать другую модель</string>
+    <string name="onb_model_downloaded">Загружена ✓</string>
+    <string name="onb_model_download">Скачать и продолжить</string>
+    <string name="onb_device_summary">%1$d ядер · %2$s ОЗУ</string>
+    <string name="onb_try_title">Первый тест</string>
+    <string name="onb_try_body">Проверим, что всё работает. Нажмите ниже, скажите короткую фразу — и увидите расшифровку.</string>
+    <string name="onb_try_button">Попробовать диктовку</string>
+    <string name="onb_try_ok">Работает! 🎉</string>
+    <string name="onb_done_title">Готово!</string>
+    <string name="onb_done_body">Всё настроено. В любой момент нажимайте микрофон на клавиатуре, чтобы диктовать.</string>
+    <string name="onb_done_finish">Завершить</string>
     <string name="catalog_progress">%1$.0f / %2$.0f МБ · %3$.1f МБ/с</string>
     <string name="catalog_starting">Запуск…</string>
     <string name="catalog_storage_used">Занято: %1$s</string>

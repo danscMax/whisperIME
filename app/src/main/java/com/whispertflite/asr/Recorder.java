@@ -291,8 +291,11 @@ public class Recorder {
         attachEffects(audioRecord);
         audioRecord.startRecording();
 
-        // Calculate maximum byte counts for 30 seconds (for saving)
-        int bytesForThirtySeconds = sampleRateInHz * bytesPerSample * channels * 30;
+        // Single-buffer capture cap. Auto (VAD) keeps a 30 s safety net for a stuck-open VAD; push-to-talk
+        // (no VAD — the user holds the key) gets 120 s so a long hold is not silently truncated, while the
+        // in-RAM buffer stays bounded (~3.8 MB). The chunked/unlimited path (MainActivity) is separate.
+        int maxSeconds = useVAD ? 30 : 120;
+        int bytesForThirtySeconds = sampleRateInHz * bytesPerSample * channels * maxSeconds;
 
         ByteArrayOutputStream outputBuffer = new ByteArrayOutputStream(); // Buffer for saving data RecordBuffer
 

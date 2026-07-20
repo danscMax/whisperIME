@@ -287,90 +287,97 @@ public class Recorder {
                         .build())
                 .setBufferSizeInBytes(bufferSize);
 
-        AudioRecord audioRecord = builder.build();
-        attachEffects(audioRecord);
-        audioRecord.startRecording();
+        AudioRecord audioRecord = null;
+        try {
+            audioRecord = builder.build();
+            attachEffects(audioRecord);
+            audioRecord.startRecording();
 
-        // Single-buffer capture cap. Auto (VAD) keeps a 30 s safety net for a stuck-open VAD; push-to-talk
-        // (no VAD — the user holds the key) gets 120 s so a long hold is not silently truncated, while the
-        // in-RAM buffer stays bounded (~3.8 MB). The chunked/unlimited path (MainActivity) is separate.
-        int maxSeconds = useVAD ? 30 : 120;
-        int bytesForThirtySeconds = sampleRateInHz * bytesPerSample * channels * maxSeconds;
+            // Single-buffer capture cap. Auto (VAD) keeps a 30 s safety net for a stuck-open VAD; push-to-talk
+            // (no VAD — the user holds the key) gets 120 s so a long hold is not silently truncated, while the
+            // in-RAM buffer stays bounded (~3.8 MB). The chunked/unlimited path (MainActivity) is separate.
+            int maxSeconds = useVAD ? 30 : 120;
+            int bytesForThirtySeconds = sampleRateInHz * bytesPerSample * channels * maxSeconds;
 
-        ByteArrayOutputStream outputBuffer = new ByteArrayOutputStream(); // Buffer for saving data RecordBuffer
+            ByteArrayOutputStream outputBuffer = new ByteArrayOutputStream(); // Buffer for saving data RecordBuffer
 
-        byte[] audioData = new byte[bufferSize];
-        int totalBytesRead = 0;
+            byte[] audioData = new byte[bufferSize];
+            int totalBytesRead = 0;
 
-        boolean isRecording = false;
-        boolean speechStarted = false;
+            boolean isRecording = false;
+            boolean speechStarted = false;
 
-        // Built here (worker thread) so the ONNX model load stays off the caller's UI thread. 0.8 s of
-        // trailing silence ends the utterance — tolerant of breath/thinking pauses. ponytail: pause knob,
-        // lower = snappier stop, higher = safer against early cutoff (device-tune).
-        if (useVAD && vad == null) vad = new SileroVad(mContext, 0.8f);
+            // Built here (worker thread) so the ONNX model load stays off the caller's UI thread. 0.8 s of
+            // trailing silence ends the utterance — tolerant of breath/thinking pauses. ponytail: pause knob,
+            // lower = snappier stop, higher = safer against early cutoff (device-tune).
+            if (useVAD && vad == null) vad = new SileroVad(mContext, 0.8f);
 
-        while (mInProgress.get() && totalBytesRead < bytesForThirtySeconds) {
-            int bytesRead = audioRecord.read(audioData, 0, VAD_FRAME_SIZE * 2);
-            if (bytesRead > 0) {
-                outputBuffer.write(audioData, 0, bytesRead);  // Save all bytes read up to 30 seconds
-                totalBytesRead += bytesRead;
-                emitRms(audioData, bytesRead);
-            } else {
-                Log.d(TAG, "AudioRecord error, bytes read: " + bytesRead);
-                break;
-            }
-
-            if (useVAD){
-                if (bytesRead == VAD_FRAME_SIZE * 2) {
-                    // Feed Silero the RAW frame — it is level-robust, no normalization. isSpeech() stays true
-                    // through short pauses and flips false only after ~0.8 s of trailing silence, so the
-                    // false-after-speech edge IS the end of the utterance: stop there. No RMS floor needed.
-                    vad.accept(audioData, bytesRead);
-                    boolean isSpeech = vad.isSpeech();
-                    if (isSpeech) {
-                        if (!isRecording) {
-                            Log.d(TAG, "VAD speech detected: recording starts");
-                            sendUpdate(MSG_RECORDING);
-                        }
-                        isRecording = true;
-                        speechStarted = true;
-                    } else if (speechStarted) {
-                        Log.d(TAG, "Silero auto-stop: end of speech");
-                        isRecording = false;
-                        mInProgress.set(false);
-                    }
+            while (mInProgress.get() && totalBytesRead < bytesForThirtySeconds) {
+                int bytesRead = audioRecord.read(audioData, 0, VAD_FRAME_SIZE * 2);
+                if (bytesRead > 0) {
+                    outputBuffer.write(audioData, 0, bytesRead);  // Save all bytes read up to 30 seconds
+                    totalBytesRead += bytesRead;
+                    emitRms(audioData, bytesRead);
+                } else {
+                    Log.d(TAG, "AudioRecord error, bytes read: " + bytesRead);
+                    break;
                 }
-            } else {
-                if (!isRecording) sendUpdate(MSG_RECORDING);
-                isRecording = true;
+
+                if (useVAD){
+                    if (bytesRead == VAD_FRAME_SIZE * 2) {
+                        // Feed Silero the RAW frame — it is level-robust, no normalization. isSpeech() stays true
+                        // through short pauses and flips false only after ~0.8 s of trailing silence, so the
+                        // false-after-speech edge IS the end of the utterance: stop there. No RMS floor needed.
+                        vad.accept(audioData, bytesRead);
+                        boolean isSpeech = vad.isSpeech();
+                        if (isSpeech) {
+                            if (!isRecording) {
+                                Log.d(TAG, "VAD speech detected: recording starts");
+                                sendUpdate(MSG_RECORDING);
+                            }
+                            isRecording = true;
+                            speechStarted = true;
+                        } else if (speechStarted) {
+                            Log.d(TAG, "Silero auto-stop: end of speech");
+                            isRecording = false;
+                            mInProgress.set(false);
+                        }
+                    }
+                } else {
+                    if (!isRecording) sendUpdate(MSG_RECORDING);
+                    isRecording = true;
+                }
             }
-        }
-        Log.d(TAG, "Total bytes recorded: " + totalBytesRead);
+            Log.d(TAG, "Total bytes recorded: " + totalBytesRead);
 
-        if (useVAD){
-            useVAD = false;
-            vad.release();
-            vad = null;
-            Log.d(TAG, "Closing VAD");
-        }
-        audioRecord.stop();
-        audioRecord.release();
-        releaseEffects();
-        if (scoStarted) {
-            audioManager.stopBluetoothSco();
-            audioManager.setBluetoothScoOn(false);
-        }
-
-        // Save recorded audio data to BufferStore (up to 30 seconds). No manual normalization: the
-        // VOICE_RECOGNITION source + platform AGC already level the signal; a second manual gain stage
-        // fought the AGC and rescaled each buffer differently (A9).
-        byte[] recorded = outputBuffer.toByteArray();
-        RecordBuffer.setOutputBuffer(recorded);
-        if (totalBytesRead > 6400){  //min 0.2s
-            sendUpdate(MSG_RECORDING_DONE);
-        } else {
-            sendUpdate(MSG_RECORDING_ERROR);
+            // Save recorded audio data to BufferStore (up to 30 seconds). No manual normalization: the
+            // VOICE_RECOGNITION source + platform AGC already level the signal; a second manual gain stage
+            // fought the AGC and rescaled each buffer differently (A9).
+            byte[] recorded = outputBuffer.toByteArray();
+            RecordBuffer.setOutputBuffer(recorded);
+            if (totalBytesRead > 6400){  //min 0.2s
+                sendUpdate(MSG_RECORDING_DONE);
+            } else {
+                sendUpdate(MSG_RECORDING_ERROR);
+            }
+        } finally {
+            // Free every native resource on ALL exit paths — normal, early break, or an exception from
+            // build()/startRecording()/VAD — so a failure can't leave the mic locked for the next session
+            // or a dirty useVAD/vad silence-gating the next push-to-talk (F02).
+            if (useVAD) {
+                useVAD = false;
+                if (vad != null) { vad.release(); vad = null; }
+                Log.d(TAG, "Closing VAD");
+            }
+            if (audioRecord != null) {
+                try { audioRecord.stop(); } catch (Exception ignored) { }
+                audioRecord.release();
+            }
+            releaseEffects();
+            if (scoStarted) {
+                audioManager.stopBluetoothSco();
+                audioManager.setBluetoothScoOn(false);
+            }
         }
         // Completion is signalled centrally in recordLoop's finally (covers every exit path).
     }
@@ -401,93 +408,105 @@ public class Recorder {
         AudioManager audioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
         boolean scoStarted = maybeStartSco(audioManager);
 
-        AudioRecord audioRecord = new AudioRecord.Builder()
-                .setAudioSource(audioSource)
-                .setAudioFormat(new AudioFormat.Builder()
-                        .setChannelMask(channelConfig)
-                        .setEncoding(audioFormat)
-                        .setSampleRate(sampleRateInHz)
-                        .build())
-                .setBufferSizeInBytes(bufferSize)
-                .build();
-        attachEffects(audioRecord);
-        audioRecord.startRecording();
+        AudioRecord audioRecord = null;
+        SileroVad chunkVad = null;
+        try {
+            audioRecord = new AudioRecord.Builder()
+                    .setAudioSource(audioSource)
+                    .setAudioFormat(new AudioFormat.Builder()
+                            .setChannelMask(channelConfig)
+                            .setEncoding(audioFormat)
+                            .setSampleRate(sampleRateInHz)
+                            .build())
+                    .setBufferSizeInBytes(bufferSize)
+                    .build();
+            attachEffects(audioRecord);
+            audioRecord.startRecording();
 
-        // 0.4 s of silence splits a phrase here (snappier than the auto path's 0.8 s) so partial results
-        // surface fast; 0.10 s min-speech rejects clicks. ponytail: device-tune both knobs.
-        SileroVad chunkVad = new SileroVad(mContext, 0.4f, 0.10f);
+            // 0.4 s of silence splits a phrase here (snappier than the auto path's 0.8 s) so partial results
+            // surface fast; 0.10 s min-speech rejects clicks. ponytail: device-tune both knobs.
+            chunkVad = new SileroVad(mContext, 0.4f, 0.10f);
 
-        ByteArrayOutputStream chunk = new ByteArrayOutputStream();
-        byte[] frame = new byte[VAD_FRAME_SIZE * 2];
-        boolean chunkHasSpeech = false;
-        boolean announced = false;
-        int chunksEmitted = 0;
+            ByteArrayOutputStream chunk = new ByteArrayOutputStream();
+            byte[] frame = new byte[VAD_FRAME_SIZE * 2];
+            boolean chunkHasSpeech = false;
+            boolean announced = false;
+            int chunksEmitted = 0;
 
-        while (mInProgress.get()) {
-            int bytesRead = audioRecord.read(frame, 0, VAD_FRAME_SIZE * 2);
-            if (bytesRead <= 0) {
-                Log.d(TAG, "AudioRecord error, bytes read: " + bytesRead);
-                break;
+            while (mInProgress.get()) {
+                int bytesRead = audioRecord.read(frame, 0, VAD_FRAME_SIZE * 2);
+                if (bytesRead <= 0) {
+                    Log.d(TAG, "AudioRecord error, bytes read: " + bytesRead);
+                    break;
+                }
+                chunk.write(frame, 0, bytesRead);
+                emitRms(frame, bytesRead);
+
+                // Silero on the RAW frame (level-robust, no normalization). It holds isSpeech() true through
+                // short pauses and flips false only after ~0.4 s of silence — that edge marks a phrase boundary.
+                boolean isSpeech = false;
+                if (bytesRead == VAD_FRAME_SIZE * 2) {
+                    chunkVad.accept(frame, bytesRead);
+                    isSpeech = chunkVad.isSpeech();
+                }
+                if (isSpeech) {
+                    if (!announced) { announced = true; sendUpdate(MSG_RECORDING); }
+                    chunkHasSpeech = true;
+                }
+
+                // Split at a confirmed pause (speech then Silero-confirmed silence) or the mid-speech hard cap.
+                boolean pauseSplit = chunkHasSpeech && !isSpeech;
+                boolean capSplit = chunk.size() >= CHUNK_HARD_CAP_BYTES;
+                if (pauseSplit || capSplit) {
+                    // Gate the emit on `announced` (VAD fired at least once this session) — the SAME
+                    // session-wide gate the trailing/residual flush uses (F03). A hard-cap split before any
+                    // speech is 28 s of pure silence/noise the transducer would hallucinate a sentence from,
+                    // so drop it; but once the user HAS spoken, a quiet interior window is still their speech
+                    // (below Silero's threshold) and must not be dropped. Always reset to keep the buffer
+                    // bounded. No manual normalization — trust the VOICE_RECOGNITION source + AGC (A6/A9).
+                    if (announced) {
+                        mChunkListener.onChunk(chunk.toByteArray());
+                        chunksEmitted++;
+                    }
+                    chunk.reset();
+                    chunkHasSpeech = false;
+                }
             }
-            chunk.write(frame, 0, bytesRead);
-            emitRms(frame, bytesRead);
 
-            // Silero on the RAW frame (level-robust, no normalization). It holds isSpeech() true through
-            // short pauses and flips false only after ~0.4 s of silence — that edge marks a phrase boundary.
-            boolean isSpeech = false;
-            if (bytesRead == VAD_FRAME_SIZE * 2) {
-                chunkVad.accept(frame, bytesRead);
-                isSpeech = chunkVad.isSpeech();
-            }
-            if (isSpeech) {
-                if (!announced) { announced = true; sendUpdate(MSG_RECORDING); }
-                chunkHasSpeech = true;
-            }
-
-            // Split at a confirmed pause (speech then Silero-confirmed silence) or the mid-speech hard cap.
-            boolean pauseSplit = chunkHasSpeech && !isSpeech;
-            boolean capSplit = chunk.size() >= CHUNK_HARD_CAP_BYTES;
-            if (pauseSplit || capSplit) {
+            // Flush the trailing chunk (whatever was captured since the last split). Also, if the VAD
+            // never fired for the whole session (soft/quiet speech that stayed under the aggressive
+            // threshold), fall back to transcribing the captured audio anyway once it's ~0.5 s+, so quiet
+            // speech is not silently dropped — the legacy single-buffer path always transcribed.
+            boolean trailing = chunkHasSpeech && chunk.size() > 6400;   // 0.2 s of detected speech
+            // Any substantial residual (~0.5 s+) left after the last split, even with chunkHasSpeech==false:
+            // a soft trailing fragment after an earlier chunk (VAD stopped firing on quiet tail speech) used
+            // to match neither branch and was silently dropped. Subsumes the old VAD-never-fired fallback (A5).
+            boolean residual = chunk.size() > 16000;
+            // Gate on `announced` — the VAD must have fired at least once this session. If it never did, the
+            // whole recording is silence/noise (the spectral VAD is reliable even when the platform AGC has
+            // boosted room noise to speech level, which defeats any energy test): don't flush it, so neither
+            // engine transcribes silence into a hallucinated sentence ("The train is leaving the station").
+            if (announced && (trailing || residual)) {
                 byte[] out = chunk.toByteArray();
-                // No manual normalization — trust the VOICE_RECOGNITION source + platform AGC so every
-                // chunk of a phrase reaches Whisper at a consistent level, not rescaled per chunk (A6/A9).
                 mChunkListener.onChunk(out);
                 chunksEmitted++;
-                chunk.reset();
-                chunkHasSpeech = false;
+            }
+
+            Log.d(TAG, "Chunked recording done, chunks emitted: " + chunksEmitted);
+            sendUpdate(chunksEmitted > 0 ? MSG_RECORDING_DONE : MSG_RECORDING_ERROR);
+        } finally {
+            // Free every native resource on ALL exit paths so a throw can't leak the mic/VAD (F02).
+            if (chunkVad != null) chunkVad.release();
+            if (audioRecord != null) {
+                try { audioRecord.stop(); } catch (Exception ignored) { }
+                audioRecord.release();
+            }
+            releaseEffects();
+            if (scoStarted) {
+                audioManager.stopBluetoothSco();
+                audioManager.setBluetoothScoOn(false);
             }
         }
-
-        // Flush the trailing chunk (whatever was captured since the last split). Also, if the VAD
-        // never fired for the whole session (soft/quiet speech that stayed under the aggressive
-        // threshold), fall back to transcribing the captured audio anyway once it's ~0.5 s+, so quiet
-        // speech is not silently dropped — the legacy single-buffer path always transcribed.
-        boolean trailing = chunkHasSpeech && chunk.size() > 6400;   // 0.2 s of detected speech
-        // Any substantial residual (~0.5 s+) left after the last split, even with chunkHasSpeech==false:
-        // a soft trailing fragment after an earlier chunk (VAD stopped firing on quiet tail speech) used
-        // to match neither branch and was silently dropped. Subsumes the old VAD-never-fired fallback (A5).
-        boolean residual = chunk.size() > 16000;
-        // Gate on `announced` — the VAD must have fired at least once this session. If it never did, the
-        // whole recording is silence/noise (the spectral VAD is reliable even when the platform AGC has
-        // boosted room noise to speech level, which defeats any energy test): don't flush it, so neither
-        // engine transcribes silence into a hallucinated sentence ("The train is leaving the station").
-        if (announced && (trailing || residual)) {
-            byte[] out = chunk.toByteArray();
-            mChunkListener.onChunk(out);
-            chunksEmitted++;
-        }
-
-        chunkVad.release();
-        audioRecord.stop();
-        audioRecord.release();
-        releaseEffects();
-        if (scoStarted) {
-            audioManager.stopBluetoothSco();
-            audioManager.setBluetoothScoOn(false);
-        }
-
-        Log.d(TAG, "Chunked recording done, chunks emitted: " + chunksEmitted);
-        sendUpdate(chunksEmitted > 0 ? MSG_RECORDING_DONE : MSG_RECORDING_ERROR);
         // Completion is signalled centrally in recordLoop's finally (covers every exit path).
     }
 

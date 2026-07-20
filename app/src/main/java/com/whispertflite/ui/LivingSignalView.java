@@ -174,7 +174,10 @@ public class LivingSignalView extends TextureView implements TextureView.Surface
 
         @Override
         public void run() {
-            if (!initEGL()) return;
+            // On a partial init (e.g. eglCreateWindowSurface returns NO_SURFACE on a torn-down
+            // SurfaceTexture) the context was already created — releaseEGL() frees it so it can't leak
+            // a heavyweight GPU context on the app's most-instantiated view (F04). releaseEGL guards nulls.
+            if (!initEGL()) { releaseEGL(); return; }
             initGL();
             // Respect the system "Remove animations" setting: hold one static frame per state instead
             // of the ~80 fps loop — saves battery and honours the a11y/reduced-motion preference.

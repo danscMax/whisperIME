@@ -60,6 +60,20 @@
                     android:layout_height="match_parent"
                     android:background="@android:color/transparent"
                     android:contentDescription="@string/record_button" />
+
+                <!-- Recording timer overlays the orb's lower edge, so showing/hiding it never
+                     reflows the caption stack (the dock used to "jump" when it appeared). -->
+                <TextView
+                    android:id="@+id/tvTimer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom|center_horizontal"
+                    android:layout_marginBottom="6dp"
+                    android:fontFamily="@font/space_mono_regular"
+                    android:text="0:00"
+                    android:textColor="@color/glass_ink"
+                    android:textSize="11sp"
+                    android:visibility="gone" />
             </FrameLayout>
 
             <Space
@@ -143,16 +157,6 @@
             android:maxLines="1"
             android:textColor="@color/glass_ink_dim"
             android:textSize="10sp" />
-
-        <TextView
-            android:id="@+id/tvTimer"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:fontFamily="@font/space_mono_regular"
-            android:text="0:00"
-            android:textColor="@color/living_magenta"
-            android:textSize="11sp"
-            android:visibility="gone" />
     </LinearLayout>
 
     <TextView
@@ -160,7 +164,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:gravity="center"
-        android:textColor="?attr/colorError"
+        android:textColor="@color/glass_ink"
         android:textSize="12sp"
         android:visibility="gone" />
 </LinearLayout>

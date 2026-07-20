@@ -81,24 +81,27 @@ public final class ModelRegistry {
                         new ModelInfo.Asset(PARAKEET + "tokens.txt", "sherpa/parakeet-tdt-v3/tokens.txt", 93939L)),
                 25, 1, 3));
 
+        // GigaAM RNN-T v3 (punct) — Russian, highest quality. The "-punct" export emits punctuation +
+        // casing natively (plain transducers output raw lowercase); the enlarged tokens.txt is the punct
+        // vocab. Fresh dir name so a device holding the old no-punct model re-downloads this one.
         final String GIGAAM =
-                "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-transducer-giga-am-v3-russian-2025-12-16/resolve/main/";
-        m.add(ModelInfo.ofSherpa("sherpa-gigaam-ru", "GigaAM · русский", "sherpa/gigaam-rnnt-v3",
+                "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-transducer-punct-giga-am-v3-russian-2025-12-16/resolve/main/";
+        m.add(ModelInfo.ofSherpa("sherpa-gigaam-ru", "GigaAM · русский", "sherpa/gigaam-rnnt-punct-v3",
                 java.util.Arrays.asList(
-                        new ModelInfo.Asset(GIGAAM + "encoder.int8.onnx", "sherpa/gigaam-rnnt-v3/encoder.int8.onnx", 224570814L),
-                        new ModelInfo.Asset(GIGAAM + "decoder.onnx", "sherpa/gigaam-rnnt-v3/decoder.onnx", 3331651L),
-                        new ModelInfo.Asset(GIGAAM + "joiner.onnx", "sherpa/gigaam-rnnt-v3/joiner.onnx", 1440448L),
-                        new ModelInfo.Asset(GIGAAM + "tokens.txt", "sherpa/gigaam-rnnt-v3/tokens.txt", 196L)),
+                        new ModelInfo.Asset(GIGAAM + "encoder.int8.onnx", "sherpa/gigaam-rnnt-punct-v3/encoder.int8.onnx", 224570820L),
+                        new ModelInfo.Asset(GIGAAM + "decoder.onnx", "sherpa/gigaam-rnnt-punct-v3/decoder.onnx", 4600132L),
+                        new ModelInfo.Asset(GIGAAM + "joiner.onnx", "sherpa/gigaam-rnnt-punct-v3/joiner.onnx", 2712896L),
+                        new ModelInfo.Asset(GIGAAM + "tokens.txt", "sherpa/gigaam-rnnt-punct-v3/tokens.txt", 13354L)),
                 1, 1, 3));
 
-        // GigaAM CTC v3 — a lighter/faster Russian option for weaker devices: a single-file NeMo CTC model
-        // (no encoder/decoder/joiner split). Trades punctuation + casing for speed; ~225 MB total.
+        // GigaAM CTC v3 (punct) — Russian, single-file NeMo CTC (no encoder/decoder/joiner split): faster
+        // than the transducer, now ALSO with punctuation + casing via the "-punct" export; ~225 MB total.
         final String GIGAAM_CTC =
-                "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-ctc-giga-am-v3-russian-2025-12-16/resolve/main/";
-        m.add(ModelInfo.ofSherpa("sherpa-gigaam-ctc-ru", "GigaAM CTC · русский", "sherpa/gigaam-ctc-v3",
+                "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-ctc-punct-giga-am-v3-russian-2025-12-16/resolve/main/";
+        m.add(ModelInfo.ofSherpa("sherpa-gigaam-ctc-ru", "GigaAM CTC · русский", "sherpa/gigaam-ctc-punct-v3",
                 java.util.Arrays.asList(
-                        new ModelInfo.Asset(GIGAAM_CTC + "model.int8.onnx", "sherpa/gigaam-ctc-v3/model.int8.onnx", 224721476L),
-                        new ModelInfo.Asset(GIGAAM_CTC + "tokens.txt", "sherpa/gigaam-ctc-v3/tokens.txt", 196L)),
+                        new ModelInfo.Asset(GIGAAM_CTC + "model.int8.onnx", "sherpa/gigaam-ctc-punct-v3/model.int8.onnx", 224893661L),
+                        new ModelInfo.Asset(GIGAAM_CTC + "tokens.txt", "sherpa/gigaam-ctc-punct-v3/tokens.txt", 2007L)),
                 1, 2, 2));
 
         return m;

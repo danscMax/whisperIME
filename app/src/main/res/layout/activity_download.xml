@@ -93,7 +93,7 @@
                         android:paddingHorizontal="12dp"
                         android:paddingVertical="6dp"
                         android:text="@string/main_local_badge"
-                        android:textColor="@color/glass_ink"
+                        android:textColor="?attr/colorOnPrimary"
                         android:textSize="11sp"
                         android:fontFamily="@font/space_mono_regular" />
                 </LinearLayout>
@@ -235,7 +235,7 @@
                                     android:fontFamily="@font/space_mono_regular"
                                     android:paddingHorizontal="10dp"
                                     android:paddingVertical="4dp"
-                                    android:textColor="@color/glass_ink"
+                                    android:textColor="?attr/colorOnPrimary"
                                     android:textSize="11sp" />
                             </LinearLayout>
 

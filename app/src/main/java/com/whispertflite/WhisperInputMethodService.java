@@ -77,7 +77,9 @@ public class WhisperInputMethodService extends InputMethodService {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private Context mContext;
 
-    private static boolean translate = false;
+    // Read from / written to the SHARED "translate" pref so every surface honours the same choice (D9);
+    // MainActivity writes the same key. Loaded on view init, persisted on toggle.
+    private boolean translate = false;
     private boolean modeAuto = false;
 
     // Auto (VAD) mode grabs the mic on open; delay it a beat so the strip isn't recording the room the
@@ -263,6 +265,7 @@ public class WhisperInputMethodService extends InputMethodService {
         btnMore.setColorFilter(accent);
 
         modeAuto = sp.getBoolean("imeModeAuto", false);
+        translate = sp.getBoolean("translate", false);   // shared with the app (D9)
         // Keys (keyboard-exit above all) stay visible in both modes: auto must never trap the user.
         checkRecordPermission();
 
@@ -289,8 +292,7 @@ public class WhisperInputMethodService extends InputMethodService {
                     HapticFeedback.vibrate(mContext);
                     handler.post(() -> {
                         applyState(UiState.IDLE);
-                        tvStatus.setText(getString(R.string.error_no_input));
-                        tvStatus.setVisibility(View.VISIBLE);
+                        setImeStatus(R.string.error_no_input, true);
                         idleGroup.setVisibility(View.GONE);
                     });
                 }
@@ -355,8 +357,7 @@ public class WhisperInputMethodService extends InputMethodService {
                         startRecording();
                     } else {
                         handler.post(() -> {
-                            tvStatus.setText(getString(R.string.please_wait));
-                            tvStatus.setVisibility(View.VISIBLE);
+                            setImeStatus(R.string.please_wait, false);
                             idleGroup.setVisibility(View.GONE);
                         });
                     }
@@ -384,6 +385,19 @@ public class WhisperInputMethodService extends InputMethodService {
 
     private PopupWindow imeMenuWindow;
 
+    /** Show a tv_status line. Errors are error-red; neutral messages (loading/please-wait) use the
+     *  normal ink so a routine "Loading model…" never reads as a failure (F05). Colour is set every
+     *  time because the one TextView is reused across error and neutral states. */
+    private void setImeStatus(int msgRes, boolean error) {
+        tvStatus.setText(getString(msgRes));
+        // glass_danger is the app's own error red (== ?attr/colorError in the Glass theme, both light/night);
+        // reference it directly rather than resolving a framework attr that only bridges by convention.
+        int c = androidx.core.content.ContextCompat.getColor(
+                this, error ? R.color.glass_danger : R.color.glass_ink);
+        tvStatus.setTextColor(c);
+        tvStatus.setVisibility(View.VISIBLE);
+    }
+
     /** Custom glass overflow menu (replaces the native PopupMenu): translate / auto toggles, a quick
      *  language row and settings — styled in-theme and popping up from the bottom strip. */
     private void showImeMenu(View anchor) {
@@ -394,6 +408,7 @@ public class WhisperInputMethodService extends InputMethodService {
         checkTranslate.setVisibility(translate ? View.VISIBLE : View.INVISIBLE);
         v.findViewById(R.id.row_translate).setOnClickListener(x -> {
             translate = !translate;
+            sp.edit().putBoolean("translate", translate).apply();   // shared with the app (D9)
             updateModelChip();
             checkTranslate.setVisibility(translate ? View.VISIBLE : View.INVISIBLE);
         });
@@ -521,8 +536,7 @@ public class WhisperInputMethodService extends InputMethodService {
         // Cold: loading a 640 MB model takes ~1 s. Do it OFF the main thread so the keyboard strip appears
         // immediately (was a synchronous freeze on the first open), with a "loading" status until ready.
         handler.post(() -> {
-            tvStatus.setText(getString(R.string.dialog_loading));
-            tvStatus.setVisibility(View.VISIBLE);
+            setImeStatus(R.string.dialog_loading, false);
             idleGroup.setVisibility(View.GONE);
         });
         new Thread(() -> {
@@ -530,8 +544,7 @@ public class WhisperInputMethodService extends InputMethodService {
             handler.post(() -> {
                 if (w == null) {
                     Log.e(TAG, "Model load failed: " + wantId);
-                    tvStatus.setText(getString(R.string.error_model_load));
-                    tvStatus.setVisibility(View.VISIBLE);
+                    setImeStatus(R.string.error_model_load, true);
                     idleGroup.setVisibility(View.GONE);
                     return;
                 }
@@ -560,8 +573,7 @@ public class WhisperInputMethodService extends InputMethodService {
                     // Surface a failed run instead of leaving the strip stuck in PROCESSING (C4).
                     handler.post(() -> {
                         applyState(UiState.IDLE);
-                        tvStatus.setText(getString(R.string.error_transcription));
-                        tvStatus.setVisibility(View.VISIBLE);
+                        setImeStatus(R.string.error_transcription, true);
                         idleGroup.setVisibility(View.GONE);
                     });
                 }
@@ -691,8 +703,7 @@ public class WhisperInputMethodService extends InputMethodService {
     private boolean checkRecordPermission() {
         int permission = ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO);
         if (permission != PackageManager.PERMISSION_GRANTED) {
-            tvStatus.setVisibility(View.VISIBLE);
-            tvStatus.setText(getString(R.string.need_record_audio_permission));
+            setImeStatus(R.string.need_record_audio_permission, true);
             idleGroup.setVisibility(View.GONE);
         }
         return (permission == PackageManager.PERMISSION_GRANTED);

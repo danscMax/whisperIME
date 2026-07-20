@@ -343,6 +343,12 @@ public class ModelDownloadManager {
         return PreferenceManager.getDefaultSharedPreferences(appContext);
     }
 
+    /** Mark a model as the active selection (what every entry point loads). Used by the wizard so a
+     *  just-downloaded model is live immediately, without the user re-selecting it in the catalog. */
+    public void setSelected(String modelId) {
+        prefs().edit().putString(PREF_SELECTED_MODEL, modelId).apply();
+    }
+
     private boolean isWifiOnly() {
         return prefs().getBoolean(PREF_WIFI_ONLY, true);
     }

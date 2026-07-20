@@ -220,6 +220,7 @@ class DownloadActivity : AppCompatActivity(), ModelDownloadManager.Listener {
     override fun onDone(modelId: String) {
         if (modelId != recommended.id) return
         downloading = false
+        manager.setSelected(modelId)   // activate it now — no "go back to select it" after onboarding (R05)
         goTo(STEP_TRY)
     }
 

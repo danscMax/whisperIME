@@ -8,7 +8,6 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.inputmethodservice.InputMethodService;
-import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.InputType;
@@ -57,12 +56,10 @@ public class WhisperInputMethodService extends InputMethodService {
     private ImageButton btnEnter;
     private ImageButton btnDel;
     private ImageButton btnMore;
-    private TextView tvStatus;
-    private TextView tvHint;
-    private TextView tvModelChip;
+    // Status text LEFT of the orb (model chip idle / "Слушаю…" recording / "Обработка…" / error red) and
+    // the timer RIGHT of the orb (shown only while recording). Never drawn over the orb.
+    private TextView tvStatusLeft;
     private TextView tvTimer;
-    private LinearLayout idleGroup;
-    private LinearLayout layoutButtons;
     private LivingSignalView orb;
     private View rootView;
 
@@ -77,7 +74,9 @@ public class WhisperInputMethodService extends InputMethodService {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private Context mContext;
 
-    private static boolean translate = false;
+    // Read from / written to the SHARED "translate" pref so every surface honours the same choice (D9);
+    // MainActivity writes the same key. Loaded on view init, persisted on toggle.
+    private boolean translate = false;
     private boolean modeAuto = false;
 
     // Auto (VAD) mode grabs the mic on open; delay it a beat so the strip isn't recording the room the
@@ -94,8 +93,10 @@ public class WhisperInputMethodService extends InputMethodService {
         if (!modeAuto) return;
         if (mRecorder != null && mRecorder.isInProgress()) return;   // already listening
         if (!checkRecordPermission()) return;
-        if (mWhisper == null || mWhisper.isInProgress()) {
-            // Model still warming (cold start): retry a few times before giving up to a manual tap.
+        // Don't record into an unbound editor: right after switching to this IME the editor connection may
+        // not be bound yet, and a result committed then is dropped. Wait for it (a few retries).
+        if (mWhisper == null || mWhisper.isInProgress() || getCurrentInputConnection() == null) {
+            // Model still warming (cold start) or connection not bound: retry before giving up to a tap.
             if (autoStartRetries++ < 6) handler.postDelayed(autoStartRunnable, 300);
             return;
         }
@@ -120,13 +121,17 @@ public class WhisperInputMethodService extends InputMethodService {
     private String lastLanguage = "";
     private int currentInputType = InputType.TYPE_NULL;
     private final StringBuilder imeDraft = new StringBuilder();
+    // True once the running draft has been shown as composing text in a live connection. If a dictation
+    // finishes while no connection is bound (first show after switching to the IME), this stays false and
+    // finalizeIme() commits the draft directly instead of losing it.
+    private boolean draftComposed;
 
     private final Handler timerHandler = new Handler(Looper.getMainLooper());
     private final Runnable timerTick = new Runnable() {
         @Override
         public void run() {
             long el = (System.currentTimeMillis() - recordStartMs) / 1000;
-            tvTimer.setText(String.format(Locale.US, "%d:%02d", el / 60, el % 60));
+            if (tvTimer != null) tvTimer.setText(String.format(Locale.US, "%d:%02d", el / 60, el % 60));
             timerHandler.postDelayed(this, 1000);
         }
     };
@@ -138,9 +143,27 @@ public class WhisperInputMethodService extends InputMethodService {
         super.onCreate();
     }
 
+    /** Never go fullscreen. This is a compact voice dock, not a text keyboard: in landscape the framework
+     *  otherwise defaults to fullscreen "extract" mode, which covers the host app (its own text editor on
+     *  top) instead of docking below it and letting the app resize above. Docking is correct in BOTH
+     *  orientations — fixes the landscape "overlays the whole screen" bug. */
+    @Override
+    public boolean onEvaluateFullscreenMode() {
+        return false;
+    }
+
+    /** Send a key event to the current field, guarding the connection (it can be torn down while a
+     *  delete-repeat runnable is still posted, or a field can go away mid-tap) — else an NPE kills the
+     *  whole keyboard (F14). */
+    private void sendKey(int keyCode) {
+        InputConnection ic = getCurrentInputConnection();
+        if (ic != null) ic.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, keyCode));
+    }
+
     @Override
     public void onDestroy() {
         handler.removeCallbacks(autoStartRunnable);   // don't fire a pending auto-start after teardown (D12)
+        timerHandler.removeCallbacks(timerTick);      // the 1s self-reposting timer must not outlive us (F13)
         deinitModel();
         if (mRecorder != null) {
             mRecorder.shutdown();   // ends the worker thread; stop() alone left it parked (leak)
@@ -186,27 +209,17 @@ public class WhisperInputMethodService extends InputMethodService {
         }
         updateModelChip();
         applyState(UiState.IDLE);
-        configureImeWindow();
+        // Flush-on-bind: if a dictation finished before the editor connection was bound, its text is still
+        // in imeDraft — now that onStartInputView guarantees a bound connection, show it (no re-tap).
+        if (imeDraft.length() > 0 && !draftComposed) {
+            InputConnection ic = getCurrentInputConnection();
+            if (ic != null) { ic.setComposingText(imeDraft, 1); draftComposed = true; }
+        }
         maybeAutoStart();   // hands-free: start listening on every keyboard show when auto mode is on
     }
-
-    /**
-     * Frosted glass: blur the host content behind the translucent dock so it reads as real glass
-     * (API 31+, and only when the system allows cross-window blur — battery saver / low-end devices
-     * disable it, and then the translucent frost alone still looks right). Best-effort; never throws.
-     */
-    private void configureImeWindow() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return;
-        android.app.Dialog dlg = getWindow();
-        android.view.Window w = dlg != null ? dlg.getWindow() : null;
-        if (w == null) return;
-        try {
-            android.view.WindowManager wm = getSystemService(android.view.WindowManager.class);
-            if (wm != null && wm.isCrossWindowBlurEnabled()) {
-                w.setBackgroundBlurRadius(Math.round(48 * getResources().getDisplayMetrics().density));
-            }
-        } catch (Throwable ignored) { }
-    }
+    // NOTE: window-background blur was removed — setBackgroundBlurRadius blurred the WHOLE host screen
+    // behind the IME (not just the dock) on this device, leaving the underlying app unreadable. The
+    // dock's own translucent glass (ime_dock_glass) gives the frosted look without touching the host.
 
     /** Selected model from prefs, else the first downloaded one; null when nothing is usable. */
     private ModelInfo resolveModel() {
@@ -245,12 +258,8 @@ public class WhisperInputMethodService extends InputMethodService {
         btnEnter = rootView.findViewById(R.id.btnEnter);
         btnDel = rootView.findViewById(R.id.btnDel);
         btnMore = rootView.findViewById(R.id.btnMore);
-        tvStatus = rootView.findViewById(R.id.tv_status);
-        tvHint = rootView.findViewById(R.id.tv_hint);
-        tvModelChip = rootView.findViewById(R.id.tv_model_chip);
-        tvTimer = rootView.findViewById(R.id.tvTimer);
-        idleGroup = rootView.findViewById(R.id.idle_group);
-        layoutButtons = rootView.findViewById(R.id.layout_buttons);
+        tvStatusLeft = rootView.findViewById(R.id.tv_status_left);
+        tvTimer = rootView.findViewById(R.id.tv_timer);
         orb = rootView.findViewById(R.id.orb);
         int[] orbTint = ThemeUtils.orbColors(this);
         orb.setColors(orbTint[0], orbTint[1]);
@@ -263,15 +272,14 @@ public class WhisperInputMethodService extends InputMethodService {
         btnMore.setColorFilter(accent);
 
         modeAuto = sp.getBoolean("imeModeAuto", false);
+        translate = sp.getBoolean("translate", false);   // shared with the app (D9)
         // Keys (keyboard-exit above all) stay visible in both modes: auto must never trap the user.
         checkRecordPermission();
 
         // The recorder belongs to the service, not the view: onCreateInputView runs again when
         // the appearance changes, and a second Recorder would leave the first holding the mic.
         if (mRecorder == null) mRecorder = new Recorder(this);
-        mRecorder.setRmsListener(rms -> handler.post(() -> {
-            orb.pushLevel(rms);
-        }));
+        mRecorder.setRmsListener(rms -> handler.post(() -> orb.pushLevel(rms)));
         mRecorder.setListener(new Recorder.RecorderListener() {
             @Override
             public void onUpdateReceived(String message) {
@@ -289,9 +297,7 @@ public class WhisperInputMethodService extends InputMethodService {
                     HapticFeedback.vibrate(mContext);
                     handler.post(() -> {
                         applyState(UiState.IDLE);
-                        tvStatus.setText(getString(R.string.error_no_input));
-                        tvStatus.setVisibility(View.VISIBLE);
-                        idleGroup.setVisibility(View.GONE);
+                        setImeStatus(R.string.error_no_input, true);
                     });
                 }
             }
@@ -309,15 +315,15 @@ public class WhisperInputMethodService extends InputMethodService {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                    getCurrentInputConnection().sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL));
+                    sendKey(KeyEvent.KEYCODE_DEL);
                     initialDeleteRunnable = new Runnable() {
                         @Override
                         public void run() {
-                            getCurrentInputConnection().sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL));
+                            sendKey(KeyEvent.KEYCODE_DEL);
                             repeatDeleteRunnable = new Runnable() {
                                 @Override
                                 public void run() {
-                                    getCurrentInputConnection().sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL));
+                                    sendKey(KeyEvent.KEYCODE_DEL);
                                     handler.postDelayed(this, 100);
                                 }
                             };
@@ -355,9 +361,7 @@ public class WhisperInputMethodService extends InputMethodService {
                         startRecording();
                     } else {
                         handler.post(() -> {
-                            tvStatus.setText(getString(R.string.please_wait));
-                            tvStatus.setVisibility(View.VISIBLE);
-                            idleGroup.setVisibility(View.GONE);
+                            setImeStatus(R.string.please_wait, false);
                         });
                     }
                 }
@@ -374,8 +378,7 @@ public class WhisperInputMethodService extends InputMethodService {
             switchToPreviousInputMethod();
         });
 
-        btnEnter.setOnClickListener(v ->
-                getCurrentInputConnection().sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER)));
+        btnEnter.setOnClickListener(v -> sendKey(KeyEvent.KEYCODE_ENTER));
 
         btnMore.setOnClickListener(this::showImeMenu);
 
@@ -383,6 +386,15 @@ public class WhisperInputMethodService extends InputMethodService {
     }
 
     private PopupWindow imeMenuWindow;
+
+    /** Show a tv_status line. Errors are error-red; neutral messages (loading/please-wait) use the
+     *  normal ink so a routine "Loading model…" never reads as a failure (F05). Colour is set every
+     *  time because the one TextView is reused across error and neutral states. */
+    private void setImeStatus(int msgRes, boolean error) {
+        // Route status through the left status text. Errors in danger-red; neutral messages
+        // (loading / please-wait) in dim ink so a routine load never reads as a failure.
+        setStatus(getString(msgRes), error ? R.color.glass_danger : R.color.glass_ink_dim);
+    }
 
     /** Custom glass overflow menu (replaces the native PopupMenu): translate / auto toggles, a quick
      *  language row and settings — styled in-theme and popping up from the bottom strip. */
@@ -394,6 +406,7 @@ public class WhisperInputMethodService extends InputMethodService {
         checkTranslate.setVisibility(translate ? View.VISIBLE : View.INVISIBLE);
         v.findViewById(R.id.row_translate).setOnClickListener(x -> {
             translate = !translate;
+            sp.edit().putBoolean("translate", translate).apply();   // shared with the app (D9)
             updateModelChip();
             checkTranslate.setVisibility(translate ? View.VISIBLE : View.INVISIBLE);
         });
@@ -482,6 +495,7 @@ public class WhisperInputMethodService extends InputMethodService {
     private void startRecording() {
         recordingStopped = false;
         imeDraft.setLength(0);
+        draftComposed = false;
         lastLanguage = "";
         mRecorder.setChunkListener(null);   // both modes capture ONE buffer; no chunk streaming
         setTranscriptionParams();
@@ -521,18 +535,14 @@ public class WhisperInputMethodService extends InputMethodService {
         // Cold: loading a 640 MB model takes ~1 s. Do it OFF the main thread so the keyboard strip appears
         // immediately (was a synchronous freeze on the first open), with a "loading" status until ready.
         handler.post(() -> {
-            tvStatus.setText(getString(R.string.dialog_loading));
-            tvStatus.setVisibility(View.VISIBLE);
-            idleGroup.setVisibility(View.GONE);
+            setImeStatus(R.string.dialog_loading, false);
         });
         new Thread(() -> {
             Whisper w = WarmWhisper.get(this, modelFile, vocabFile, isMultilingual);
             handler.post(() -> {
                 if (w == null) {
                     Log.e(TAG, "Model load failed: " + wantId);
-                    tvStatus.setText(getString(R.string.error_model_load));
-                    tvStatus.setVisibility(View.VISIBLE);
-                    idleGroup.setVisibility(View.GONE);
+                    setImeStatus(R.string.error_model_load, true);
                     return;
                 }
                 if (!wantId.equals(selectedModel.id)) return;   // model switched while loading — drop this
@@ -553,16 +563,16 @@ public class WhisperInputMethodService extends InputMethodService {
                 if (message.equals(Whisper.MSG_PROCESSING)) {
                     if (recordingStopped) handler.post(() -> applyState(UiState.PROCESSING));
                 } else if (message.equals(Whisper.MSG_PROCESSING_DONE)) {
-                    if (recordingStopped && !mWhisper.isInProgress()) handler.post(() -> finalizeIme());
+                    // Use the captured local, not the mWhisper field: deinitModel() (UI thread) can null
+                    // the field while this callback runs on the worker thread (F15).
+                    if (recordingStopped && !w.isInProgress()) handler.post(() -> finalizeIme());
                 } else if (message.startsWith(Whisper.MSG_TRANSCRIBE_FAILED)
                         || message.startsWith(Whisper.MSG_LOAD_FAILED)
                         || message.equals(Whisper.MSG_ENGINE_NOT_INIT)) {
                     // Surface a failed run instead of leaving the strip stuck in PROCESSING (C4).
                     handler.post(() -> {
                         applyState(UiState.IDLE);
-                        tvStatus.setText(getString(R.string.error_transcription));
-                        tvStatus.setVisibility(View.VISIBLE);
-                        idleGroup.setVisibility(View.GONE);
+                        setImeStatus(R.string.error_transcription, true);
                     });
                 }
             }
@@ -576,27 +586,12 @@ public class WhisperInputMethodService extends InputMethodService {
                     result = simpleChinese ? ZhConverterUtil.toSimple(result) : ZhConverterUtil.toTraditional(result);
                 }
                 lastLanguage = whisperResult.getLanguage();
-                String trimmed = result.trim();
+                final String trimmed = result.trim();
                 if (trimmed.isEmpty()) return;
-
-                InputConnection ic = getCurrentInputConnection();
-                if (ic == null) return;
-
-                // Smart spacing (D5): one space between chunks; a leading space before the first chunk
-                // only when the existing field text doesn't already end in whitespace/opening punctuation.
-                char prev;
-                if (imeDraft.length() == 0) {
-                    CharSequence before = ic.getTextBeforeCursor(1, 0);
-                    prev = (before != null && before.length() > 0) ? before.charAt(0) : ' ';
-                } else {
-                    prev = imeDraft.charAt(imeDraft.length() - 1);
-                }
-                if (needsSpace(prev, trimmed)) imeDraft.append(' ');
-                imeDraft.append(trimmed);
-
-                // Composing text (D4/D1): the running transcript stays revisable in place and updates
-                // live as chunks arrive, instead of being hard-committed per chunk. finalizeIme() commits.
-                ic.setComposingText(imeDraft, 1);
+                // This callback runs on the Whisper worker thread. getCurrentInputConnection() is IME
+                // main-thread state — reading it here during/after an IME switch sees a stale/null value,
+                // which dropped the first dictation. Marshal onto the main thread (like every sibling).
+                handler.post(() -> appendAndCompose(trimmed));
             }
         });
     }
@@ -610,10 +605,40 @@ public class WhisperInputMethodService extends InputMethodService {
         if (mWhisper != null) mWhisper.stop();
     }
 
+    /** Append a recognized chunk to the running draft and show it as composing text (D4/D1: the
+     *  transcript stays revisable in place). Main thread only. If no connection is bound yet the text is
+     *  kept in imeDraft and flushed by onStartInputView / finalizeIme once one arrives — so the first
+     *  dictation after switching to the IME is never lost. */
+    private void appendAndCompose(String trimmed) {
+        InputConnection ic = getCurrentInputConnection();
+        // Smart spacing (D5): one space between chunks; a leading space before the first chunk only when
+        // the existing field text doesn't already end in whitespace/opening punctuation.
+        char prev;
+        if (imeDraft.length() == 0) {
+            CharSequence before = ic != null ? ic.getTextBeforeCursor(1, 0) : null;
+            prev = (before != null && before.length() > 0) ? before.charAt(0) : ' ';
+        } else {
+            prev = imeDraft.charAt(imeDraft.length() - 1);
+        }
+        if (needsSpace(prev, trimmed)) imeDraft.append(' ');
+        imeDraft.append(trimmed);
+        if (ic != null) {
+            ic.setComposingText(imeDraft, 1);
+            draftComposed = true;
+        }
+    }
+
     /** Recording stopped and the queue drained: log history once and return to idle. */
     private void finalizeIme() {
         InputConnection ic = getCurrentInputConnection();
-        if (ic != null) ic.finishComposingText();   // commit the revisable transcript as final (D4)
+        if (ic != null) {
+            if (draftComposed) {
+                ic.finishComposingText();          // finalize the revisable transcript (D4)
+            } else if (imeDraft.length() > 0) {
+                ic.commitText(imeDraft, 1);        // never composed (connection bound late) — insert it now
+            }
+        }
+        draftComposed = false;
         String text = imeDraft.toString().trim();
         if (!text.isEmpty()
                 && sp.getBoolean("historyEnabled", true)
@@ -658,42 +683,46 @@ public class WhisperInputMethodService extends InputMethodService {
         boolean recording = state == UiState.RECORDING;
         boolean processing = state == UiState.PROCESSING;
 
-        idleGroup.setVisibility(View.VISIBLE);
-        tvTimer.setVisibility(recording ? View.VISIBLE : View.GONE);
         btnRecord.setEnabled(!processing);
         btnRecord.setAlpha(processing ? 0.55f : 1f);
-        tvStatus.setVisibility(View.GONE);
-        tvHint.setText(recording ? R.string.dialog_listening
-                : processing ? R.string.dialog_processing : R.string.ime_hint);
         orb.setSignalState(recording ? LivingSignalView.SignalState.LISTENING
                 : processing ? LivingSignalView.SignalState.PROCESSING
                 : LivingSignalView.SignalState.READY);
 
+        // Status text (left) reflects the state; the timer (right) shows only while recording.
         if (recording) {
             recordStartMs = System.currentTimeMillis();
-            tvTimer.setText("0:00");
+            setStatus(getString(R.string.dialog_listening), R.color.living_cyan);
+            if (tvTimer != null) { tvTimer.setText("0:00"); tvTimer.setVisibility(View.VISIBLE); }
             timerHandler.post(timerTick);
         } else {
             timerHandler.removeCallbacks(timerTick);
+            if (tvTimer != null) tvTimer.setVisibility(View.INVISIBLE);
+            if (processing) setStatus(getString(R.string.dialog_processing), R.color.glass_ink_dim);
+            else updateModelChip();
         }
+    }
+
+    /** Set the left status text + colour. */
+    private void setStatus(CharSequence text, int colorRes) {
+        if (tvStatusLeft == null) return;
+        tvStatusLeft.setText(text);
+        tvStatusLeft.setTextColor(androidx.core.content.ContextCompat.getColor(this, colorRes));
     }
 
     @SuppressLint("SetTextI18n")
     private void updateModelChip() {
-        if (tvModelChip == null || selectedModel == null) return;
+        if (tvStatusLeft == null || selectedModel == null) return;
         String langCode = sp.getString("language", "auto");
         String action = translate ? getString(R.string.translate_short) : langCode;
-        // Keep the chip short: model + language only. The mode (auto/hold) is shown by the orb behaviour
-        // and the overflow menu; repeating it here made the chip a long, redundant line.
-        tvModelChip.setText(selectedModel.displayName + " · " + action);
+        // Idle status = model + language (the mode is shown by the orb behaviour and the overflow menu).
+        setStatus(selectedModel.displayName + " · " + action, R.color.glass_ink);
     }
 
     private boolean checkRecordPermission() {
         int permission = ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO);
         if (permission != PackageManager.PERMISSION_GRANTED) {
-            tvStatus.setVisibility(View.VISIBLE);
-            tvStatus.setText(getString(R.string.need_record_audio_permission));
-            idleGroup.setVisibility(View.GONE);
+            setImeStatus(R.string.need_record_audio_permission, true);
         }
         return (permission == PackageManager.PERMISSION_GRANTED);
     }

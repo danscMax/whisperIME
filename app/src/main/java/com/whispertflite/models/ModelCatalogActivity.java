@@ -44,6 +44,7 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
 
     private ModelDownloadManager manager;
     private SharedPreferences prefs;
+    private androidx.appcompat.app.AlertDialog activeDialog;   // held so it can be dismissed on teardown (F31)
     private Adapter adapter;
     private TextView storageUsed;
     private int filterId = R.id.filterAll; // which filter chip is checked
@@ -113,6 +114,12 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
     protected void onPause() {
         super.onPause();
         manager.removeListener(this);
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (activeDialog != null) { activeDialog.dismiss(); activeDialog = null; }   // don't leak the window (F31)
+        super.onDestroy();
     }
 
     /** Rebuild the filtered list and the storage footer. */
@@ -185,7 +192,7 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
     }
 
     private void confirmDelete(ModelInfo model) {
-        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+        activeDialog = new MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.catalog_delete)
                 .setMessage(getString(R.string.catalog_delete_confirm, model.displayName))
                 .setNegativeButton(android.R.string.cancel, null)
@@ -198,7 +205,7 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
                 })
                 .show();
         // The confirm is destructive; the shared dialog theme keeps both actions neutral ink.
-        dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE)
+        activeDialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE)
                 .setTextColor(color(R.color.glass_danger));
     }
 

@@ -65,7 +65,7 @@ public class WhisperRecognitionService extends RecognitionService {
             Log.d(TAG,"StartListening, no language specified");
         }
 
-        checkRecordPermission(callback);
+        if (!checkRecordPermission(callback)) return;   // no mic permission — client already told; abort (F17)
 
         sdcardDataFolder = this.getExternalFilesDir(null);
         selectedTfliteFile = new File(sdcardDataFolder, sp.getString("recognitionServiceModelName", MULTI_LINGUAL_TOP_WORLD_SLOW));
@@ -264,16 +264,20 @@ public class WhisperRecognitionService extends RecognitionService {
         loadedModelPath = null;
     }
 
-    private void checkRecordPermission(Callback callback) {
+    /** @return true if RECORD_AUDIO is granted; false (after signalling the client) if not — the caller
+     *  must NOT proceed to record when this returns false (F17). */
+    private boolean checkRecordPermission(Callback callback) {
         int permission = ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO);
         if (permission != PackageManager.PERMISSION_GRANTED){
             Log.d(TAG,getString(R.string.need_record_audio_permission));
             try {
                 callback.error(ERROR_INSUFFICIENT_PERMISSIONS);
             } catch (RemoteException e) {
-                throw new RuntimeException(e);
+                Log.w(TAG, "client gone while reporting missing permission", e);   // don't crash main thread (F18)
             }
+            return false;
         }
+        return true;
     }
 
 }

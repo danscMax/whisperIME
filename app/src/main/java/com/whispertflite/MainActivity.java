@@ -143,6 +143,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         modelExecutor.shutdownNow();
+        timerHandler.removeCallbacks(timerTick);   // self-reposting timer must not outlive the activity (F11)
         deinitModel();
         deinitTTS();
         if (mRecorder != null) {
@@ -397,7 +398,8 @@ public class MainActivity extends AppCompatActivity {
                     // Queued chunks may still be transcribing: PROCESSING until the queue drains,
                     // then finishToResult() (which shows ERROR if nothing was recognized).
                     runOnUiThread(() -> {
-                        if (mWhisper.isInProgress()) applyState(UiState.PROCESSING);
+                        Whisper w = mWhisper;   // deinitModel() may null the field before this posts (F10)
+                        if (w != null && w.isInProgress()) applyState(UiState.PROCESSING);
                         else finishToResult();
                     });
                 }

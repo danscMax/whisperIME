@@ -89,6 +89,10 @@ public class ModelDownloadManager {
         for (ModelInfo.Asset a : model.files) {
             if (!new File(filesDir, a.relPath).exists()) return false;
         }
+        // A TFLite model also needs its bundled vocab file on disk to be usable; other call sites check
+        // it separately, so fold it in here for one consistent presence definition (F33).
+        if (model.engine == ModelInfo.Engine.TFLITE
+                && !new File(filesDir, ModelRegistry.vocabFor(model)).exists()) return false;
         return true;
     }
 
@@ -341,6 +345,12 @@ public class ModelDownloadManager {
 
     private SharedPreferences prefs() {
         return PreferenceManager.getDefaultSharedPreferences(appContext);
+    }
+
+    /** Mark a model as the active selection (what every entry point loads). Used by the wizard so a
+     *  just-downloaded model is live immediately, without the user re-selecting it in the catalog. */
+    public void setSelected(String modelId) {
+        prefs().edit().putString(PREF_SELECTED_MODEL, modelId).apply();
     }
 
     private boolean isWifiOnly() {

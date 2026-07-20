@@ -42,9 +42,10 @@ class SherpaEngine : AsrEngine {
         val threads = minOf(4, maxOf(2, cores - 1))
 
         // Two shapes: a 3-file transducer (Parakeet TDT / GigaAM RNN-T -> encoder + decoder + joiner) or a
-        // single-file NeMo CTC (GigaAM CTC -> model.int8.onnx). Detect by which files are present.
-        val encoder = File(dir, "encoder.int8.onnx")
-        val modelConfig: OfflineModelConfig = if (encoder.exists()) {
+        // single-file NeMo CTC (GigaAM CTC -> model.int8.onnx). Detect by which files are present. The
+        // encoder may be int8 or fp32 (a full-precision "max quality" export) — accept either name.
+        val encoder = firstExisting(dir, "encoder.int8.onnx", "encoder.onnx")
+        val modelConfig: OfflineModelConfig = if (encoder != null) {
             // Parakeet ships decoder.int8.onnx / joiner.int8.onnx; GigaAM RNN-T ships fp32 decoder.onnx / joiner.onnx.
             val decoder = firstExisting(dir, "decoder.int8.onnx", "decoder.onnx")
             val joiner = firstExisting(dir, "joiner.int8.onnx", "joiner.onnx")
@@ -96,11 +97,13 @@ class SherpaEngine : AsrEngine {
         val samples = pcm16ToFloat(pcm16k)
         val text: String = try {
             val stream = rec.createStream()
-            stream.acceptWaveform(samples, 16000)
-            rec.decode(stream)
-            val t = rec.getResult(stream).text
-            stream.release()
-            t
+            try {
+                stream.acceptWaveform(samples, 16000)
+                rec.decode(stream)
+                rec.getResult(stream).text
+            } finally {
+                stream.release()   // free the native stream on every path, incl. a decode throw (F26)
+            }
         } catch (e: Throwable) {
             return WhisperResult.error(action)   // native run crashed mid-phrase — surface, not silence
         }

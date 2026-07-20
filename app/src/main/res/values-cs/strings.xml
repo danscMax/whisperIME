@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="voice_input">Hlasový vstup Whisper</string>
     <string name="need_record_audio_permission">Oprávnění k nahrávání zvuku nebylo uděleno</string>
     <string name="error_download">Chyba stahování</string>
     <string name="download_model">Stáhnout model</string>

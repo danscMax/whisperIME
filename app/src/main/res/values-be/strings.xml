@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="voice_input">Галасавы ўвод Whisper</string>
     <string name="translate">Перакласць на англійскую мову:</string>
     <string name="error_download">Памылка спампоўкі</string>
     <string name="download_model">Спампаваць мадэль</string>

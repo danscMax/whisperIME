@@ -160,6 +160,20 @@ public class WhisperInputMethodService extends InputMethodService {
         if (ic != null) ic.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, keyCode));
     }
 
+    // Delete one word (plus its trailing whitespace) before the cursor — used by the backspace
+    // long-hold once it accelerates past char-by-char. Falls back to a single DEL when there's no IC.
+    private void deleteWordBackward() {
+        InputConnection ic = getCurrentInputConnection();
+        if (ic == null) { sendKey(KeyEvent.KEYCODE_DEL); return; }
+        CharSequence before = ic.getTextBeforeCursor(64, 0);
+        if (before == null || before.length() == 0) return;
+        int i = before.length();
+        while (i > 0 && Character.isWhitespace(before.charAt(i - 1))) i--;   // eat trailing spaces
+        while (i > 0 && !Character.isWhitespace(before.charAt(i - 1))) i--;  // then the word itself
+        int count = before.length() - i;
+        ic.deleteSurroundingText(count > 0 ? count : 1, 0);
+    }
+
     @Override
     public void onDestroy() {
         handler.removeCallbacks(autoStartRunnable);   // don't fire a pending auto-start after teardown (D12)
@@ -309,32 +323,32 @@ public class WhisperInputMethodService extends InputMethodService {
         // is cached and runs at most once per process, so posting it here missed later opens (D12).
 
         btnDel.setOnTouchListener(new View.OnTouchListener() {
-            private Runnable initialDeleteRunnable;
             private Runnable repeatDeleteRunnable;
+            private int repeatCount;
 
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 if (event.getAction() == MotionEvent.ACTION_DOWN) {
                     sendKey(KeyEvent.KEYCODE_DEL);
-                    initialDeleteRunnable = new Runnable() {
+                    repeatCount = 0;
+                    repeatDeleteRunnable = new Runnable() {
                         @Override
                         public void run() {
-                            sendKey(KeyEvent.KEYCODE_DEL);
-                            repeatDeleteRunnable = new Runnable() {
-                                @Override
-                                public void run() {
-                                    sendKey(KeyEvent.KEYCODE_DEL);
-                                    handler.postDelayed(this, 100);
-                                }
-                            };
-                            handler.postDelayed(repeatDeleteRunnable, 100);
+                            // Long-hold accelerates like a stock keyboard: the first ~12 ticks delete
+                            // char-by-char, after that whole words go at once (faster to clear a line).
+                            if (repeatCount < 12) {
+                                sendKey(KeyEvent.KEYCODE_DEL);
+                            } else {
+                                deleteWordBackward();
+                            }
+                            repeatCount++;
+                            handler.postDelayed(this, repeatCount < 12 ? 90 : 130);
                         }
                     };
-                    handler.postDelayed(initialDeleteRunnable, 500);
-                } else if (event.getAction() == MotionEvent.ACTION_UP) {
-                    if (initialDeleteRunnable != null) handler.removeCallbacks(initialDeleteRunnable);
+                    handler.postDelayed(repeatDeleteRunnable, 500);
+                } else if (event.getAction() == MotionEvent.ACTION_UP
+                        || event.getAction() == MotionEvent.ACTION_CANCEL) {
                     if (repeatDeleteRunnable != null) handler.removeCallbacks(repeatDeleteRunnable);
-                    initialDeleteRunnable = null;
                     repeatDeleteRunnable = null;
                 }
                 return true;
@@ -710,13 +724,11 @@ public class WhisperInputMethodService extends InputMethodService {
         tvStatusLeft.setTextColor(androidx.core.content.ContextCompat.getColor(this, colorRes));
     }
 
-    @SuppressLint("SetTextI18n")
+    /** Idle status. The dock no longer shows the model name — it's unreadable in the narrow strip on
+     *  phones (the orb already carries the recording/processing state); kept as a hook so the model-
+     *  change and menu-toggle callers stay simple. */
     private void updateModelChip() {
-        if (tvStatusLeft == null || selectedModel == null) return;
-        String langCode = sp.getString("language", "auto");
-        String action = translate ? getString(R.string.translate_short) : langCode;
-        // Idle status = model + language (the mode is shown by the orb behaviour and the overflow menu).
-        setStatus(selectedModel.displayName + " · " + action, R.color.glass_ink);
+        setStatus("", R.color.glass_ink);
     }
 
     private boolean checkRecordPermission() {

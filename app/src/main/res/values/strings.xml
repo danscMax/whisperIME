@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name" translatable="false">Whisper</string>
-    <string name="voice_input">Whisper Voice Input</string>
+    <string name="app_name" translatable="false">Sweet Whisper</string>
+    <string name="voice_input" translatable="false">Sweet Whisper</string>
     <string name="need_record_audio_permission">"RECORD_AUDIO permission is not granted"</string>
     <string name="error_download">Download error</string>
     <string name="download_model">Download Model</string>
@@ -209,6 +209,6 @@
     <string name="catalog_err_wifi">Connect to Wi-Fi to download</string>
     <string name="catalog_err_download">Download failed</string>
     <string name="tile_label">Voice input</string>
-    <string name="widget_label">Whisper voice input</string>
+    <string name="widget_label">Sweet Whisper voice input</string>
     <string name="widget_mic_description">Start voice input</string>
 </resources>

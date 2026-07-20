@@ -17,11 +17,18 @@ public final class ModelInfo {
         public final String url;
         public final String relPath;
         public final long size;
+        /** Expected SHA-256 as lowercase hex, or null to skip the integrity check (backward compatible). */
+        public final String sha256;
 
         public Asset(String url, String relPath, long size) {
+            this(url, relPath, size, null);
+        }
+
+        public Asset(String url, String relPath, long size, String sha256) {
             this.url = url;
             this.relPath = relPath;
             this.size = size;
+            this.sha256 = sha256;
         }
     }
 

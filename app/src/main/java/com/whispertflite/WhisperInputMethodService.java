@@ -140,9 +140,18 @@ public class WhisperInputMethodService extends InputMethodService {
         super.onCreate();
     }
 
+    /** Send a key event to the current field, guarding the connection (it can be torn down while a
+     *  delete-repeat runnable is still posted, or a field can go away mid-tap) — else an NPE kills the
+     *  whole keyboard (F14). */
+    private void sendKey(int keyCode) {
+        InputConnection ic = getCurrentInputConnection();
+        if (ic != null) ic.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, keyCode));
+    }
+
     @Override
     public void onDestroy() {
         handler.removeCallbacks(autoStartRunnable);   // don't fire a pending auto-start after teardown (D12)
+        timerHandler.removeCallbacks(timerTick);      // the 1s self-reposting timer must not outlive us (F13)
         deinitModel();
         if (mRecorder != null) {
             mRecorder.shutdown();   // ends the worker thread; stop() alone left it parked (leak)
@@ -311,15 +320,15 @@ public class WhisperInputMethodService extends InputMethodService {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                    getCurrentInputConnection().sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL));
+                    sendKey(KeyEvent.KEYCODE_DEL);
                     initialDeleteRunnable = new Runnable() {
                         @Override
                         public void run() {
-                            getCurrentInputConnection().sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL));
+                            sendKey(KeyEvent.KEYCODE_DEL);
                             repeatDeleteRunnable = new Runnable() {
                                 @Override
                                 public void run() {
-                                    getCurrentInputConnection().sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL));
+                                    sendKey(KeyEvent.KEYCODE_DEL);
                                     handler.postDelayed(this, 100);
                                 }
                             };
@@ -375,8 +384,7 @@ public class WhisperInputMethodService extends InputMethodService {
             switchToPreviousInputMethod();
         });
 
-        btnEnter.setOnClickListener(v ->
-                getCurrentInputConnection().sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER)));
+        btnEnter.setOnClickListener(v -> sendKey(KeyEvent.KEYCODE_ENTER));
 
         btnMore.setOnClickListener(this::showImeMenu);
 
@@ -566,7 +574,9 @@ public class WhisperInputMethodService extends InputMethodService {
                 if (message.equals(Whisper.MSG_PROCESSING)) {
                     if (recordingStopped) handler.post(() -> applyState(UiState.PROCESSING));
                 } else if (message.equals(Whisper.MSG_PROCESSING_DONE)) {
-                    if (recordingStopped && !mWhisper.isInProgress()) handler.post(() -> finalizeIme());
+                    // Use the captured local, not the mWhisper field: deinitModel() (UI thread) can null
+                    // the field while this callback runs on the worker thread (F15).
+                    if (recordingStopped && !w.isInProgress()) handler.post(() -> finalizeIme());
                 } else if (message.startsWith(Whisper.MSG_TRANSCRIBE_FAILED)
                         || message.startsWith(Whisper.MSG_LOAD_FAILED)
                         || message.equals(Whisper.MSG_ENGINE_NOT_INIT)) {

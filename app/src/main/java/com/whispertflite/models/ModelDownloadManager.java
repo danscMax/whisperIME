@@ -89,6 +89,10 @@ public class ModelDownloadManager {
         for (ModelInfo.Asset a : model.files) {
             if (!new File(filesDir, a.relPath).exists()) return false;
         }
+        // A TFLite model also needs its bundled vocab file on disk to be usable; other call sites check
+        // it separately, so fold it in here for one consistent presence definition (F33).
+        if (model.engine == ModelInfo.Engine.TFLITE
+                && !new File(filesDir, ModelRegistry.vocabFor(model)).exists()) return false;
         return true;
     }
 

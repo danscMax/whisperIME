@@ -18,7 +18,9 @@ import java.nio.ByteOrder;
  * pointer is never touched concurrently.
  */
 public final class WhisperCppEngine implements AsrEngine {
-    private long ctxPtr = 0;
+    // volatile: cancel() (called from the UI/watchdog thread, outside synchronized(engine)) reads this
+    // while load()/unload() write it on the worker thread — give the read cross-thread visibility (F27).
+    private volatile long ctxPtr = 0;
     private String initialPrompt = null;   // optional vocabulary bias (A3)
 
     @Override
@@ -45,10 +47,14 @@ public final class WhisperCppEngine implements AsrEngine {
 
     @Override
     public void unload() {
-        if (ctxPtr != 0) {
-            WhisperCpp.nativeRelease(ctxPtr);
-            ctxPtr = 0;
-        }
+        // Zero the field BEFORE freeing the native context, which NARROWS the window in which an
+        // unsynchronized cross-thread cancel() can read a stale pointer (F27). It does not fully close
+        // the TOCTOU (cancel() may read a non-zero ctxPtr an instant before this zeroes+frees it) — that
+        // would need native-side handle validation, out of scope here. With volatile ctxPtr this is the
+        // cheap risk reduction; in practice unload() only races the 120 s watchdog, which almost never fires.
+        long p = ctxPtr;
+        ctxPtr = 0;
+        if (p != 0) WhisperCpp.nativeRelease(p);
     }
 
     @Override

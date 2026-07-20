@@ -384,7 +384,9 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
         if (!sp.getBoolean("historyEnabled", true)) return;
         String modelId = selectedTfliteFile.getName();
         for (ModelInfo m : ModelRegistry.all()) {
-            if (m.filename.equals(selectedTfliteFile.getName())) { modelId = m.id; break; }
+            // Compare basenames: m.filename is a path for whisper.cpp/sherpa (e.g. "sherpa/gigaam-…"),
+            // a bare name for TFLite — the raw equals() never matched the non-TFLite engines (F20).
+            if (new File(m.filename).getName().equals(selectedTfliteFile.getName())) { modelId = m.id; break; }
         }
         try {
             HistoryDb.get(this).insert(text, lang, modelId, 0);

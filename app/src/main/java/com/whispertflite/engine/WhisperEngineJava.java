@@ -188,7 +188,7 @@ public class WhisperEngineJava implements WhisperEngine {
             // Get word for token and Skip additional token
             if (token < mWhisperUtil.getTokenEOT()) {
                 byte[] wordBytes = mWhisperUtil.getWordFromToken(token);
-                resultArray.add(wordBytes);
+                if (wordBytes != null) resultArray.add(wordBytes);   // unknown token id -> null; skip, don't NPE later (F28)
             } else {
                 if (token == mWhisperUtil.getTokenTranscribe()){
                     Log.d(TAG, "It is Transcription...");
@@ -205,7 +205,7 @@ public class WhisperEngineJava implements WhisperEngine {
                     Log.d(TAG, "Detected language code: "+ language);
                 }
                 byte[] wordBytes = mWhisperUtil.getWordFromToken(token);
-                Log.d(TAG, "Skipping token: " + token + ", word: " + new String(wordBytes, StandardCharsets.UTF_8));
+                if (wordBytes != null) Log.d(TAG, "Skipping token: " + token + ", word: " + new String(wordBytes, StandardCharsets.UTF_8));
             }
         }
 

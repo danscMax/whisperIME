@@ -102,18 +102,18 @@
 
             <androidx.appcompat.widget.AppCompatImageButton
                 android:id="@+id/btnKeyboard"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:background="@drawable/living_glass_circle"
-                android:contentDescription="@string/exit_button"
+                android:contentDescription="@string/switch_to_keyboard"
                 android:padding="9dp"
                 android:src="@drawable/ic_keyboard_36dp"
                 app:tint="@color/glass_ink_dim" />
 
             <androidx.appcompat.widget.AppCompatImageButton
                 android:id="@+id/btnMore"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:layout_marginStart="8dp"
                 android:background="@drawable/living_glass_circle"
                 android:contentDescription="@string/main_cd_menu"

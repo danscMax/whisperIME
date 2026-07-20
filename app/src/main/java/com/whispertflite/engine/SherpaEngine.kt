@@ -96,11 +96,13 @@ class SherpaEngine : AsrEngine {
         val samples = pcm16ToFloat(pcm16k)
         val text: String = try {
             val stream = rec.createStream()
-            stream.acceptWaveform(samples, 16000)
-            rec.decode(stream)
-            val t = rec.getResult(stream).text
-            stream.release()
-            t
+            try {
+                stream.acceptWaveform(samples, 16000)
+                rec.decode(stream)
+                rec.getResult(stream).text
+            } finally {
+                stream.release()   // free the native stream on every path, incl. a decode throw (F26)
+            }
         } catch (e: Throwable) {
             return WhisperResult.error(action)   // native run crashed mid-phrase — surface, not silence
         }

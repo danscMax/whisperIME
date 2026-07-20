@@ -11,8 +11,15 @@ public class InputLang {
         this.id = id;
     }
 
+    // Built once and shared: the mapping is immutable static data, and callers only read it (some twice
+    // per method) — rebuilding a 99-element list every call was pure waste (F39). volatile so the lazy
+    // publication is safe across the UI thread and each Whisper worker thread that reads it: the volatile
+    // write establishes happens-before for the list and its elements' (non-final) fields.
+    private static volatile ArrayList<InputLang> CACHED;
+
     // Initialize the list of input language objects
     public static ArrayList<InputLang> getLangList() {
+        if (CACHED != null) return CACHED;
         ArrayList<InputLang> inputLangList = new ArrayList<>();
         inputLangList.add(new InputLang("en",50259));
         inputLangList.add(new InputLang("zh",50260));
@@ -114,6 +121,7 @@ public class InputLang {
         inputLangList.add(new InputLang("jw",50356));
         inputLangList.add(new InputLang("su",50357));
 
+        CACHED = inputLangList;
         return inputLangList;
 
     }

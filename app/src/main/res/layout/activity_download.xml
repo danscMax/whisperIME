@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- First-run guided wizard: Welcome -> Get ready (mic + enable) -> Recommended model -> First test -> Done.
+     One ViewFlipper swaps step content; the activity drives the step machine + Back/Next. -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -7,224 +9,394 @@
     android:fillViewport="true"
     android:background="@drawable/liquid_glass_bg">
 
-    <!-- Cap the column width and centre it so onboarding doesn't stretch across a tablet; vertical
-         bias centres it in the viewport instead of clinging to the top on tall screens. -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-    <LinearLayout
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="20dp"
-        app:layout_constraintWidth_max="@dimen/content_max_width"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent">
-
-        <!-- Living Signal Ready / Constellation state. -->
-        <com.whispertflite.ui.LivingSignalView
-            android:id="@+id/onboardingOrb"
-            android:layout_width="176dp"
-            android:layout_height="176dp"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginTop="8dp" />
-
-        <TextView
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginTop="10dp"
-            android:fontFamily="@font/space_grotesk"
-            android:textFontWeight="700"
-            android:letterSpacing="-0.02"
-            android:text="@string/onboarding_title"
-            android:textColor="@color/glass_ink"
-            android:textSize="22sp" />
+            android:orientation="vertical"
+            android:padding="20dp"
+            app:layout_constraintWidth_max="@dimen/content_max_width"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent">
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:gravity="center"
-            android:text="@string/onboarding_subtitle"
-            android:textColor="@color/glass_ink_dim"
-            android:textSize="13sp" />
+            <!-- Stepper -->
+            <TextView
+                android:id="@+id/stepper_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:fontFamily="@font/space_mono_regular"
+                android:letterSpacing="0.04"
+                android:textColor="@color/glass_ink_dim"
+                android:textSize="11sp" />
 
-        <!-- Recommended: base -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/card_base"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="22dp"
-            android:checkable="true"
-            app:cardBackgroundColor="@color/glass_card" app:strokeColor="@color/glass_card_brd"
-            app:cardCornerRadius="18dp"
-            app:cardElevation="0dp">
-
-            <LinearLayout
+            <com.google.android.material.progressindicator.LinearProgressIndicator
+                android:id="@+id/stepper_bar"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:padding="14dp">
+                android:layout_marginTop="8dp"
+                app:trackCornerRadius="3dp"
+                app:indicatorColor="?attr/colorPrimary"
+                app:trackColor="?attr/colorSurfaceVariant"
+                android:max="100" />
 
+            <ViewFlipper
+                android:id="@+id/flipper"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp">
+
+                <!-- ===== Step 0: Welcome ===== -->
                 <LinearLayout
-                    android:layout_width="0dp"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
+
+                    <com.whispertflite.ui.LivingSignalView
+                        android:id="@+id/onboardingOrb"
+                        android:layout_width="150dp"
+                        android:layout_height="150dp"
+                        android:layout_marginTop="8dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:fontFamily="@font/space_grotesk"
+                        android:textFontWeight="700"
+                        android:letterSpacing="-0.02"
+                        android:text="@string/onb_welcome_title"
+                        android:textColor="@color/glass_ink"
+                        android:textSize="22sp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:gravity="center"
+                        android:lineSpacingMultiplier="1.15"
+                        android:text="@string/onb_welcome_body"
+                        android:textColor="@color/glass_ink_dim"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:background="@drawable/badge_background"
+                        android:paddingHorizontal="12dp"
+                        android:paddingVertical="6dp"
+                        android:text="@string/main_local_badge"
+                        android:textColor="@color/glass_ink"
+                        android:textSize="11sp"
+                        android:fontFamily="@font/space_mono_regular" />
+                </LinearLayout>
+
+                <!-- ===== Step 1: Get ready (mic + enable) ===== -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
                     android:orientation="vertical">
 
                     <TextView
+                        style="@style/OnbStepTitle"
+                        android:text="@string/onb_setup_title" />
+
+                    <!-- Mic permission card -->
+                    <com.google.android.material.card.MaterialCardView
+                        style="@style/OnbCard"
+                        android:layout_marginTop="16dp">
+
+                        <LinearLayout
+                            style="@style/OnbCardRow">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView style="@style/OnbCardTitle" android:text="@string/onb_mic_title" />
+                                <TextView style="@style/OnbCardBody" android:text="@string/onb_mic_body" />
+                            </LinearLayout>
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btn_mic"
+                                style="@style/Widget.Material3.Button.TonalButton"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="10dp"
+                                android:minWidth="0dp"
+                                android:text="@string/onb_grant" />
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <!-- Enable-keyboard card -->
+                    <com.google.android.material.card.MaterialCardView
+                        style="@style/OnbCard"
+                        android:layout_marginTop="10dp">
+
+                        <LinearLayout
+                            style="@style/OnbCardRow">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView style="@style/OnbCardTitle" android:text="@string/onb_kb_title" />
+                                <TextView style="@style/OnbCardBody" android:text="@string/onb_kb_body" />
+                            </LinearLayout>
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btn_kb"
+                                style="@style/Widget.Material3.Button.TonalButton"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="10dp"
+                                android:minWidth="0dp"
+                                android:text="@string/onb_enable" />
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:lineSpacingMultiplier="1.15"
+                        android:text="@string/onb_howto"
+                        android:textColor="@color/glass_ink_dim"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <!-- ===== Step 2: Recommended model ===== -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <TextView
+                        style="@style/OnbStepTitle"
+                        android:text="@string/onb_model_title" />
+
+                    <com.google.android.material.card.MaterialCardView
+                        style="@style/OnbCard"
+                        android:layout_marginTop="16dp"
+                        app:cardBackgroundColor="@color/glass_card_active"
+                        app:strokeColor="@color/glass_card_active_brd"
+                        app:strokeWidth="2dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="16dp">
+
+                            <TextView
+                                android:id="@+id/model_badge"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="@font/space_mono_regular"
+                                android:letterSpacing="0.03"
+                                android:text="@string/reco_badge"
+                                android:textAllCaps="true"
+                                android:textColor="?attr/colorPrimary"
+                                android:textSize="10sp" />
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="6dp"
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal">
+
+                                <TextView
+                                    android:id="@+id/model_name"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:fontFamily="@font/space_grotesk"
+                                    android:textFontWeight="700"
+                                    android:textColor="@color/glass_ink"
+                                    android:textSize="18sp" />
+
+                                <TextView
+                                    android:id="@+id/model_size"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:background="@drawable/badge_background"
+                                    android:fontFamily="@font/space_mono_regular"
+                                    android:paddingHorizontal="10dp"
+                                    android:paddingVertical="4dp"
+                                    android:textColor="@color/glass_ink"
+                                    android:textSize="11sp" />
+                            </LinearLayout>
+
+                            <TextView
+                                android:id="@+id/model_reason"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="8dp"
+                                android:lineSpacingMultiplier="1.1"
+                                android:textColor="@color/glass_ink_dim"
+                                android:textSize="13sp" />
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <TextView
+                        android:id="@+id/device_summary"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:gravity="center"
+                        android:fontFamily="@font/space_mono_regular"
+                        android:textColor="@color/glass_ink_dim"
+                        android:textSize="11sp" />
+
+                    <TextView
+                        android:id="@+id/download_status"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:gravity="center"
+                        android:fontFamily="@font/space_mono_regular"
+                        android:textColor="@color/glass_ink_dim"
+                        android:textSize="12sp"
+                        android:visibility="gone" />
+
+                    <com.google.android.material.progressindicator.LinearProgressIndicator
+                        android:id="@+id/download_progress"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:visibility="gone"
+                        app:indicatorColor="?attr/colorPrimary"
+                        app:trackColor="?attr/colorSurfaceVariant" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_change"
+                        style="@style/Widget.Material3.Button.TextButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/onboarding_base_title"
+                        android:layout_gravity="center_horizontal"
+                        android:layout_marginTop="6dp"
+                        android:textColor="@color/glass_ink_dim"
+                        android:text="@string/onb_model_change" />
+                </LinearLayout>
+
+                <!-- ===== Step 3: First test ===== -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
+
+                    <TextView
+                        style="@style/OnbStepTitle"
+                        android:text="@string/onb_try_title" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:gravity="center"
+                        android:lineSpacingMultiplier="1.15"
+                        android:text="@string/onb_try_body"
+                        android:textColor="@color/glass_ink_dim"
+                        android:textSize="14sp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_try"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="24dp"
+                        app:icon="@drawable/ic_mic_48dp"
+                        android:text="@string/onb_try_button" />
+
+                    <TextView
+                        android:id="@+id/try_ok"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="18dp"
                         android:fontFamily="@font/space_grotesk"
-                        android:textFontWeight="600"
-                        android:textColor="@color/glass_ink"
-                        android:textSize="15sp" />
+                        android:textFontWeight="700"
+                        android:text="@string/onb_try_ok"
+                        android:textColor="?attr/colorPrimary"
+                        android:textSize="16sp"
+                        android:visibility="gone" />
+                </LinearLayout>
+
+                <!-- ===== Step 4: Done ===== -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
+
+                    <com.whispertflite.ui.LivingSignalView
+                        android:id="@+id/doneOrb"
+                        android:layout_width="150dp"
+                        android:layout_height="150dp"
+                        android:layout_marginTop="8dp" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/onboarding_base_desc"
+                        android:layout_marginTop="14dp"
+                        android:fontFamily="@font/space_grotesk"
+                        android:textFontWeight="700"
+                        android:letterSpacing="-0.02"
+                        android:text="@string/onb_done_title"
+                        android:textColor="@color/glass_ink"
+                        android:textSize="22sp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:gravity="center"
+                        android:lineSpacingMultiplier="1.15"
+                        android:text="@string/onb_done_body"
                         android:textColor="@color/glass_ink_dim"
-                        android:textSize="12sp" />
+                        android:textSize="14sp" />
                 </LinearLayout>
+            </ViewFlipper>
 
-                <TextView
-                    android:id="@+id/base_size"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/badge_background"
-                    android:fontFamily="@font/space_mono_regular"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="4dp"
-                    android:textColor="@color/glass_ink"
-                    android:textSize="11sp" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- small -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/card_small"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:checkable="true"
-            app:cardBackgroundColor="@color/glass_card" app:strokeColor="@color/glass_card_brd"
-            app:cardCornerRadius="18dp"
-            app:cardElevation="0dp">
-
+            <!-- Bottom nav -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
                 android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:padding="14dp">
+                android:orientation="horizontal">
 
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/onboarding_small_title"
-                    android:fontFamily="@font/space_grotesk"
-                    android:textFontWeight="600"
-                    android:textColor="@color/glass_ink"
-                    android:textSize="15sp" />
-
-                <TextView
-                    android:id="@+id/small_size"
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_back"
+                    style="@style/Widget.Material3.Button.TextButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:background="@drawable/badge_background"
-                    android:fontFamily="@font/space_mono_regular"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="4dp"
-                    android:textColor="@color/glass_ink"
-                    android:textSize="11sp" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+                    android:textColor="@color/glass_ink_dim"
+                    android:text="@string/onb_back"
+                    android:visibility="invisible" />
 
-        <!-- tiny.en -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/card_tiny"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:checkable="true"
-            app:cardBackgroundColor="@color/glass_card" app:strokeColor="@color/glass_card_brd"
-            app:cardCornerRadius="18dp"
-            app:cardElevation="0dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:padding="14dp">
-
-                <TextView
+                <Space
                     android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/onboarding_tiny_title"
-                    android:fontFamily="@font/space_grotesk"
-                    android:textFontWeight="600"
-                    android:textColor="@color/glass_ink"
-                    android:textSize="15sp" />
+                    android:layout_height="1dp"
+                    android:layout_weight="1" />
 
-                <TextView
-                    android:id="@+id/tiny_size"
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_next"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:background="@drawable/badge_background"
-                    android:fontFamily="@font/space_mono_regular"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="4dp"
-                    android:textColor="@color/glass_ink"
-                    android:textSize="11sp" />
+                    android:text="@string/onb_next" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <TextView
-            android:id="@+id/download_status"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:gravity="center"
-            android:fontFamily="@font/space_mono_regular"
-            android:textColor="@color/glass_ink_dim"
-            android:textSize="12sp"
-            android:visibility="gone" />
-
-        <com.google.android.material.progressindicator.LinearProgressIndicator
-            android:id="@+id/download_progress"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:visibility="gone"
-            app:indicatorColor="?attr/colorPrimary"
-            app:trackColor="?attr/colorSurfaceVariant" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/button_download"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="@string/onboarding_cta" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/button_more"
-            style="@style/Widget.Material3.Button.TextButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginTop="4dp"
-            android:textColor="@color/glass_ink_dim"
-            android:text="@string/onboarding_more" />
-    </LinearLayout>
+        </LinearLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>
 </ScrollView>

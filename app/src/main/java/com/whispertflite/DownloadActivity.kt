@@ -1,37 +1,63 @@
 package com.whispertflite
 
+import android.Manifest
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
+import android.provider.Settings
+import android.speech.RecognizerIntent
 import android.text.format.Formatter
 import android.view.View
+import android.view.inputmethod.InputMethodManager
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.material.card.MaterialCardView
+import androidx.core.content.ContextCompat
 import com.google.android.material.color.MaterialColors
 import com.whispertflite.databinding.ActivityDownloadBinding
+import com.whispertflite.models.DeviceProfile
 import com.whispertflite.models.ModelDownloadManager
 import com.whispertflite.models.ModelInfo
-import com.whispertflite.models.ModelRegistry
+import com.whispertflite.models.ModelRecommender
 import com.whispertflite.utils.ThemeUtils
+import java.util.Locale
 
 /**
- * First-run onboarding: pick one recommended model, download it inline, then enter the app.
- * Further models are managed in the catalog. All engines are offline.
+ * First-run guided wizard: Welcome → Get ready (mic + enable the keyboard) → Recommended model (chosen
+ * for this device) → First test → Done. Returning users (a model already present) skip straight into the
+ * app. Downloads reuse [ModelDownloadManager]; the recommendation reuses [DeviceProfile]/[ModelRecommender].
  */
 class DownloadActivity : AppCompatActivity(), ModelDownloadManager.Listener {
 
     private var binding: ActivityDownloadBinding? = null
     private lateinit var manager: ModelDownloadManager
 
-    // Recommended default: whisper.cpp base (f16, non-quantized). On this build's runtime-dispatched
-    // accelerated CPU backend (armv8.x dotprod/i8mm) it transcribes noticeably faster than TFLite
-    // (measured ~2.4x faster than TFLite at equal size), covers 99 languages, and stays silent on
-    // silence instead of hallucinating. Quantized (Q5) variants were removed — they recognise worse,
-    // especially on the RecognitionService provider path. (armv7/low-end devices fall back to the
-    // baseline CPU backend, where TFLite may match it.)
-    private val base by lazy { ModelRegistry.byId("gguf-base")!! }
-    private val small by lazy { ModelRegistry.byId("tflite-small-topworld")!! }
-    private val tiny by lazy { ModelRegistry.byId("tflite-tiny-en")!! }
-    private var selected: ModelInfo? = null
+    private lateinit var recommended: ModelInfo
+    private var step = 0
+    private var tried = false
+    private var downloading = false
+
+    private companion object {
+        const val STEP_COUNT = 5; const val STEP_SETUP = 1; const val STEP_MODEL = 2; const val STEP_TRY = 3
+    }
+
+    /** The Get-ready step must not be passed until the two things dictation actually needs are in place. */
+    private fun canAdvance() = !downloading && (step != STEP_SETUP || (micGranted() && imeEnabled()))
+
+    private val micRequest =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { refreshSetup() }
+
+    private val tryRun =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { res ->
+            tried = true
+            val text = res.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+            binding?.tryOk?.apply {
+                this.text = if (!text.isNullOrBlank())
+                    getString(R.string.onb_try_ok) + "\n“" + text.trim() + "”"
+                else getString(R.string.onb_try_ok)
+                visibility = View.VISIBLE
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,75 +70,144 @@ class DownloadActivity : AppCompatActivity(), ModelDownloadManager.Listener {
 
         manager = ModelDownloadManager.get(this)
 
-        // Aurora hero orb: tint from the selected palette (bright accent + deep container).
-        b.onboardingOrb.setColors(
-            MaterialColors.getColor(b.onboardingOrb, androidx.appcompat.R.attr.colorPrimary),
-            MaterialColors.getColor(b.onboardingOrb, com.google.android.material.R.attr.colorPrimaryContainer)
+        // Returning user with a model already installed: don't re-onboard.
+        if (manager.hasAnyModel()) {
+            startActivity(Intent(this, MainActivity::class.java))
+            finish()
+            return
+        }
+
+        val orbBright = MaterialColors.getColor(b.onboardingOrb, androidx.appcompat.R.attr.colorPrimary)
+        val orbDeep = MaterialColors.getColor(b.onboardingOrb, com.google.android.material.R.attr.colorPrimaryContainer)
+        b.onboardingOrb.setColors(orbBright, orbDeep)
+        b.doneOrb.setColors(orbBright, orbDeep)
+
+        val prof = DeviceProfile.detect(this)
+        val reco = ModelRecommender.recommend(prof, isRussianUi())
+        recommended = reco.model
+        b.modelName.text = reco.model.displayName
+        b.modelSize.text = Formatter.formatShortFileSize(this, reco.model.sizeBytes)
+        b.modelReason.text = getString(reco.reasonResId)
+        b.deviceSummary.text = getString(
+            R.string.onb_device_summary, prof.cores,
+            Formatter.formatShortFileSize(this, prof.ramMb * 1024 * 1024)
         )
 
-        b.baseSize.text = Formatter.formatShortFileSize(this, base.sizeBytes)
-        b.smallSize.text = Formatter.formatShortFileSize(this, small.sizeBytes)
-        b.tinySize.text = Formatter.formatShortFileSize(this, tiny.sizeBytes)
-
-        b.cardBase.setOnClickListener { select(base) }
-        b.cardSmall.setOnClickListener { select(small) }
-        b.cardTiny.setOnClickListener { select(tiny) }
-        select(base)
-
-        b.buttonDownload.setOnClickListener { startDownload() }
-        b.buttonMore.setOnClickListener {
+        b.btnNext.setOnClickListener { onNext() }
+        b.btnBack.setOnClickListener { goTo(step - 1) }
+        b.btnMic.setOnClickListener {
+            if (!micGranted()) micRequest.launch(Manifest.permission.RECORD_AUDIO)
+        }
+        b.btnKb.setOnClickListener { startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) }
+        b.btnChange.setOnClickListener {
             startActivity(Intent(this, com.whispertflite.models.ModelCatalogActivity::class.java))
         }
+        b.btnTry.setOnClickListener {
+            if (!micGranted()) { micRequest.launch(Manifest.permission.RECORD_AUDIO); return@setOnClickListener }
+            tryRun.launch(
+                Intent(this, WhisperRecognizeActivity::class.java)
+                    .setAction(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+            )
+        }
+
+        goTo(0)
     }
 
     override fun onResume() {
         super.onResume()
-        // Model already present (relaunch): skip onboarding.
-        if (manager.hasAnyModel()) {
-            startActivity(Intent(this, MainActivity::class.java))
-            finish()
+        refreshSetup()
+        refreshModel()
+    }
+
+    // Only listen while the wizard is actually running. On the returning-user path onCreate calls
+    // finish() early and `recommended` stays uninitialized, but the lifecycle still runs onStart — a
+    // download event then would hit `recommended.id` (lateinit) and crash. Guard on isFinishing.
+    override fun onStart() { super.onStart(); if (!isFinishing) manager.addListener(this) }
+    override fun onStop() { super.onStop(); manager.removeListener(this) }
+
+    // ----- step machine -----
+
+    private fun goTo(target: Int) {
+        val b = binding ?: return
+        step = target.coerceIn(0, STEP_COUNT - 1)
+        b.flipper.displayedChild = step
+        b.stepperText.text = getString(R.string.onb_step_of, step + 1, STEP_COUNT)
+        b.stepperBar.progress = (step + 1) * 100 / STEP_COUNT
+        b.btnBack.visibility = if (step == 0) View.INVISIBLE else View.VISIBLE
+        b.btnNext.isEnabled = canAdvance()
+        b.btnNext.text = when {
+            step == 0 -> getString(R.string.onb_welcome_start)
+            step == STEP_COUNT - 1 -> getString(R.string.onb_done_finish)
+            step == STEP_MODEL && !manager.hasAnyModel() -> getString(R.string.onb_model_download)
+            else -> getString(R.string.onb_next)
+        }
+        refreshSetup()
+        refreshModel()
+    }
+
+    private fun onNext() {
+        if (step == STEP_MODEL && !manager.hasAnyModel()) { startDownload(); return }
+        if (step == STEP_COUNT - 1) { finishWizard(); return }
+        goTo(step + 1)
+    }
+
+    private fun finishWizard() {
+        startActivity(Intent(this, MainActivity::class.java))
+        finish()
+    }
+
+    // ----- per-step refresh -----
+
+    private fun refreshSetup() {
+        val b = binding ?: return
+        markDone(b.btnMic, micGranted(), R.string.onb_grant)
+        markDone(b.btnKb, imeEnabled(), R.string.onb_enable)
+        b.btnNext.isEnabled = canAdvance()   // returning from the mic dialog / IME settings lifts the gate
+    }
+
+    private fun markDone(btn: com.google.android.material.button.MaterialButton, done: Boolean, actionRes: Int) {
+        btn.isEnabled = !done
+        btn.text = getString(if (done) R.string.onb_done_check else actionRes)
+    }
+
+    private fun refreshModel() {
+        val b = binding ?: return
+        if (step == STEP_MODEL && manager.hasAnyModel() && !downloading) {
+            b.downloadStatus.visibility = View.VISIBLE
+            b.downloadStatus.text = getString(R.string.onb_model_downloaded)
+            b.downloadProgress.visibility = View.GONE
+            b.btnNext.text = getString(R.string.onb_next)
         }
     }
 
-    override fun onStart() {
-        super.onStart()
-        manager.addListener(this)
-    }
-
-    override fun onStop() {
-        super.onStop()
-        manager.removeListener(this)
-    }
-
-    private fun select(model: ModelInfo) {
-        selected = model
-        highlight(binding!!.cardBase, model === base)
-        highlight(binding!!.cardSmall, model === small)
-        highlight(binding!!.cardTiny, model === tiny)
-    }
-
-    private fun highlight(card: MaterialCardView, on: Boolean) {
-        card.strokeWidth = if (on) (2 * resources.displayMetrics.density).toInt() else 0
-        card.strokeColor = MaterialColors.getColor(
-            card, androidx.appcompat.R.attr.colorPrimary
-        )
-    }
-
     private fun startDownload() {
-        val model = selected ?: return
         val b = binding ?: return
-        b.buttonDownload.isEnabled = false
+        downloading = true
+        b.btnNext.isEnabled = false
         b.downloadStatus.visibility = View.VISIBLE
         b.downloadProgress.visibility = View.VISIBLE
         b.downloadProgress.isIndeterminate = true
         b.downloadStatus.text = getString(R.string.catalog_starting)
-        manager.download(model)
+        manager.download(recommended)
     }
 
-    // --- ModelDownloadManager.Listener (main thread) ---
+    // ----- capability checks -----
+
+    private fun micGranted() =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+
+    private fun imeEnabled(): Boolean {
+        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager ?: return false
+        return imm.enabledInputMethodList.any { it.packageName == packageName }
+    }
+
+    private fun isRussianUi() =
+        resources.configuration.locales[0].language == "ru" || Locale.getDefault().language == "ru"
+
+    // ----- ModelDownloadManager.Listener (main thread) -----
 
     override fun onProgress(modelId: String, bytes: Long, total: Long, bytesPerSec: Long) {
-        if (modelId != selected?.id) return
+        if (modelId != recommended.id) return
         val b = binding ?: return
         if (total > 0) {
             b.downloadProgress.isIndeterminate = false
@@ -123,16 +218,18 @@ class DownloadActivity : AppCompatActivity(), ModelDownloadManager.Listener {
     }
 
     override fun onDone(modelId: String) {
-        if (modelId != selected?.id) return
-        startActivity(Intent(this, MainActivity::class.java))
-        finish()
+        if (modelId != recommended.id) return
+        downloading = false
+        goTo(STEP_TRY)
     }
 
     override fun onError(modelId: String, message: String) {
-        if (modelId != selected?.id) return
+        if (modelId != recommended.id) return
         val b = binding ?: return
+        downloading = false
         b.downloadProgress.visibility = View.GONE
-        b.buttonDownload.isEnabled = true
+        b.btnNext.isEnabled = true
+        b.downloadStatus.visibility = View.VISIBLE
         b.downloadStatus.text = getString(
             if (ModelDownloadManager.ERR_WIFI == message) R.string.catalog_err_wifi
             else R.string.catalog_err_download

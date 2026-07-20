@@ -166,6 +166,42 @@
     <string name="catalog_speed_mid">medium</string>
     <string name="catalog_speed_slow">slow</string>
     <string name="catalog_heavy">slow on phone</string>
+
+    <!-- Onboarding: model recommendation reasons (why THIS model for THIS device) -->
+    <string name="reco_gigaam_ru">Best Russian recognition for your device — fast, with punctuation.</string>
+    <string name="reco_parakeet">Most accurate, 25 languages — your device is powerful enough for it.</string>
+    <string name="reco_parakeet_mid">Fast and accurate, 25 languages — a good fit for your device.</string>
+    <string name="reco_base_safe">A light, reliable choice for your device — 99 languages, works everywhere.</string>
+    <string name="reco_badge">Recommended for your device</string>
+
+    <!-- Onboarding wizard -->
+    <string name="onb_step_of">Step %1$d of %2$d</string>
+    <string name="onb_back">Back</string>
+    <string name="onb_next">Next</string>
+    <string name="onb_welcome_title">Private voice input</string>
+    <string name="onb_welcome_body">Speak instead of typing — in any app. Everything is recognized right on your device; nothing is sent anywhere.</string>
+    <string name="onb_welcome_start">Get started</string>
+    <string name="onb_setup_title">Get ready</string>
+    <string name="onb_mic_title">Microphone access</string>
+    <string name="onb_mic_body">Needed to hear your voice. Audio never leaves the device.</string>
+    <string name="onb_grant">Grant</string>
+    <string name="onb_enable">Enable</string>
+    <string name="onb_done_check">Done</string>
+    <string name="onb_kb_title">Enable voice input</string>
+    <string name="onb_kb_body">Turn Whisper on in the system keyboard list so it can be invoked.</string>
+    <string name="onb_howto">How to use: on your normal keyboard, tap the microphone button — Whisper voice input opens. It doesn\'t replace your keyboard; it\'s there when you need to dictate.</string>
+    <string name="onb_model_title">Recognition model</string>
+    <string name="onb_model_change">Choose another model</string>
+    <string name="onb_model_downloaded">Downloaded ✓</string>
+    <string name="onb_model_download">Download and continue</string>
+    <string name="onb_device_summary">%1$d cores · %2$s RAM</string>
+    <string name="onb_try_title">First test</string>
+    <string name="onb_try_body">Let\'s make sure it works. Tap below, say a short phrase, and see it transcribed.</string>
+    <string name="onb_try_button">Try dictation</string>
+    <string name="onb_try_ok">It works! 🎉</string>
+    <string name="onb_done_title">All set!</string>
+    <string name="onb_done_body">You\'re ready. Tap the microphone on your keyboard anytime to dictate.</string>
+    <string name="onb_done_finish">Finish</string>
     <string name="catalog_progress">%1$.0f / %2$.0f MB · %3$.1f MB/s</string>
     <string name="catalog_starting">Starting…</string>
     <string name="catalog_storage_used">Storage used: %1$s</string>

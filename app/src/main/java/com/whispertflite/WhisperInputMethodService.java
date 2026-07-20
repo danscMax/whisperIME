@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.inputmethodservice.InputMethodService;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.InputType;
@@ -185,7 +186,26 @@ public class WhisperInputMethodService extends InputMethodService {
         }
         updateModelChip();
         applyState(UiState.IDLE);
+        configureImeWindow();
         maybeAutoStart();   // hands-free: start listening on every keyboard show when auto mode is on
+    }
+
+    /**
+     * Frosted glass: blur the host content behind the translucent dock so it reads as real glass
+     * (API 31+, and only when the system allows cross-window blur — battery saver / low-end devices
+     * disable it, and then the translucent frost alone still looks right). Best-effort; never throws.
+     */
+    private void configureImeWindow() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return;
+        android.app.Dialog dlg = getWindow();
+        android.view.Window w = dlg != null ? dlg.getWindow() : null;
+        if (w == null) return;
+        try {
+            android.view.WindowManager wm = getSystemService(android.view.WindowManager.class);
+            if (wm != null && wm.isCrossWindowBlurEnabled()) {
+                w.setBackgroundBlurRadius(Math.round(48 * getResources().getDisplayMetrics().density));
+            }
+        } catch (Throwable ignored) { }
     }
 
     /** Selected model from prefs, else the first downloaded one; null when nothing is usable. */
@@ -261,15 +281,10 @@ public class WhisperInputMethodService extends InputMethodService {
                     HapticFeedback.vibrate(mContext);
                     recordingStopped = true;
                     recordDurationMs = System.currentTimeMillis() - recordStartMs;
-                    if (modeAuto) {
-                        startTranscription();
-                        handler.post(() -> applyState(UiState.PROCESSING));
-                    } else {
-                        handler.post(() -> {
-                            if (mWhisper != null && mWhisper.isInProgress()) applyState(UiState.PROCESSING);
-                            else finalizeIme();
-                        });
-                    }
+                    // Both modes capture one buffer -> transcribe it once here (was: push-to-talk streamed
+                    // chunks incrementally, which is gone).
+                    startTranscription();
+                    handler.post(() -> applyState(UiState.PROCESSING));
                 } else if (message.equals(Recorder.MSG_RECORDING_ERROR)) {
                     HapticFeedback.vibrate(mContext);
                     handler.post(() -> {
@@ -468,17 +483,15 @@ public class WhisperInputMethodService extends InputMethodService {
         recordingStopped = false;
         imeDraft.setLength(0);
         lastLanguage = "";
+        mRecorder.setChunkListener(null);   // both modes capture ONE buffer; no chunk streaming
+        setTranscriptionParams();
         if (modeAuto) {
-            // Legacy hands-free path: single buffer, VAD auto-stop, then transcribe on DONE.
-            mRecorder.setChunkListener(null);
+            // Hands-free: single buffer with Silero VAD auto-stop, then transcribe on DONE.
             mRecorder.initVad();
-        } else {
-            // Manual path: unlimited chunked recording; each chunk streams into the field.
-            setTranscriptionParams();
-            mRecorder.setChunkListener(pcm -> {
-                if (mWhisper != null) mWhisper.enqueueChunk(pcm);
-            });
         }
+        // Push-to-talk (else): single buffer, NO VAD. The hold IS the speech signal, so we must not
+        // VAD-gate it (that dropped real audio to a false "no voice input") nor stream chunks (that
+        // split phrases mid-word). Record the whole hold, transcribe once on release.
         applyState(UiState.RECORDING);
         mRecorder.start();
     }

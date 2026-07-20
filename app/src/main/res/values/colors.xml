@@ -12,6 +12,8 @@
     <color name="glass_screen_alt">#EAF0FA</color>
     <color name="glass_scrim">#66000000</color>
     <color name="living_bg_mid">#EEF2FA</color>
+    <!-- IME voice-dock glass panel (translucent so the host app shows through). Light theme = airy frost. -->
+    <color name="ime_dock_glass">#E6EAF0FA</color>
     <color name="living_backdrop_glow">#2F7D73FF</color>
     <color name="living_glass_pressed">#E5FFFFFF</color>
     <color name="living_glass_focus">#A86DE7FF</color>

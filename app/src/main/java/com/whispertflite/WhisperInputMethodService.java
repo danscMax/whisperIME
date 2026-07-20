@@ -37,6 +37,7 @@ import com.whispertflite.asr.WhisperResult;
 import com.whispertflite.history.HistoryDb;
 import com.whispertflite.models.ModelInfo;
 import com.whispertflite.models.ModelRegistry;
+import com.whispertflite.models.ThermalMonitor;
 import com.whispertflite.ui.LivingSignalView;
 import com.whispertflite.utils.HapticFeedback;
 import com.whispertflite.utils.InputLang;
@@ -74,6 +75,9 @@ public class WhisperInputMethodService extends InputMethodService {
     private SharedPreferences sp = null;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private Context mContext;
+    // Live thermal signal for the active recording session (DeviceProfile is only a one-shot snapshot).
+    // API 29+; a no-op on 28. Registered on record start, unregistered on stop.
+    private ThermalMonitor thermalMonitor;
 
     // Read from / written to the SHARED "translate" pref so every surface honours the same choice (D9);
     // MainActivity writes the same key. Loaded on view init, persisted on toggle.
@@ -102,7 +106,7 @@ public class WhisperInputMethodService extends InputMethodService {
             return;
         }
         autoStartRetries = 0;
-        HapticFeedback.vibrate(mContext);
+        HapticFeedback.perform(rootView);
         startRecording();
     }
 
@@ -145,6 +149,9 @@ public class WhisperInputMethodService extends InputMethodService {
     public void onCreate() {
         mContext = this;
         autoStartRunnable = this::autoStartTick;
+        // Monitor exposes isThrottling() + logs on severe throttling; a Consumer hook could actively
+        // react (e.g. downgrade the decode) but we leave it null so the decode thread stays untouched.
+        thermalMonitor = new ThermalMonitor(this, null);
         super.onCreate();
     }
 
@@ -170,19 +177,28 @@ public class WhisperInputMethodService extends InputMethodService {
     private void deleteWordBackward() {
         InputConnection ic = getCurrentInputConnection();
         if (ic == null) { sendKey(KeyEvent.KEYCODE_DEL); return; }
-        CharSequence before = ic.getTextBeforeCursor(64, 0);
-        if (before == null || before.length() == 0) return;
-        int i = before.length();
-        while (i > 0 && Character.isWhitespace(before.charAt(i - 1))) i--;   // eat trailing spaces
-        while (i > 0 && !Character.isWhitespace(before.charAt(i - 1))) i--;  // then the word itself
-        int count = before.length() - i;
-        ic.deleteSurroundingText(count > 0 ? count : 1, 0);
+        // Batch the query + delete so the editor sees one atomic edit (fewer IPC/redraw passes, no
+        // duplicate TalkBack announcement). try/finally so endBatchEdit always balances beginBatchEdit,
+        // including the early return when there is nothing before the cursor.
+        ic.beginBatchEdit();
+        try {
+            CharSequence before = ic.getTextBeforeCursor(64, 0);
+            if (before == null || before.length() == 0) return;
+            int i = before.length();
+            while (i > 0 && Character.isWhitespace(before.charAt(i - 1))) i--;   // eat trailing spaces
+            while (i > 0 && !Character.isWhitespace(before.charAt(i - 1))) i--;  // then the word itself
+            int count = before.length() - i;
+            ic.deleteSurroundingText(count > 0 ? count : 1, 0);
+        } finally {
+            ic.endBatchEdit();
+        }
     }
 
     @Override
     public void onDestroy() {
         handler.removeCallbacks(autoStartRunnable);   // don't fire a pending auto-start after teardown (D12)
         timerHandler.removeCallbacks(timerTick);      // the 1s self-reposting timer must not outlive us (F13)
+        if (thermalMonitor != null) thermalMonitor.stop();   // drop the thermal listener if a session was live
         deinitModel();
         if (mRecorder != null) {
             mRecorder.shutdown();   // ends the worker thread; stop() alone left it parked (leak)
@@ -303,10 +319,14 @@ public class WhisperInputMethodService extends InputMethodService {
         mRecorder.setListener(new Recorder.RecorderListener() {
             @Override
             public void onUpdateReceived(String message) {
+                // Any message other than "still recording" ends the session — DONE, ERROR, or an error
+                // string from a caught mic exception / permission-denied. Drop the thermal listener on all
+                // of them (idempotent; safe off the worker thread), not just the two known-good constants.
+                if (!Recorder.MSG_RECORDING.equals(message)) thermalMonitor.stop();
                 if (message.equals(Recorder.MSG_RECORDING)) {
                     // Speech started; view already in RECORDING state.
                 } else if (message.equals(Recorder.MSG_RECORDING_DONE)) {
-                    HapticFeedback.vibrate(mContext);
+                    HapticFeedback.perform(rootView);
                     recordingStopped = true;
                     recordDurationMs = System.currentTimeMillis() - recordStartMs;
                     // Both modes capture one buffer -> transcribe it once here (was: push-to-talk streamed
@@ -314,7 +334,7 @@ public class WhisperInputMethodService extends InputMethodService {
                     startTranscription();
                     handler.post(() -> applyState(UiState.PROCESSING));
                 } else if (message.equals(Recorder.MSG_RECORDING_ERROR)) {
-                    HapticFeedback.vibrate(mContext);
+                    HapticFeedback.perform(rootView);
                     handler.post(() -> {
                         applyState(UiState.IDLE);
                         setImeStatus(R.string.error_no_input, true);
@@ -368,7 +388,7 @@ public class WhisperInputMethodService extends InputMethodService {
                     if (mRecorder != null && mRecorder.isInProgress()) {
                         mRecorder.stop();
                     } else if (checkRecordPermission() && mWhisper != null && !mWhisper.isInProgress()) {
-                        HapticFeedback.vibrate(this);
+                        HapticFeedback.perform(rootView);
                         startRecording();
                     }
                 }
@@ -377,7 +397,7 @@ public class WhisperInputMethodService extends InputMethodService {
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
                 if (checkRecordPermission()) {
                     if (mWhisper != null && !mWhisper.isInProgress()) {
-                        HapticFeedback.vibrate(this);
+                        HapticFeedback.perform(rootView);
                         startRecording();
                     } else {
                         handler.post(() -> {
@@ -513,6 +533,7 @@ public class WhisperInputMethodService extends InputMethodService {
 
 
     private void startRecording() {
+        thermalMonitor.start();   // watch for real throttling during this session; stopped on DONE/ERROR
         recordingStopped = false;
         imeDraft.setLength(0);
         draftComposed = false;
@@ -631,20 +652,27 @@ public class WhisperInputMethodService extends InputMethodService {
      *  dictation after switching to the IME is never lost. */
     private void appendAndCompose(String trimmed) {
         InputConnection ic = getCurrentInputConnection();
-        // Smart spacing (D5): one space between chunks; a leading space before the first chunk only when
-        // the existing field text doesn't already end in whitespace/opening punctuation.
-        char prev;
-        if (imeDraft.length() == 0) {
-            CharSequence before = ic != null ? ic.getTextBeforeCursor(1, 0) : null;
-            prev = (before != null && before.length() > 0) ? before.charAt(0) : ' ';
-        } else {
-            prev = imeDraft.charAt(imeDraft.length() - 1);
-        }
-        if (needsSpace(prev, trimmed)) imeDraft.append(' ');
-        imeDraft.append(trimmed);
-        if (ic != null) {
-            ic.setComposingText(imeDraft, 1);
-            draftComposed = true;
+        // Batch the read (getTextBeforeCursor) + write (setComposingText) into one atomic editor edit:
+        // fewer IPC/redraw passes and a single TalkBack announcement. Output is byte-for-byte identical.
+        if (ic != null) ic.beginBatchEdit();
+        try {
+            // Smart spacing (D5): one space between chunks; a leading space before the first chunk only when
+            // the existing field text doesn't already end in whitespace/opening punctuation.
+            char prev;
+            if (imeDraft.length() == 0) {
+                CharSequence before = ic != null ? ic.getTextBeforeCursor(1, 0) : null;
+                prev = (before != null && before.length() > 0) ? before.charAt(0) : ' ';
+            } else {
+                prev = imeDraft.charAt(imeDraft.length() - 1);
+            }
+            if (needsSpace(prev, trimmed)) imeDraft.append(' ');
+            imeDraft.append(trimmed);
+            if (ic != null) {
+                ic.setComposingText(imeDraft, 1);
+                draftComposed = true;
+            }
+        } finally {
+            if (ic != null) ic.endBatchEdit();
         }
     }
 

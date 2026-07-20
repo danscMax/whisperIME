@@ -38,6 +38,7 @@ import com.whispertflite.history.HistoryDb;
 import com.whispertflite.models.ModelDownloadManager;
 import com.whispertflite.models.ModelInfo;
 import com.whispertflite.models.ModelRegistry;
+import com.whispertflite.models.ThermalMonitor;
 import com.whispertflite.ui.LivingSignalView;
 import com.whispertflite.utils.HapticFeedback;
 import com.whispertflite.utils.InputLang;
@@ -63,6 +64,9 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     private Context mContext;
     private String langCode = "auto";
     private boolean modeAuto = false;   // false = push-to-talk (default), true = hands-free VAD
+    // Live thermal signal for the active recording session (DeviceProfile is only a one-shot snapshot).
+    // API 29+; a no-op on 28. Registered on record start, unregistered on stop.
+    private ThermalMonitor thermalMonitor;
 
     // ACTION_PROCESS_TEXT support: dictation replaces the selected text.
     private boolean processTextMode = false;
@@ -73,6 +77,10 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mContext = this;
+        // Monitor exposes isThrottling() + logs on severe throttling; a Consumer hook could actively
+        // react (e.g. downgrade the decode) but we leave it null so the decode thread stays untouched.
+        // Created before any early return so onDestroy can always safely stop() it.
+        thermalMonitor = new ThermalMonitor(this, null);
         ThemeUtils.applyPalette(this);
         ThemeUtils.applyGlass(this);
         sp = PreferenceManager.getDefaultSharedPreferences(this);
@@ -165,14 +173,17 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
         mRecorder = new Recorder(this);
         mRecorder.setRmsListener(rms -> runOnUiThread(() -> orb.pushLevel(rms)));
         mRecorder.setListener(message -> {
+            // Any message other than "still recording" ends the session — drop the thermal listener on all
+            // of them (DONE / ERROR / a caught mic exception / permission-denied), not just the two constants.
+            if (!Recorder.MSG_RECORDING.equals(message)) thermalMonitor.stop();
             if (message.equals(Recorder.MSG_RECORDING)) {
                 runOnUiThread(() -> setStatus(R.string.dialog_listening));
             } else if (message.equals(Recorder.MSG_RECORDING_DONE)) {
-                HapticFeedback.vibrate(mContext);
+                HapticFeedback.perform(orb);
                 runOnUiThread(this::stopMicPulse);
                 startTranscription();
             } else if (message.equals(Recorder.MSG_RECORDING_ERROR)) {
-                HapticFeedback.vibrate(mContext);
+                HapticFeedback.perform(orb);
                 runOnUiThread(() -> {
                     orb.setSignalState(LivingSignalView.SignalState.ERROR);
                     setStatus(modeAuto ? R.string.dialog_tap_to_talk : R.string.dialog_hold_to_speak);
@@ -243,7 +254,8 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
      * continuously until {@link Recorder#stop()} on release.
      */
     private void startListening(boolean auto) {
-        HapticFeedback.vibrate(this);
+        HapticFeedback.perform(orb);
+        thermalMonitor.start();   // watch for real throttling during this session; stopped on DONE/ERROR
         setStatus(R.string.dialog_listening);
         orb.setSignalState(LivingSignalView.SignalState.LISTENING);
         sendButton.setVisibility(View.GONE);      // clear any previous review before a new capture (D3)
@@ -460,6 +472,7 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     @Override
     public void onDestroy() {
         stopMicPulse();
+        if (thermalMonitor != null) thermalMonitor.stop();   // drop the thermal listener if a session was live
         deinitModel();
         if (blurListener != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             getWindowManager().removeCrossWindowBlurEnabledListener(blurListener);

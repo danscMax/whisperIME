@@ -1,50 +1,45 @@
 package com.whispertflite.ui;
 
 import android.content.Context;
-import android.graphics.SurfaceTexture;
-import android.opengl.GLES20;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.RadialGradient;
+import android.graphics.Shader;
 import android.provider.Settings;
 import android.util.AttributeSet;
-import android.util.Log;
-import android.view.TextureView;
+import android.view.View;
 
 import androidx.annotation.Nullable;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.FloatBuffer;
-
-import javax.microedition.khronos.egl.EGL10;
-import javax.microedition.khronos.egl.EGLConfig;
-import javax.microedition.khronos.egl.EGLContext;
-import javax.microedition.khronos.egl.EGLDisplay;
-import javax.microedition.khronos.egl.EGLSurface;
-
 /**
- * Living Signal — a GPU cloud orb shared by the app, provider sheet, IME and onboarding.
+ * Living Signal — a glowing "voice orb" drawn with the 2D Canvas (a {@link RadialGradient} sphere).
  *
- * <p>The surface is rendered with an OpenGL ES 2.0 fragment shader (domain-warped fBm clouds,
- * ported from the MIT-licensed orb-ui "cloud" theme by Alexander Chen) so it keeps full fidelity
- * on every device from minSdk 28 upward. State is carried by palette, flow speed and activity —
- * no blades, rays or spinners. The public API ({@link #setSignalState}, {@link #pushLevel},
- * {@link #setColors}, {@link #setIdle}) is unchanged so callers need no edits.
+ * <p>Deliberately Canvas, NOT a GLES {@code TextureView}: the GLES orb was fragile inside the IME
+ * window (quarter-circle from an EGL surface/viewport mismatch, blank after a surface detach, glow
+ * clipped at the view edge). A Canvas view owns none of that — the framework owns the buffer, there is
+ * no EGL/SurfaceTexture lifecycle, and the glow is drawn with padding so it never clips. State is
+ * carried by colour + energy: the orb breathes calmly when idle and flares/grows with the mic level
+ * pushed via {@link #pushLevel}. Public API is unchanged so callers need no edits.
  */
-public class LivingSignalView extends TextureView implements TextureView.SurfaceTextureListener {
+public class LivingSignalView extends View {
 
     public enum SignalState { READY, LISTENING, PROCESSING, RESULT, ERROR }
 
-    // --- state shared with the render thread (all reads/writes are of primitives / volatiles) ---
-    private volatile SignalState state = SignalState.READY;
-    private volatile float targetLevel;   // 0..1 smoothed towards on the render thread
-    private volatile boolean running;
-    // App accent as hue/saturation only, so the cloud recolours to the palette while keeping its
-    // airy brightness (blending toward raw palette colours would darken it, esp. in dark theme).
-    private volatile float accentHue;
-    private volatile boolean accentValid;
-    // Orb visual style: 0 = living cloud (default), 1 = plasma/plexus energy ball. Read from the
-    // "orbStyle" pref so every orb (main, IME, provider, onboarding) shares the user's choice.
-    private volatile int orbStyle;
-    private RenderThread thread;
+    private SignalState state = SignalState.READY;
+    private float targetLevel;   // 0..1, set from pushLevel (already amplified from raw RMS)
+    private float level;         // smoothed toward targetLevel
+    private float act;           // smoothed activity that drives size + brightness
+    private float phase;         // breathing phase
+
+    // Palette accent as HUE only; the orb keeps its own airy saturation/value so it reads as a bright
+    // glowing sphere (blending toward raw palette colours darkened it, exactly what went wrong first).
+    private float accentHue = 190f;
+    private boolean accentValid;
+    private final float[] hsvScratch = new float[3];
+
+    private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private long lastFrameNs;
+    private boolean reducedMotion;
 
     public LivingSignalView(Context context) {
         super(context);
@@ -57,15 +52,22 @@ public class LivingSignalView extends TextureView implements TextureView.Surface
     }
 
     private void init() {
-        setOpaque(false);                 // transparent orb composited over the glass card
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
-        setSurfaceTextureListener(this);
+        try {
+            reducedMotion = Settings.Global.getFloat(getContext().getContentResolver(),
+                    Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f;
+        } catch (Exception e) {
+            reducedMotion = false;
+        }
     }
 
     // ----- public API (unchanged) -----
 
     public void setSignalState(SignalState next) {
-        if (next != null) state = next;
+        if (next != null && next != state) {
+            state = next;
+            postInvalidateOnAnimation();
+        }
     }
 
     public SignalState getSignalState() {
@@ -73,380 +75,107 @@ public class LivingSignalView extends TextureView implements TextureView.Surface
     }
 
     public void pushLevel(float rms) {
-        targetLevel = LivingSignalDynamics.normalize(rms);
+        // Speech RMS from the recorder lands in a narrow ~0.02–0.08 band (measured on-device); subtract a
+        // silence floor and expand so the voice drives the full activity range and the orb visibly pulses
+        // with speech instead of sitting near its idle baseline.
+        targetLevel = clamp01(Math.max(0f, rms - 0.015f) * 16f);
+        postInvalidateOnAnimation();   // react even if the idle loop is paused (reduced motion)
     }
 
     public void setIdle() {
         targetLevel = 0f;
         state = SignalState.READY;
+        postInvalidateOnAnimation();
     }
 
-    /** Recolour the cloud toward the app palette's hue (colorPrimary) so the orb follows the palette. */
+    /** Adopt the app palette accent as HUE only so the orb recolours to the palette while staying bright. */
     public void setColors(int bright, int soft) {
-        float[] hsv = new float[3];
-        android.graphics.Color.colorToHSV(bright, hsv);
-        accentHue = hsv[0];
+        android.graphics.Color.colorToHSV(bright, hsvScratch);
+        accentHue = hsvScratch[0];
         accentValid = true;
+        postInvalidateOnAnimation();
     }
 
-    // ----- TextureView lifecycle -----
-
-    @Override
-    public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
-        orbStyle = androidx.preference.PreferenceManager
-                .getDefaultSharedPreferences(getContext()).getInt("orbStyle", 0);
-        running = true;
-        thread = new RenderThread(surface, width, height);
-        thread.start();
-    }
-
-    @Override
-    public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
-        if (thread != null) thread.resize(width, height);
-    }
-
-    @Override
-    public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
-        stopThread();
-        return true;
-    }
-
-    private void stopThread() {
-        running = false;
-        if (thread != null) {
-            thread.finish();
-            try { thread.join(400); } catch (InterruptedException ignored) { }
-            thread = null;
-        }
-    }
-
-    /**
-     * Re-arm rendering when the host activity resumes. Some devices (and some OEM window managers) keep
-     * the SurfaceTexture alive across an activity stop — onSurfaceTextureDestroyed is never called — but
-     * detach it from the compositor, so the still-running render thread swaps frames that go nowhere and
-     * the orb goes blank after e.g. a trip to Settings. Rebuilding the thread (and its EGL surface) on
-     * the still-live SurfaceTexture re-attaches it. Also re-reads the orb-style pref so a change made in
-     * Settings takes effect on return. No-op if the surface was properly destroyed (the callback path
-     * recreates it).
-     */
+    /** Kept for API compatibility — a Canvas view has no GL surface to re-arm; just kick a redraw. */
     public void resumeRender() {
-        orbStyle = androidx.preference.PreferenceManager
-                .getDefaultSharedPreferences(getContext()).getInt("orbStyle", 0);
-        if (!isAvailable() || thread == null) return;   // no live surface, or already torn down
-        SurfaceTexture st = getSurfaceTexture();
-        if (st == null) return;
-        stopThread();
-        running = true;
-        thread = new RenderThread(st, getWidth(), getHeight());
-        thread.start();
+        lastFrameNs = 0;
+        postInvalidateOnAnimation();
     }
 
     @Override
-    public void onSurfaceTextureUpdated(SurfaceTexture surface) { }
-
-    // ================= render thread =================
-
-    private final class RenderThread extends Thread {
-        private final SurfaceTexture surface;
-        private volatile int width, height;
-        private volatile boolean sizeDirty;
-
-        RenderThread(SurfaceTexture surface, int w, int h) {
-            this.surface = surface;
-            this.width = w;
-            this.height = h;
-        }
-
-        void resize(int w, int h) { width = w; height = h; sizeDirty = true; }
-        void finish() { running = false; }
-
-        // EGL
-        private EGL10 egl;
-        private EGLDisplay display;
-        private EGLContext context;
-        private EGLSurface eglSurface;
-        // GL program
-        private int program, uRes, uTime, uAct, uDeep, uUpper, uLower, uMilk;
-        // smoothed values
-        private float level, flow, act = 0.12f;
-        private final float[] tinted = new float[12];   // reused accent-blended palette (no per-frame alloc)
-        private final float[] hsv = new float[3];        // reused HSV scratch for hue recolouring
-
-        @Override
-        public void run() {
-            // On a partial init (e.g. eglCreateWindowSurface returns NO_SURFACE on a torn-down
-            // SurfaceTexture) the context was already created — releaseEGL() frees it so it can't leak
-            // a heavyweight GPU context on the app's most-instantiated view (F04). releaseEGL guards nulls.
-            if (!initEGL()) { releaseEGL(); return; }
-            initGL();
-            // Respect the system "Remove animations" setting: hold one static frame per state instead
-            // of the ~80 fps loop — saves battery and honours the a11y/reduced-motion preference.
-            boolean reduced;
-            try {
-                reduced = Settings.Global.getFloat(getContext().getContentResolver(),
-                        Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f;
-            } catch (Exception e) {
-                reduced = false;
-            }
-            SignalState lastStatic = null;
-            long last = System.nanoTime();
-            while (running) {
-                if (reduced) {
-                    if (state != lastStatic) {
-                        drawFrame(0.2f);   // one settled frame so activity reaches the state's target
-                        if (!egl.eglSwapBuffers(display, eglSurface)) break;
-                        lastStatic = state;
-                    }
-                    try { Thread.sleep(100); } catch (InterruptedException e) { break; }
-                    continue;
-                }
-                long now = System.nanoTime();
-                float dt = Math.min((now - last) / 1e9f, 0.05f);
-                last = now;
-                drawFrame(dt);
-                if (!egl.eglSwapBuffers(display, eglSurface)) break;
-                // The calm states (READY/ERROR) drift slowly, so 30 fps looks identical there and is
-                // far easier on the battery than running the full ~80 fps whenever the orb is on
-                // screen; only the active states need every frame. dt-based stepping keeps the motion
-                // speed the same either way.
-                boolean active = state == SignalState.LISTENING || state == SignalState.PROCESSING
-                        || state == SignalState.RESULT;
-                try { Thread.sleep(active ? 12 : 33); } catch (InterruptedException e) { break; }
-            }
-            releaseEGL();
-        }
-
-        private void drawFrame(float dt) {
-            if (sizeDirty) { GLES20.glViewport(0, 0, width, height); sizeDirty = false; }
-
-            // smooth audio level (fast attack, slow decay) + per-state flow speed / activity
-            level = LivingSignalDynamics.step(level, state == SignalState.LISTENING ? targetLevel : 0f);
-            float speed, targetAct, tint;
-            float[] pal;
-            switch (state) {
-                case LISTENING:  speed = 0.72f + level * 0.9f; targetAct = 0.20f + level * 0.75f; pal = PAL_CYAN; tint = 0.30f; break;
-                case PROCESSING: speed = 0.70f;                targetAct = 0.34f;                 pal = PAL_BLUE; tint = 0.24f; break;
-                case RESULT:     speed = 1.40f;                targetAct = 0.60f;                 pal = PAL_CYAN; tint = 0.30f; break;
-                case ERROR:      speed = 0.30f;                targetAct = 0.14f;                 pal = PAL_WARM; tint = 0.00f; break;  // stay semantic warm-red
-                case READY:
-                default:         speed = 0.26f;                targetAct = 0.12f;                 pal = PAL_COOL; tint = 0.32f; break;
-            }
-            // Take the palette's hue outright, keeping each cloud tone's airy saturation/value, so
-            // the orb reads as the chosen colour. A partial blend toward the hue looked like the
-            // palette barely mattered on cool seeds and swung through purple on the warm one, since a
-            // hue halfway between two colours is a third colour, not a hint of the target. ERROR keeps
-            // its semantic warm-red (gate is tint == 0).
-            if (accentValid && tint > 0f) {
-                for (int k = 0; k < 4; k++) {
-                    int col = android.graphics.Color.rgb(
-                            Math.round(pal[k * 3] * 255f), Math.round(pal[k * 3 + 1] * 255f), Math.round(pal[k * 3 + 2] * 255f));
-                    android.graphics.Color.colorToHSV(col, hsv);
-                    hsv[0] = accentHue;   // hue from the palette; keep the cloud's airy S/V
-                    int out = android.graphics.Color.HSVToColor(hsv);
-                    tinted[k * 3] = android.graphics.Color.red(out) / 255f;
-                    tinted[k * 3 + 1] = android.graphics.Color.green(out) / 255f;
-                    tinted[k * 3 + 2] = android.graphics.Color.blue(out) / 255f;
-                }
-                pal = tinted;
-            }
-            flow += dt * speed;
-            // Snappy so the orb pulses in time with the voice ("в такт"); the level itself already has
-            // a fast attack / slow decay, this just keeps u_activity close behind it.
-            act += (targetAct - act) * Math.min(1f, dt * 11f);
-
-            GLES20.glClearColor(0f, 0f, 0f, 0f);
-            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
-            GLES20.glUseProgram(program);
-            GLES20.glUniform2f(uRes, width, height);
-            GLES20.glUniform1f(uTime, flow);
-            GLES20.glUniform1f(uAct, act);
-            GLES20.glUniform3f(uDeep, pal[0], pal[1], pal[2]);
-            GLES20.glUniform3f(uUpper, pal[3], pal[4], pal[5]);
-            GLES20.glUniform3f(uLower, pal[6], pal[7], pal[8]);
-            GLES20.glUniform3f(uMilk, pal[9], pal[10], pal[11]);
-            GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6);
-        }
-
-        // ---- GL setup ----
-
-        private void initGL() {
-            GLES20.glDisable(GLES20.GL_DEPTH_TEST);
-            GLES20.glEnable(GLES20.GL_BLEND);
-            // premultiplied-alpha blending (matches setOpaque(false) compositing)
-            GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE_MINUS_SRC_ALPHA);
-
-            program = link(VERT, orbStyle == 1 ? FRAG_PLASMA : FRAG);
-            GLES20.glUseProgram(program);
-            uRes = GLES20.glGetUniformLocation(program, "u_resolution");
-            uTime = GLES20.glGetUniformLocation(program, "u_time");
-            uAct = GLES20.glGetUniformLocation(program, "u_activity");
-            uDeep = GLES20.glGetUniformLocation(program, "u_deep");
-            uUpper = GLES20.glGetUniformLocation(program, "u_upper");
-            uLower = GLES20.glGetUniformLocation(program, "u_lower");
-            uMilk = GLES20.glGetUniformLocation(program, "u_milk");
-
-            FloatBuffer quad = ByteBuffer.allocateDirect(12 * 4)
-                    .order(ByteOrder.nativeOrder()).asFloatBuffer();
-            quad.put(new float[]{-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1}).position(0);
-            int a = GLES20.glGetAttribLocation(program, "a_position");
-            GLES20.glEnableVertexAttribArray(a);
-            GLES20.glVertexAttribPointer(a, 2, GLES20.GL_FLOAT, false, 0, quad);
-            GLES20.glViewport(0, 0, width, height);
-        }
-
-        private int link(String vs, String fs) {
-            int v = compile(GLES20.GL_VERTEX_SHADER, vs);
-            int f = compile(GLES20.GL_FRAGMENT_SHADER, fs);
-            int p = GLES20.glCreateProgram();
-            GLES20.glAttachShader(p, v);
-            GLES20.glAttachShader(p, f);
-            GLES20.glLinkProgram(p);
-            // Check the status: a driver that rejects the program otherwise leaves a blank orb with
-            // no clue why. Log the info log so a field GPU issue is at least diagnosable.
-            int[] linked = new int[1];
-            GLES20.glGetProgramiv(p, GLES20.GL_LINK_STATUS, linked, 0);
-            if (linked[0] == 0) {
-                Log.e("LivingSignalView", "orb program link failed: " + GLES20.glGetProgramInfoLog(p));
-            }
-            return p;
-        }
-
-        private int compile(int type, String src) {
-            int s = GLES20.glCreateShader(type);
-            GLES20.glShaderSource(s, src);
-            GLES20.glCompileShader(s);
-            int[] ok = new int[1];
-            GLES20.glGetShaderiv(s, GLES20.GL_COMPILE_STATUS, ok, 0);
-            if (ok[0] == 0) {
-                Log.e("LivingSignalView", "orb shader compile failed (type " + type + "): "
-                        + GLES20.glGetShaderInfoLog(s));
-            }
-            return s;
-        }
-
-        // ---- EGL setup ----
-
-        private boolean initEGL() {
-            egl = (EGL10) EGLContext.getEGL();
-            display = egl.eglGetDisplay(EGL10.EGL_DEFAULT_DISPLAY);
-            egl.eglInitialize(display, new int[2]);
-            int[] cfg = {
-                    EGL10.EGL_RENDERABLE_TYPE, 4 /* EGL_OPENGL_ES2_BIT */,
-                    EGL10.EGL_RED_SIZE, 8, EGL10.EGL_GREEN_SIZE, 8,
-                    EGL10.EGL_BLUE_SIZE, 8, EGL10.EGL_ALPHA_SIZE, 8,
-                    EGL10.EGL_NONE
-            };
-            EGLConfig[] configs = new EGLConfig[1];
-            int[] num = new int[1];
-            if (!egl.eglChooseConfig(display, cfg, configs, 1, num) || num[0] == 0) return false;
-            EGLConfig config = configs[0];
-            context = egl.eglCreateContext(display, config, EGL10.EGL_NO_CONTEXT,
-                    new int[]{0x3098 /* EGL_CONTEXT_CLIENT_VERSION */, 2, EGL10.EGL_NONE});
-            eglSurface = egl.eglCreateWindowSurface(display, config, surface, null);
-            if (eglSurface == null || eglSurface == EGL10.EGL_NO_SURFACE) return false;
-            return egl.eglMakeCurrent(display, eglSurface, eglSurface, context);
-        }
-
-        private void releaseEGL() {
-            if (egl == null || display == null) return;
-            egl.eglMakeCurrent(display, EGL10.EGL_NO_SURFACE, EGL10.EGL_NO_SURFACE, EGL10.EGL_NO_CONTEXT);
-            if (eglSurface != null) egl.eglDestroySurface(display, eglSurface);
-            if (context != null) egl.eglDestroyContext(display, context);
-            // Deliberately NOT eglTerminate(display): EGL_DEFAULT_DISPLAY is process-global and shared by
-            // every orb (onboarding, main, provider, IME). Terminating it here tore down the display a
-            // *concurrently starting* orb had just initialised — e.g. onboarding finishes a download and
-            // launches MainActivity, whose orb inits EGL while this (onboarding) orb tears down and
-            // terminates the shared display — leaving the new orb blank or frozen. Destroying only this
-            // instance's surface+context is correct; the display stays initialised for the others.
-        }
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        lastFrameNs = 0;
+        postInvalidateOnAnimation();
     }
 
-    // palettes: deep, upper, lower, milk (RGB 0..1, 12 floats each)
-    private static final float[] PAL_COOL = {
-            0.36f,0.39f,0.985f, 0.48f,0.56f,0.985f, 0.72f,0.78f,0.975f, 0.89f,0.92f,0.995f };
-    private static final float[] PAL_CYAN = {
-            0.24f,0.56f,0.98f, 0.40f,0.72f,0.98f, 0.66f,0.87f,0.98f, 0.88f,0.97f,1.0f };
-    private static final float[] PAL_BLUE = {
-            0.30f,0.34f,0.99f, 0.40f,0.48f,0.99f, 0.60f,0.68f,0.985f, 0.86f,0.90f,1.0f };
-    private static final float[] PAL_WARM = {
-            0.95f,0.30f,0.28f, 0.98f,0.47f,0.38f, 0.99f,0.72f,0.63f, 1.0f,0.90f,0.84f };
+    // ----- rendering -----
 
-    private static final String VERT =
-            "attribute vec2 a_position;\n" +
-            "void main(){ gl_Position = vec4(a_position, 0.0, 1.0); }\n";
+    @Override
+    protected void onDraw(Canvas canvas) {
+        long now = System.nanoTime();
+        float dt = lastFrameNs == 0 ? 0.016f : Math.min((now - lastFrameNs) / 1e9f, 0.05f);
+        lastFrameNs = now;
 
-    // orb-ui cloud fragment shader (MIT, Alexander Chen) with palette exposed as uniforms,
-    // premultiplied-alpha output for TextureView compositing.
-    private static final String FRAG =
-            "precision highp float;\n" +
-            "uniform vec2 u_resolution; uniform float u_time, u_activity;\n" +
-            "uniform vec3 u_deep, u_upper, u_lower, u_milk;\n" +
-            "float hash(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }\n" +
-            "float noise(vec2 p){ vec2 i=floor(p),f=fract(p); vec2 u=f*f*(3.0-2.0*f);\n" +
-            "  return mix(mix(hash(i),hash(i+vec2(1.0,0.0)),u.x),mix(hash(i+vec2(0.0,1.0)),hash(i+vec2(1.0,1.0)),u.x),u.y); }\n" +
-            "float fbm(vec2 p){ float v=0.0,a=0.52; mat2 r=mat2(0.80,0.60,-0.60,0.80);\n" +
-            "  for(int o=0;o<5;o++){ v+=a*noise(p); p=r*p*1.92+vec2(9.7,4.3); a*=0.5; } return v; }\n" +
-            "void main(){\n" +
-            "  vec2 uv=gl_FragCoord.xy/u_resolution; vec2 c=uv-0.5; float rad=length(c);\n" +
-            "  float edge=1.0-smoothstep(0.488,0.5,rad); if(edge<=0.0) discard;\n" +
-            "  vec2 p=c*2.0; float t=u_time;\n" +
-            "  vec2 warp=vec2(fbm(p*1.02+vec2(t*0.34,-t*0.24)), fbm(p*1.08+vec2(-t*0.27,t*0.32)+vec2(6.7,2.9)));\n" +
-            "  vec2 curl=vec2(sin(p.y*2.4+t*0.68+warp.y*3.2), cos(p.x*2.1-t*0.61+warp.x*3.0));\n" +
-            "  vec2 w=p+(warp-0.5)*(1.18+u_activity*0.38)+curl*(0.035+u_activity*0.07);\n" +
-            "  float broad=fbm(w*0.92+vec2(t*0.14,-t*0.18));\n" +
-            "  float folded=fbm(w*1.66+vec2(-t*0.23,t*0.19)+5.2);\n" +
-            "  float field=mix(broad,folded,0.3+u_activity*0.14);\n" +
-            "  float hz=0.46+0.08*sin((uv.x+warp.x*0.2)*5.4+t*0.42)+0.16*(broad-0.5);\n" +
-            "  float up=smoothstep(hz-0.12,hz+0.08,uv.y);\n" +
-            "  float band=exp(-pow((uv.y-hz)*(5.2+u_activity*0.8),2.0));\n" +
-            "  float cl=smoothstep(0.24,0.79,field);\n" +
-            "  vec3 col=mix(u_lower,u_upper,up);\n" +
-            "  col=mix(col,u_deep,up*(0.14+smoothstep(0.42,0.78,folded)*0.5));\n" +
-            "  col=mix(col,u_milk,clamp(band*(0.42+cl*0.62),0.0,0.88));\n" +
-            "  col=mix(col,u_milk,(1.0-up)*smoothstep(0.58,0.9,broad)*0.18);\n" +
-            "  col+=(noise(gl_FragCoord.xy*0.64)-0.5)/255.0;\n" +
-            "  gl_FragColor=vec4(col*edge, edge);\n" +   // premultiplied alpha
-            "}\n";
+        boolean listening = state == SignalState.LISTENING;
+        boolean processing = state == SignalState.PROCESSING;
+        boolean result = state == SignalState.RESULT;
+        boolean error = state == SignalState.ERROR;
 
-    // Siri-style voice orb (selectable). One SOLID glowing sphere (no rings/gaps): a saturated accent
-    // body from u_lower (centre) to u_deep (rim) with a bright u_milk core, wrapped in a soft glow.
-    // Voice IS the animation: the radius, the core brightness, the glow bloom and an in-sync ripple all
-    // scale with u_activity (the smoothed mic level), so it grows and pulses in time with your voice and
-    // sits nearly still — only a faint breath — when you are silent. Colours come from the app palette.
-    private static final String FRAG_PLASMA =
-            "precision highp float;\n" +
-            "uniform vec2 u_resolution; uniform float u_time, u_activity;\n" +
-            "uniform vec3 u_deep, u_upper, u_lower, u_milk;\n" +
-            "float hash(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }\n" +
-            "float noise(vec2 p){ vec2 i=floor(p),f=fract(p); vec2 u=f*f*(3.0-2.0*f);\n" +
-            "  return mix(mix(hash(i),hash(i+vec2(1.0,0.0)),u.x),mix(hash(i+vec2(0.0,1.0)),hash(i+vec2(1.0,1.0)),u.x),u.y); }\n" +
-            "float fbm(vec2 p){ float s=0.0,a=0.55; mat2 r=mat2(0.80,0.60,-0.60,0.80);\n" +
-            "  for(int o=0;o<3;o++){ s+=a*noise(p); p=r*p*1.9+vec2(3.1,1.7); a*=0.5; } return s; }\n" +
-            "void main(){\n" +
-            "  vec2 uv=gl_FragCoord.xy/u_resolution; vec2 c=uv-0.5;\n" +
-            "  float aspect=u_resolution.x/max(u_resolution.y,1.0);\n" +
-            "  vec2 cc=vec2(c.x*aspect, c.y); float rad=length(cc); float ang=atan(cc.y,cc.x);\n" +
-            "  float t=u_time; float v=clamp(u_activity,0.0,1.0);\n" +
-            // radius grows with voice (obvious pulse), plus an in-sync ripple + faint edge wobble that
-            // both fade to ~0 when silent, so the orb is nearly still until you speak
-            "  float ripple=(0.010+v*0.035)*sin(t*3.2);\n" +
-            "  float wob=(fbm(vec2(cos(ang),sin(ang))*2.0+t*0.4)-0.5)*(0.006+v*0.035);\n" +
-            // clamp so the sphere + its glow never exceed the view: max R 0.36, glow tail ~0.12 -> < 0.5
-            "  float R=min(0.22+v*0.10+ripple+wob, 0.36);\n" +
-            // ONE solid sphere with a single soft edge — no gaps, no rim lines
-            "  float edge=0.045+v*0.025;\n" +
-            "  float disk=smoothstep(R+edge, R-edge, rad);\n" +
-            // saturated accent gradient (reads on the light glass): mid centre -> dark rim
-            "  float d=clamp(rad/max(R,0.001),0.0,1.0);\n" +
-            "  vec3 col=mix(u_lower,u_deep,smoothstep(0.15,1.0,d));\n" +
-            // bright core hotspot, brighter with voice
-            "  float core=(0.32+v*0.6)*exp(-pow(rad*3.4,2.0));\n" +
-            "  col=mix(col,u_milk,clamp(core,0.0,1.0));\n" +
-            // soft outer glow that blooms with voice (tight falloff so it stays inside the view)
-            "  float glow=exp(-pow(max(rad-R,0.0)*13.0,2.0))*(0.28+v*0.70);\n" +
-            "  col+=u_upper*glow*(1.0-disk);\n" +
-            "  float a=clamp(disk+glow*(0.5+v*0.5),0.0,1.0);\n" +
-            "  col+=(hash(gl_FragCoord.xy*0.7)-0.5)/255.0;\n" +
-            "  gl_FragColor=vec4(col*a, a);\n" +   // premultiplied alpha
-            "}\n";
+        // Mic level: fast attack / slow decay, and only while listening.
+        float lvlTarget = listening ? targetLevel : 0f;
+        level += (lvlTarget - level) * (lvlTarget > level ? 0.55f : 0.10f);
+
+        // Idle breathing — the gentle "just sitting there" motion; faster while active.
+        phase += dt * (listening || result ? 2.6f : 1.0f);
+        float breath = 0.5f + 0.5f * (float) Math.sin(phase);
+        float breathAmp = reducedMotion ? 0f : (listening ? 0.05f : 0.14f);
+
+        // Activity baseline per state + the voice level; this drives radius and brightness.
+        float base = processing ? 0.45f : result ? 0.60f : error ? 0.20f : 0.14f;
+        float voice = listening ? level : 0f;
+        float actTarget = clamp01(base + voice * 0.9f + breath * breathAmp);
+        act += (actTarget - act) * Math.min(1f, dt * 10f);
+
+        int w = getWidth(), h = getHeight();
+        float cx = w * 0.5f, cy = h * 0.5f;
+        // Padding (0.96) so the glow's soft edge always fades out INSIDE the view — never a hard clip.
+        float maxR = Math.min(w, h) * 0.5f * 0.96f;
+        float r = maxR * (0.60f + act * 0.32f);   // 0.60 (idle) .. 0.92 (loud) of the padded radius
+        if (r < 1f) { postInvalidateOnAnimation(); return; }
+
+        float hue = accentValid ? accentHue : 190f;
+        // Airy, bright colours (hue from palette; the orb owns its S/V) so it glows instead of muddying.
+        int body = error ? 0xFFE0564B : hsv(hue, 0.55f, 0.99f);                        // saturated bright body
+        int rim = error ? 0xFFC24A40 : hsv(hue, 0.72f, 0.92f);                         // deeper rim for the glow edge
+        int core = error ? 0xFFF7D2CE : hsv(hue, Math.max(0f, 0.16f - act * 0.12f), 1f); // near-white core, whiter on voice
+
+        // white-ish core -> saturated body -> soft rim -> transparent glow tail
+        int[] colors = {core, body, rim, setAlpha(rim, 0)};
+        float[] stops = {0f, 0.42f, 0.72f, 1f};
+        paint.setShader(new RadialGradient(cx, cy, r, colors, stops, Shader.TileMode.CLAMP));
+        canvas.drawCircle(cx, cy, r, paint);
+        paint.setShader(null);
+
+        // Keep animating while there is motion; honour reduced-motion by settling to a static idle frame.
+        boolean moving = level > 0.01f || Math.abs(act - actTarget) > 0.003f;
+        if (!reducedMotion || moving) postInvalidateOnAnimation();
+    }
+
+    // ----- helpers -----
+
+    private static float clamp01(float v) {
+        return v < 0f ? 0f : v > 1f ? 1f : v;
+    }
+
+    private static int setAlpha(int c, int a) {
+        return (c & 0x00FFFFFF) | (a << 24);
+    }
+
+    private int hsv(float h, float s, float v) {
+        hsvScratch[0] = h;
+        hsvScratch[1] = s;
+        hsvScratch[2] = v;
+        return android.graphics.Color.HSVToColor(hsvScratch);
+    }
 }

@@ -104,6 +104,20 @@ public final class ModelRegistry {
                         new ModelInfo.Asset(GIGAAM_CTC + "tokens.txt", "sherpa/gigaam-ctc-punct-v3/tokens.txt", 2007L)),
                 1, 2, 2));
 
+        // GigaAM RNN-T v3 (e2e, FP32) — full-precision "max quality" A/B option: SAME architecture as the
+        // int8 RNN-T above, no quantization (~886 MB encoder, slower inference). Same punctuating tokens, so
+        // it isolates the pure FP32-vs-int8 effect. Local files use the engine's expected names; the URLs
+        // point at Smirnov75's e2e RNN-T export. SherpaEngine detects the fp32 encoder.onnx.
+        final String GIGAAM_FP32 =
+                "https://huggingface.co/Smirnov75/GigaAM-v3-sherpa-onnx/resolve/main/";
+        m.add(ModelInfo.ofSherpa("sherpa-gigaam-fp32", "GigaAM · русский · FP32", "sherpa/gigaam-rnnt-e2e-fp32",
+                java.util.Arrays.asList(
+                        new ModelInfo.Asset(GIGAAM_FP32 + "gigaam_v3_e2e_rnnt_encoder.onnx", "sherpa/gigaam-rnnt-e2e-fp32/encoder.onnx", 885084898L),
+                        new ModelInfo.Asset(GIGAAM_FP32 + "gigaam_v3_e2e_rnnt_decoder.onnx", "sherpa/gigaam-rnnt-e2e-fp32/decoder.onnx", 4600058L),
+                        new ModelInfo.Asset(GIGAAM_FP32 + "gigaam_v3_e2e_rnnt_joint.onnx", "sherpa/gigaam-rnnt-e2e-fp32/joiner.onnx", 2712896L),
+                        new ModelInfo.Asset(GIGAAM_FP32 + "gigaam_v3_e2e_rnnt_tokens.txt", "sherpa/gigaam-rnnt-e2e-fp32/tokens.txt", 13353L)),
+                1, 1, 3));
+
         return m;
     }
 

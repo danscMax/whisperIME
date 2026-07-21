@@ -33,4 +33,26 @@ public class LivingSignalDynamicsTest {
         assertTrue(level < 0.001f);
         assertTrue(level >= 0f);
     }
+
+    @Test
+    public void blobRadiusStaysBoundedAndFinite() {
+        float baseR = 100f;
+        for (int i = 0; i < 360; i++) {
+            float a = (float) Math.toRadians(i);
+            // Worst-case amplitudes (full voice + burst) must not spike or produce NaN/Inf.
+            float r = LivingSignalDynamics.blobRadius(baseR, a, 3.1f, 2.0f, 0.08f, 0.24f, 8, 0.28f);
+            assertTrue(Float.isFinite(r));
+            assertTrue(r >= 0.45f * baseR);   // clamp floor (1 - 0.55)
+            assertTrue(r <= 1.70f * baseR);   // clamp ceiling (1 + 0.7)
+        }
+    }
+
+    @Test
+    public void blobRadiusIsAPlainCircleWhenUnmodulated() {
+        // Reduced-motion / idle-silence path: no wobble, petals, or burst -> exactly baseR at every angle.
+        for (int i = 0; i < 8; i++) {
+            float a = i * 0.7f;
+            assertEquals(50f, LivingSignalDynamics.blobRadius(50f, a, 9f, 4f, 0f, 0f, 8, 0f), 1e-4f);
+        }
+    }
 }

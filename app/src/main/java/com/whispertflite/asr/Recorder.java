@@ -74,64 +74,6 @@ public class Recorder {
         // Initialize and start the worker thread
         workerThread = new Thread(this::recordLoop);
         workerThread.start();
-
-        primeMic();   // vivo cold-start: warm the audio route so the FIRST real capture isn't silent
-    }
-
-    private static volatile boolean micPrimed = false;
-
-    /**
-     * One-time microphone warm-up. On this hardware (vivo) the FIRST {@link AudioRecord} session after
-     * the process starts comes back as pure silence for its ENTIRE lifetime — the VivoAudioPolicyProxy is
-     * still binding when it opens — while the very next session captures normally. Symptom: the first
-     * dictation right after a (re)install / engine switch "listens but hears nothing", the second works.
-     *
-     * <p>So burn a short throwaway capture here, once per process and off any recording path, so the cold
-     * session is this primer and the user's first real dictation is the warm second one. It runs at Recorder
-     * construction (IME view creation), well before auto-mode fires, so there is no overlap with a real
-     * capture. Failures (no permission yet, route busy) are swallowed and leave it un-primed to retry later.
-     */
-    private void primeMic() {
-        if (micPrimed) return;
-        micPrimed = true;   // claim up-front so only one primer ever runs, even across concurrent Recorders
-        if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.RECORD_AUDIO)
-                != PackageManager.PERMISSION_GRANTED) {
-            micPrimed = false;   // permission not granted yet — allow a later Recorder to prime
-            return;
-        }
-        new Thread(() -> {
-            AudioRecord warm = null;
-            try {
-                int channelConfig = AudioFormat.CHANNEL_IN_MONO;
-                int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
-                int sampleRate = 16000;
-                int bufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat);
-                if (bufferSize <= 0) { micPrimed = false; return; }
-                warm = new AudioRecord.Builder()
-                        .setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION)   // same source as the real capture
-                        .setAudioFormat(new AudioFormat.Builder()
-                                .setChannelMask(channelConfig)
-                                .setEncoding(audioFormat)
-                                .setSampleRate(sampleRate)
-                                .build())
-                        .setBufferSizeInBytes(bufferSize)
-                        .build();
-                if (warm.getState() != AudioRecord.STATE_INITIALIZED) { micPrimed = false; return; }
-                warm.startRecording();
-                byte[] buf = new byte[bufferSize];
-                long end = System.currentTimeMillis() + 500;   // read + discard ~0.5 s so the route actually engages
-                while (System.currentTimeMillis() < end) {
-                    if (warm.read(buf, 0, buf.length) <= 0) break;
-                }
-                warm.stop();
-                Log.d(TAG, "Mic primed (cold-start warm-up)");
-            } catch (Exception e) {
-                micPrimed = false;
-                Log.d(TAG, "Mic prime failed: " + e.getMessage());
-            } finally {
-                if (warm != null) { try { warm.release(); } catch (Exception ignored) {} }
-            }
-        }, "mic-prime").start();
     }
 
     public void setListener(RecorderListener listener) {

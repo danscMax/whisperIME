@@ -85,9 +85,9 @@ public final class ModelRegistry {
                 "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8/resolve/main/";
         m.add(ModelInfo.ofSherpa("sherpa-parakeet-v3", "Parakeet · 25 langs", "sherpa/parakeet-tdt-v3",
                 java.util.Arrays.asList(
-                        new ModelInfo.Asset(PARAKEET + "encoder.int8.onnx", "sherpa/parakeet-tdt-v3/encoder.int8.onnx", 652184281L),
-                        new ModelInfo.Asset(PARAKEET + "decoder.int8.onnx", "sherpa/parakeet-tdt-v3/decoder.int8.onnx", 11845275L),
-                        new ModelInfo.Asset(PARAKEET + "joiner.int8.onnx", "sherpa/parakeet-tdt-v3/joiner.int8.onnx", 6355277L),
+                        new ModelInfo.Asset(PARAKEET + "encoder.int8.onnx", "sherpa/parakeet-tdt-v3/encoder.int8.onnx", 652184281L, "acfc2b4456377e15d04f0243af540b7fe7c992f8d898d751cf134c3a55fd2247"),
+                        new ModelInfo.Asset(PARAKEET + "decoder.int8.onnx", "sherpa/parakeet-tdt-v3/decoder.int8.onnx", 11845275L, "179e50c43d1a9de79c8a24149a2f9bac6eb5981823f2a2ed88d655b24248db4e"),
+                        new ModelInfo.Asset(PARAKEET + "joiner.int8.onnx", "sherpa/parakeet-tdt-v3/joiner.int8.onnx", 6355277L, "3164c13fc2821009440d20fcb5fdc78bff28b4db2f8d0f0b329101719c0948b3"),
                         new ModelInfo.Asset(PARAKEET + "tokens.txt", "sherpa/parakeet-tdt-v3/tokens.txt", 93939L)),
                 25, 1, 3)
                 .withDisplayNameRes(R.string.model_parakeet));
@@ -99,9 +99,9 @@ public final class ModelRegistry {
                 "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-transducer-punct-giga-am-v3-russian-2025-12-16/resolve/main/";
         m.add(ModelInfo.ofSherpa("sherpa-gigaam-ru", "GigaAM · русский", "sherpa/gigaam-rnnt-punct-v3",
                 java.util.Arrays.asList(
-                        new ModelInfo.Asset(GIGAAM + "encoder.int8.onnx", "sherpa/gigaam-rnnt-punct-v3/encoder.int8.onnx", 224570820L),
-                        new ModelInfo.Asset(GIGAAM + "decoder.onnx", "sherpa/gigaam-rnnt-punct-v3/decoder.onnx", 4600132L),
-                        new ModelInfo.Asset(GIGAAM + "joiner.onnx", "sherpa/gigaam-rnnt-punct-v3/joiner.onnx", 2712896L),
+                        new ModelInfo.Asset(GIGAAM + "encoder.int8.onnx", "sherpa/gigaam-rnnt-punct-v3/encoder.int8.onnx", 224570820L, "369f35a71bf288d3b8e0391fabd8dba5f2314088d440bca474056b7b4b6e66bf"),
+                        new ModelInfo.Asset(GIGAAM + "decoder.onnx", "sherpa/gigaam-rnnt-punct-v3/decoder.onnx", 4600132L, "38fc7475443ea2a26f63211ca350f73ac50fff824ab7a3876ee2bd610c53bbc4"),
+                        new ModelInfo.Asset(GIGAAM + "joiner.onnx", "sherpa/gigaam-rnnt-punct-v3/joiner.onnx", 2712896L, "602ff7017a93311aad34df1437c8d7f49911353c13d6eae7a6ee7b041339465c"),
                         new ModelInfo.Asset(GIGAAM + "tokens.txt", "sherpa/gigaam-rnnt-punct-v3/tokens.txt", 13354L)),
                 1, 1, 3)
                 .withDisplayNameRes(R.string.model_gigaam_rnnt));
@@ -112,7 +112,7 @@ public final class ModelRegistry {
                 "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-ctc-punct-giga-am-v3-russian-2025-12-16/resolve/main/";
         m.add(ModelInfo.ofSherpa("sherpa-gigaam-ctc-ru", "GigaAM CTC · русский", "sherpa/gigaam-ctc-punct-v3",
                 java.util.Arrays.asList(
-                        new ModelInfo.Asset(GIGAAM_CTC + "model.int8.onnx", "sherpa/gigaam-ctc-punct-v3/model.int8.onnx", 224893661L),
+                        new ModelInfo.Asset(GIGAAM_CTC + "model.int8.onnx", "sherpa/gigaam-ctc-punct-v3/model.int8.onnx", 224893661L, "d5fea8df94263c285e54b21e5774b707c707192d3bdbeffd7b1eb07fb6743b35"),
                         new ModelInfo.Asset(GIGAAM_CTC + "tokens.txt", "sherpa/gigaam-ctc-punct-v3/tokens.txt", 2007L)),
                 1, 2, 2)
                 .withDisplayNameRes(R.string.model_gigaam_ctc));
@@ -125,9 +125,9 @@ public final class ModelRegistry {
                 "https://huggingface.co/Smirnov75/GigaAM-v3-sherpa-onnx/resolve/main/";
         m.add(ModelInfo.ofSherpa("sherpa-gigaam-fp32", "GigaAM · русский · FP32", "sherpa/gigaam-rnnt-e2e-fp32",
                 java.util.Arrays.asList(
-                        new ModelInfo.Asset(GIGAAM_FP32 + "gigaam_v3_e2e_rnnt_encoder.onnx", "sherpa/gigaam-rnnt-e2e-fp32/encoder.onnx", 885084898L),
-                        new ModelInfo.Asset(GIGAAM_FP32 + "gigaam_v3_e2e_rnnt_decoder.onnx", "sherpa/gigaam-rnnt-e2e-fp32/decoder.onnx", 4600058L),
-                        new ModelInfo.Asset(GIGAAM_FP32 + "gigaam_v3_e2e_rnnt_joint.onnx", "sherpa/gigaam-rnnt-e2e-fp32/joiner.onnx", 2712896L),
+                        new ModelInfo.Asset(GIGAAM_FP32 + "gigaam_v3_e2e_rnnt_encoder.onnx", "sherpa/gigaam-rnnt-e2e-fp32/encoder.onnx", 885084898L, "a1a1bd82caa1507cd9e1e85c7fabf09b96f139640f3f4694de380e3e8a376c6a"),
+                        new ModelInfo.Asset(GIGAAM_FP32 + "gigaam_v3_e2e_rnnt_decoder.onnx", "sherpa/gigaam-rnnt-e2e-fp32/decoder.onnx", 4600058L, "781971998e6a355d6a714f6932a30eab295e7ba0d14fd7e0f78c83b87e811860"),
+                        new ModelInfo.Asset(GIGAAM_FP32 + "gigaam_v3_e2e_rnnt_joint.onnx", "sherpa/gigaam-rnnt-e2e-fp32/joiner.onnx", 2712896L, "602ff7017a93311aad34df1437c8d7f49911353c13d6eae7a6ee7b041339465c"),
                         new ModelInfo.Asset(GIGAAM_FP32 + "gigaam_v3_e2e_rnnt_tokens.txt", "sherpa/gigaam-rnnt-e2e-fp32/tokens.txt", 13353L)),
                 1, 1, 3)
                 .withDisplayNameRes(R.string.model_gigaam_fp32));

@@ -26,6 +26,7 @@ import androidx.work.WorkManager;
 import com.whispertflite.R;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -343,12 +344,10 @@ public class ModelDownloadManager {
         if (parent != null) parent.mkdirs();
         File part = new File(target.getPath() + ".part");
 
-        // ponytail: hashed assets don't resume — a pre-existing .part can't feed the running SHA-256
-        // (no way to re-seed the digest with already-written bytes), so start clean and hash the whole
-        // file in one pass. Upgrade path: keep Range-resume and re-hash the finished .part if the extra
-        // download cost ever matters. Un-hashed assets keep the existing resume behaviour unchanged.
-        final MessageDigest digest = asset.sha256 != null ? newSha256() : null;
-        long existing = (digest == null && part.exists()) ? part.length() : 0L;
+        // Resume any prior .part via HTTP Range (works for every asset, hashed or not). The SHA-256
+        // integrity check runs as a final pass over the completed .part below, so hashing no longer
+        // conflicts with resuming — a resumed multi-range download still hashes the whole assembled file.
+        long existing = part.exists() ? part.length() : 0L;
         Log.d(TAG, "fetch " + asset.relPath + " from " + url);   // records which host (HF vs VPS mirror) served it
         HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
         conn.setConnectTimeout(10000);
@@ -387,7 +386,6 @@ public class ModelDownloadManager {
                     return false;
                 }
                 out.write(buf, 0, len);
-                if (digest != null) digest.update(buf, 0, len);
                 done += len;
                 windowBytes += len;
                 long now = System.currentTimeMillis();
@@ -425,11 +423,11 @@ public class ModelDownloadManager {
         }
 
         // Integrity gate: the byte-count floor above only catches truncation — a corrupt-but-plausibly
-        // sized file would still be promoted and load as garbage. When the asset ships a SHA-256, verify
-        // the running digest (covers the whole file since hashed assets never resume). On mismatch, drop
-        // the .part and throw so runWithRetry re-downloads from scratch; after retries are exhausted the
-        // download() catch surfaces ERR_CORRUPT. No hash => no check (behaves exactly as before).
-        if (digest != null && !hashMatches(asset.sha256, toHex(digest.digest()))) {
+        // sized file would still be promoted and load as garbage. When the asset ships a SHA-256, hash the
+        // completed .part in one final streaming pass (covers the whole file whether or not the download
+        // resumed). On mismatch, drop the .part and throw so runWithRetry re-downloads clean; after retries
+        // are exhausted the download() catch surfaces ERR_CORRUPT. No hash => no check (behaves as before).
+        if (asset.sha256 != null && !hashMatches(asset.sha256, sha256OfFile(part))) {
             //noinspection ResultOfMethodCallIgnored
             part.delete();
             throw new IOException(ERR_CORRUPT);
@@ -570,6 +568,17 @@ public class ModelDownloadManager {
         } catch (java.security.NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 unavailable", e);
         }
+    }
+
+    /** SHA-256 of a file's contents as lowercase hex, streamed so a multi-GB model never loads into memory. */
+    private static String sha256OfFile(File f) throws IOException {
+        MessageDigest digest = newSha256();
+        try (InputStream in = new FileInputStream(f)) {
+            byte[] buf = new byte[BUFFER];
+            int len;
+            while ((len = in.read(buf)) != -1) digest.update(buf, 0, len);
+        }
+        return toHex(digest.digest());
     }
 
     /** Lowercase hex encoding of a digest's bytes. */

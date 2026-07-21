@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import com.whispertflite.R;
 import com.whispertflite.models.ModelInfo.Engine;
 
 /** Static catalog of all selectable models plus the shared vocab files for TFLite. */
@@ -32,13 +33,16 @@ public final class ModelRegistry {
         // --- TFLite (byte sizes are the real file sizes from the legacy Downloader) ---
         m.add(ModelInfo.of("tflite-tiny-en", "tiny · English", Engine.TFLITE,
                 TFLITE_BASE + "whisper-tiny.en.tflite", 41486616L,
-                "whisper-tiny.en.tflite", 1, true, 1, 1));
+                "whisper-tiny.en.tflite", 1, true, 1, 1)
+                .withDisplayNameRes(R.string.model_tflite_tiny_en));
         m.add(ModelInfo.of("tflite-base-topworld", "base", Engine.TFLITE,
                 TFLITE_BASE + "whisper-base.TOP_WORLD.tflite", 107564368L,
-                "whisper-base.TOP_WORLD.tflite", 78, false, 1, 2));
+                "whisper-base.TOP_WORLD.tflite", 78, false, 1, 2)
+                .withDisplayNameRes(R.string.model_tflite_base));
         m.add(ModelInfo.of("tflite-small-topworld", "small", Engine.TFLITE,
                 TFLITE_BASE + "whisper-small.TOP_WORLD.tflite", 307408944L,
-                "whisper-small.TOP_WORLD.tflite", 78, false, 2, 2));
+                "whisper-small.TOP_WORLD.tflite", 78, false, 2, 2)
+                .withDisplayNameRes(R.string.model_tflite_small));
 
         // --- whisper.cpp GGUF (stored under gguf/). The Q5-quantized variants were removed (they
         // recognise noticeably worse). tiny/base/small are f16. medium/large-v3-turbo are Q8_0, NOT f16:
@@ -47,25 +51,31 @@ public final class ModelRegistry {
         // ~half the size (785/833 MB), and fits in RAM. ---
         m.add(ModelInfo.of("gguf-tiny", "tiny", Engine.WHISPER_CPP,
                 GGUF_BASE + "ggml-tiny.bin", 75L * MB,
-                "gguf/ggml-tiny.bin", 99, false, 1, 1));
+                "gguf/ggml-tiny.bin", 99, false, 1, 1)
+                .withDisplayNameRes(R.string.model_gguf_tiny));
         m.add(ModelInfo.of("gguf-base", "base", Engine.WHISPER_CPP,
                 GGUF_BASE + "ggml-base.bin", 142L * MB,
-                "gguf/ggml-base.bin", 99, false, 1, 2));
+                "gguf/ggml-base.bin", 99, false, 1, 2)
+                .withDisplayNameRes(R.string.model_gguf_base));
         m.add(ModelInfo.of("gguf-small", "small", Engine.WHISPER_CPP,
                 GGUF_BASE + "ggml-small.bin", 487601967L,
-                "gguf/ggml-small.bin", 99, false, 2, 2));
+                "gguf/ggml-small.bin", 99, false, 2, 2)
+                .withDisplayNameRes(R.string.model_gguf_small));
         m.add(ModelInfo.of("gguf-medium", "medium", Engine.WHISPER_CPP,
                 GGUF_BASE + "ggml-medium-q8_0.bin", 823369779L,
-                "gguf/ggml-medium-q8_0.bin", 99, false, 3, 3));
+                "gguf/ggml-medium-q8_0.bin", 99, false, 3, 3)
+                .withDisplayNameRes(R.string.model_gguf_medium));
         m.add(ModelInfo.of("gguf-large-v3-turbo", "large-v3-turbo", Engine.WHISPER_CPP,
                 GGUF_BASE + "ggml-large-v3-turbo-q8_0.bin", 874188075L,
-                "gguf/ggml-large-v3-turbo-q8_0.bin", 99, false, 2, 3));
+                "gguf/ggml-large-v3-turbo-q8_0.bin", 99, false, 2, 3)
+                .withDisplayNameRes(R.string.model_gguf_large));
 
         // Fuller-multilingual TFLite small (99 languages vs small.TOP_WORLD's 78) — drop-in with the
         // existing multilingual vocab; wider language coverage for the international audience.
         m.add(ModelInfo.of("tflite-small-full", "small · 99 langs", Engine.TFLITE,
                 TFLITE_BASE + "whisper-small.tflite", 387698368L,
-                "whisper-small.tflite", 99, false, 2, 2));
+                "whisper-small.tflite", 99, false, 2, 2)
+                .withDisplayNameRes(R.string.model_tflite_small_full));
 
         // --- sherpa-onnx (ONNX NeMo transducers): the modern engine. Multi-file (encoder/decoder/
         // joiner/tokens under a directory). ~25-40x faster than whisper.cpp on-device, with punctuation.
@@ -79,7 +89,8 @@ public final class ModelRegistry {
                         new ModelInfo.Asset(PARAKEET + "decoder.int8.onnx", "sherpa/parakeet-tdt-v3/decoder.int8.onnx", 11845275L),
                         new ModelInfo.Asset(PARAKEET + "joiner.int8.onnx", "sherpa/parakeet-tdt-v3/joiner.int8.onnx", 6355277L),
                         new ModelInfo.Asset(PARAKEET + "tokens.txt", "sherpa/parakeet-tdt-v3/tokens.txt", 93939L)),
-                25, 1, 3));
+                25, 1, 3)
+                .withDisplayNameRes(R.string.model_parakeet));
 
         // GigaAM RNN-T v3 (punct) — Russian, highest quality. The "-punct" export emits punctuation +
         // casing natively (plain transducers output raw lowercase); the enlarged tokens.txt is the punct
@@ -92,7 +103,8 @@ public final class ModelRegistry {
                         new ModelInfo.Asset(GIGAAM + "decoder.onnx", "sherpa/gigaam-rnnt-punct-v3/decoder.onnx", 4600132L),
                         new ModelInfo.Asset(GIGAAM + "joiner.onnx", "sherpa/gigaam-rnnt-punct-v3/joiner.onnx", 2712896L),
                         new ModelInfo.Asset(GIGAAM + "tokens.txt", "sherpa/gigaam-rnnt-punct-v3/tokens.txt", 13354L)),
-                1, 1, 3));
+                1, 1, 3)
+                .withDisplayNameRes(R.string.model_gigaam_rnnt));
 
         // GigaAM CTC v3 (punct) — Russian, single-file NeMo CTC (no encoder/decoder/joiner split): faster
         // than the transducer, now ALSO with punctuation + casing via the "-punct" export; ~225 MB total.
@@ -102,7 +114,8 @@ public final class ModelRegistry {
                 java.util.Arrays.asList(
                         new ModelInfo.Asset(GIGAAM_CTC + "model.int8.onnx", "sherpa/gigaam-ctc-punct-v3/model.int8.onnx", 224893661L),
                         new ModelInfo.Asset(GIGAAM_CTC + "tokens.txt", "sherpa/gigaam-ctc-punct-v3/tokens.txt", 2007L)),
-                1, 2, 2));
+                1, 2, 2)
+                .withDisplayNameRes(R.string.model_gigaam_ctc));
 
         // GigaAM RNN-T v3 (e2e, FP32) — full-precision "max quality" A/B option: SAME architecture as the
         // int8 RNN-T above, no quantization (~886 MB encoder, slower inference). Same punctuating tokens, so
@@ -116,7 +129,8 @@ public final class ModelRegistry {
                         new ModelInfo.Asset(GIGAAM_FP32 + "gigaam_v3_e2e_rnnt_decoder.onnx", "sherpa/gigaam-rnnt-e2e-fp32/decoder.onnx", 4600058L),
                         new ModelInfo.Asset(GIGAAM_FP32 + "gigaam_v3_e2e_rnnt_joint.onnx", "sherpa/gigaam-rnnt-e2e-fp32/joiner.onnx", 2712896L),
                         new ModelInfo.Asset(GIGAAM_FP32 + "gigaam_v3_e2e_rnnt_tokens.txt", "sherpa/gigaam-rnnt-e2e-fp32/tokens.txt", 13353L)),
-                1, 1, 3));
+                1, 1, 3)
+                .withDisplayNameRes(R.string.model_gigaam_fp32));
 
         return m;
     }

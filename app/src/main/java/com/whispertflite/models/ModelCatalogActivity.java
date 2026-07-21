@@ -194,7 +194,7 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
     private void confirmDelete(ModelInfo model) {
         activeDialog = new MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.catalog_delete)
-                .setMessage(getString(R.string.catalog_delete_confirm, model.displayName))
+                .setMessage(getString(R.string.catalog_delete_confirm, model.label(this)))
                 .setNegativeButton(android.R.string.cancel, null)
                 .setPositiveButton(R.string.catalog_delete, (d, w) -> {
                     manager.delete(model); // removes all files + prunes the sherpa dir
@@ -311,7 +311,7 @@ public class ModelCatalogActivity extends AppCompatActivity implements ModelDown
         private void bindModel(@NonNull VH h, ModelInfo m) {
             ModelState state = manager.stateOf(m);
 
-            h.name.setText(m.displayName);
+            h.name.setText(m.label(h.name.getContext()));
             h.meta.setText(meta(m));
 
             // The active model glows in the CHOSEN PALETTE accent (matching the toggles and orb); the

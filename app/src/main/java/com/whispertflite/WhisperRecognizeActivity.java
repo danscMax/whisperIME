@@ -298,7 +298,7 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
             // selected file reports only its name, so a plain equals never hit and the raw
             // "ggml-tiny-q5_1.bin" leaked into the chip.
             if (new File(m.filename).getName().equals(fileName)) {
-                modelLabel = m.displayName;
+                modelLabel = m.label(this);
                 break;
             }
         }

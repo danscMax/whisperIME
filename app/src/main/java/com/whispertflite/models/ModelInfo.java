@@ -44,6 +44,7 @@ public final class ModelInfo {
     public final int speedClass;      // 1 fast .. 3 slow
     public final int qualityClass;    // 1 basic .. 3 best
     public final boolean heavy;       // slow on a phone CPU (gguf medium/large-class)
+    public int displayNameRes;        // localized friendly-name string res; 0 = fall back to displayName
 
     /** Single-file model (TFLite / whisper.cpp). */
     public ModelInfo(String id, String displayName, Engine engine, String url, long sizeBytes,
@@ -91,6 +92,17 @@ public final class ModelInfo {
     /** True when the model is slow on a phone CPU (catalog UI shows a "slow on phone" chip). */
     public boolean isHeavy() {
         return heavy;
+    }
+
+    /** Attach a localized friendly-name string resource; returns this for chaining in the registry. */
+    public ModelInfo withDisplayNameRes(int resId) {
+        this.displayNameRes = resId;
+        return this;
+    }
+
+    /** Localized friendly name when {@link #displayNameRes} is set, else the raw {@link #displayName}. */
+    public String label(android.content.Context ctx) {
+        return displayNameRes != 0 ? ctx.getString(displayNameRes) : displayName;
     }
 
     /** Convenience factory to keep single-file registry entries compact. */

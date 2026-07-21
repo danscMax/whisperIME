@@ -85,7 +85,7 @@ class DownloadActivity : AppCompatActivity(), ModelDownloadManager.Listener {
         val prof = DeviceProfile.detect(this)
         val reco = ModelRecommender.recommend(prof, isRussianUi())
         recommended = reco.model
-        b.modelName.text = reco.model.displayName
+        b.modelName.text = reco.model.label(this)
         b.modelSize.text = Formatter.formatShortFileSize(this, reco.model.sizeBytes)
         b.modelReason.text = getString(reco.reasonResId)
         b.deviceSummary.text = getString(

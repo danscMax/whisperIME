@@ -6,17 +6,23 @@ import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.view.Gravity;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 
 import com.google.android.material.button.MaterialButtonToggleGroup;
+import com.google.android.material.color.MaterialColors;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.whispertflite.history.HistoryActivity;
+import com.whispertflite.models.ModelDownloadManager;
+import com.whispertflite.models.ModelInfo;
+import com.whispertflite.models.ModelRegistry;
 import com.whispertflite.utils.ThemeUtils;
 
 public class SettingsActivity extends AppCompatActivity {
@@ -64,6 +70,75 @@ public class SettingsActivity extends AppCompatActivity {
                         Uri.parse("https://github.com/danscMax/whisperIME"))));
 
         bindAdvancedToggle();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Rebuild on every resume so a model downloaded/selected in the catalog shows up on return.
+        buildModelList();
+    }
+
+    /** Inline picker of the models already present on device: tap a row to switch the active model
+     *  without leaving Settings. The "Models &amp; engines" row below stays the place to download new
+     *  ones. Mirrors the dynamic-view pattern of {@link #buildPaletteRow()}. */
+    private void buildModelList() {
+        LinearLayout list = findViewById(R.id.model_list);
+        list.removeAllViews();
+        ModelDownloadManager mgr = ModelDownloadManager.get(this);
+        String selected = sp.getString(ModelDownloadManager.PREF_SELECTED_MODEL, null);
+        boolean any = false;
+        for (ModelInfo m : ModelRegistry.all()) {
+            if (!mgr.isPresent(m)) continue; // only downloaded models are selectable here
+            any = true;
+            list.addView(modelRow(m, m.id.equals(selected), mgr));
+        }
+        if (!any) {
+            TextView empty = new TextView(this);
+            empty.setText(R.string.settings_model_none);
+            empty.setTextColor(ContextCompat.getColor(this, R.color.glass_ink_dim));
+            empty.setTextSize(13f);
+            list.addView(empty);
+        }
+    }
+
+    /** One selectable glass row; a leading check (tinted colorPrimary) marks the active model. */
+    private View modelRow(ModelInfo model, boolean active, ModelDownloadManager mgr) {
+        TextView row = new TextView(this);
+        row.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        row.setMinHeight(dp(48));
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setTextAppearance(resolveAttr(com.google.android.material.R.attr.textAppearanceBodyLarge));
+        row.setTextColor(ContextCompat.getColor(this, R.color.glass_ink)); // after appearance: keep our ink
+        row.setText(model.label(this));
+
+        // Always attach the check drawable so labels align; tint transparent when not active.
+        android.graphics.drawable.Drawable check = ContextCompat.getDrawable(this, R.drawable.ic_check_20dp);
+        if (check != null) {
+            check = check.mutate();
+            check.setTint(active
+                    ? MaterialColors.getColor(row, androidx.appcompat.R.attr.colorPrimary)
+                    : android.graphics.Color.TRANSPARENT);
+            row.setCompoundDrawablesRelativeWithIntrinsicBounds(check, null, null, null);
+            row.setCompoundDrawablePadding(dp(8));
+        }
+
+        row.setBackgroundResource(resolveAttr(android.R.attr.selectableItemBackground));
+        row.setClickable(true);
+        row.setFocusable(true);
+        row.setOnClickListener(v -> {
+            mgr.setSelected(model.id); // IME/recognizer re-read selectedModelId on next use
+            buildModelList();          // refresh the check markers
+        });
+        return row;
+    }
+
+    /** Resolve a theme attribute to its referenced resource id (e.g. a style or drawable). */
+    private int resolveAttr(int attr) {
+        android.util.TypedValue tv = new android.util.TypedValue();
+        getTheme().resolveAttribute(attr, tv, true);
+        return tv.resourceId;
     }
 
     /** Collapsible "Advanced" section: the header row shows/hides the power-settings block. */

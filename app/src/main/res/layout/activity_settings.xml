@@ -89,6 +89,23 @@
                     android:textColor="@color/glass_ink_dim"
                     android:textSize="13sp" />
 
+                <!-- Inline picker of models already on device — switch the active one without
+                     leaving Settings. Rows are built in SettingsActivity#buildModelList(). -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:text="@string/settings_model_pick"
+                    android:textColor="@color/glass_ink"
+                    android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+                <LinearLayout
+                    android:id="@+id/model_list"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:orientation="vertical" />
+
                 <TextView
                     android:id="@+id/row_models"
                     android:layout_width="match_parent"

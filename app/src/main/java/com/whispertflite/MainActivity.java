@@ -735,7 +735,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void updateContextPill() {
         if (btnContext == null || selectedModel == null) return;
-        String model = selectedModel.displayName.replace(" · TOP_WORLD", "");
+        String model = selectedModel.label(this);
         CharSequence language = spinnerLanguage != null ? spinnerLanguage.getText() : "";
         btnContext.setText(getString(R.string.main_context_format, model, language));
     }
@@ -744,9 +744,8 @@ public class MainActivity extends AppCompatActivity {
         String engine = m.engine == ModelInfo.Engine.SHERPA ? getString(R.string.main_badge_sherpa)
                 : m.engine == ModelInfo.Engine.WHISPER_CPP ? getString(R.string.catalog_engine_whispercpp)
                 : getString(R.string.main_badge_tflite);
-        // Drop the noisy "· TOP_WORLD" training-set tag from the spinner; the engine badge already
-        // shows the engine so the collapsed pill stays short (e.g. "base · TFLite").
-        String name = m.displayName.replace(" · TOP_WORLD", "");
+        // Friendly localized name + the engine badge (e.g. "Multilingual · fast (25 languages) · sherpa").
+        String name = m.label(this);
         return name + " · " + engine;
     }
 

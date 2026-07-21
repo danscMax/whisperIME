@@ -147,17 +147,17 @@
 
     <string name="catalog_title">Models</string>
     <string name="catalog_filter_all">All</string>
-    <string name="catalog_filter_tflite" translatable="false">TFLite</string>
-    <string name="catalog_filter_whispercpp" translatable="false">whisper.cpp</string>
-    <string name="catalog_engine_tflite" translatable="false">TFLite</string>
-    <string name="catalog_engine_whispercpp" translatable="false">whisper.cpp</string>
+    <string name="catalog_filter_tflite">Legacy TFLite</string>
+    <string name="catalog_filter_whispercpp">Legacy Whisper</string>
+    <string name="catalog_engine_tflite">Legacy TFLite</string>
+    <string name="catalog_engine_whispercpp">Legacy Whisper</string>
     <string name="catalog_engine_sherpa" translatable="false">sherpa-onnx</string>
     <string name="catalog_filter_sherpa" translatable="false">sherpa</string>
-    <string name="catalog_filter_parakeet" translatable="false">Parakeet</string>
-    <string name="catalog_filter_gigaam" translatable="false">GigaAM</string>
-    <string name="catalog_group_parakeet" translatable="false">Parakeet</string>
+    <string name="catalog_filter_parakeet">Multilingual</string>
+    <string name="catalog_filter_gigaam">Russian</string>
+    <string name="catalog_group_parakeet">Multilingual</string>
     <string name="catalog_group_parakeet_sub">multilingual · 25 languages</string>
-    <string name="catalog_group_gigaam" translatable="false">GigaAM</string>
+    <string name="catalog_group_gigaam">Russian</string>
     <string name="catalog_group_gigaam_sub">Russian only</string>
     <string name="catalog_active">Active</string>
     <string name="catalog_engine_soon">engine soon</string>
@@ -224,4 +224,23 @@
     <string name="tile_label">Voice input</string>
     <string name="widget_label">Sweet Whisper voice input</string>
     <string name="widget_mic_description">Start voice input</string>
+
+    <!-- Friendly, localized model names — shown wherever a model is listed -->
+    <string name="model_gigaam_rnnt">Russian · accurate (punctuation)</string>
+    <string name="model_gigaam_ctc">Russian · fast (punctuation)</string>
+    <string name="model_gigaam_fp32">Russian · max quality</string>
+    <string name="model_parakeet">Multilingual · fast (25 languages)</string>
+    <string name="model_gguf_tiny">Legacy · very fast (tiny)</string>
+    <string name="model_gguf_base">Legacy · fast (base)</string>
+    <string name="model_gguf_small">Legacy · medium (small)</string>
+    <string name="model_gguf_medium">Legacy · accurate, slow (medium)</string>
+    <string name="model_gguf_large">Legacy · very accurate, slow</string>
+    <string name="model_tflite_tiny_en">Legacy · English (light)</string>
+    <string name="model_tflite_base">Legacy TFLite · base</string>
+    <string name="model_tflite_small">Legacy TFLite · more accurate</string>
+    <string name="model_tflite_small_full">Legacy TFLite · 99 languages</string>
+
+    <!-- Inline model picker in Settings -->
+    <string name="settings_model_pick">Active model</string>
+    <string name="settings_model_none">No models downloaded yet — tap below to get one.</string>
 </resources>

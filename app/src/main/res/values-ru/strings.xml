@@ -151,6 +151,14 @@
     <string name="catalog_section_tflite_sub">совместимо</string>
     <string name="catalog_group_parakeet_sub">мультиязычный · 25 языков</string>
     <string name="catalog_group_gigaam_sub">только русский</string>
+    <string name="catalog_filter_parakeet">Мультиязычные</string>
+    <string name="catalog_filter_gigaam">Русский</string>
+    <string name="catalog_filter_tflite">Устаревшие TFLite</string>
+    <string name="catalog_filter_whispercpp">Устаревшие Whisper</string>
+    <string name="catalog_group_parakeet">Мультиязычные</string>
+    <string name="catalog_group_gigaam">Русский</string>
+    <string name="catalog_engine_tflite">Устаревшие TFLite</string>
+    <string name="catalog_engine_whispercpp">Устаревшие Whisper</string>
     <string name="catalog_speed_fast">быстро</string>
     <string name="catalog_speed_mid">средне</string>
     <string name="catalog_speed_slow">медленно</string>
@@ -210,4 +218,23 @@
     <string name="settings_orb">Стиль сигнала</string>
     <string name="settings_orb_cloud">Облако</string>
     <string name="settings_orb_plasma">Сияние</string>
+
+    <!-- Дружелюбные локализованные названия моделей — везде, где показывается модель -->
+    <string name="model_gigaam_rnnt">Русский · точная (с пунктуацией)</string>
+    <string name="model_gigaam_ctc">Русский · быстрая (с пунктуацией)</string>
+    <string name="model_gigaam_fp32">Русский · макс. качество</string>
+    <string name="model_parakeet">Мультиязычная · быстрая (25 языков)</string>
+    <string name="model_gguf_tiny">Устаревшая · очень быстрая (tiny)</string>
+    <string name="model_gguf_base">Устаревшая · быстрая (base)</string>
+    <string name="model_gguf_small">Устаревшая · средняя (small)</string>
+    <string name="model_gguf_medium">Устаревшая · точная, медленная (medium)</string>
+    <string name="model_gguf_large">Устаревшая · очень точная, медленная</string>
+    <string name="model_tflite_tiny_en">Устаревшая · английский (лёгкая)</string>
+    <string name="model_tflite_base">Устаревшая TFLite · базовая</string>
+    <string name="model_tflite_small">Устаревшая TFLite · точнее</string>
+    <string name="model_tflite_small_full">Устаревшая TFLite · 99 языков</string>
+
+    <!-- Встроенный выбор модели в настройках -->
+    <string name="settings_model_pick">Активная модель</string>
+    <string name="settings_model_none">Модели ещё не скачаны — нажмите ниже, чтобы выбрать.</string>
 </resources>

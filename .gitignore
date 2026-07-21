@@ -7,3 +7,6 @@
 plans/
 /build/
 app/libs/*.aar
+
+# Serena MCP tool cache
+.serena/

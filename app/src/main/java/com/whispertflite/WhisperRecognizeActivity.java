@@ -63,7 +63,8 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     private SharedPreferences sp = null;
     private Context mContext;
     private String langCode = "auto";
-    private boolean modeAuto = false;   // false = push-to-talk (default), true = hands-free VAD
+    private boolean modeAuto = false;   // hands-free VAD layer, separate from the manual gesture below
+    private String recordMode = "hold"; // manual gesture when auto is off: "hold" or "tap"
     // Live thermal signal for the active recording session (DeviceProfile is only a one-shot snapshot).
     // API 29+; a no-op on 28. Registered on record start, unregistered on stop.
     private ThermalMonitor thermalMonitor;
@@ -186,7 +187,9 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
                 HapticFeedback.perform(orb);
                 runOnUiThread(() -> {
                     orb.setSignalState(LivingSignalView.SignalState.ERROR);
-                    setStatus(modeAuto ? R.string.dialog_tap_to_talk : R.string.dialog_hold_to_speak);
+                    setStatus(modeAuto ? R.string.dialog_tap_to_talk
+                            : "tap".equals(recordMode) ? R.string.ime_hint_tap_start
+                            : R.string.dialog_hold_to_speak);
                     Toast.makeText(mContext, R.string.error_no_input, Toast.LENGTH_SHORT).show();
                 });
             }
@@ -195,6 +198,7 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
         // Two modes, same as the IME: push-to-talk (default) — hold the orb, release to transcribe;
         // auto (hands-free) — tap to start, VAD auto-stops on a speech pause, tap again to stop early.
         modeAuto = sp.getBoolean("imeModeAuto", false);
+        recordMode = sp.getString("recordMode", "hold");
         TextView modeToggle = findViewById(R.id.dialog_mode);
         modeToggle.setOnClickListener(v -> {
             if (mRecorder.isInProgress()) mRecorder.stop();
@@ -204,15 +208,15 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
         });
 
         btnRecord.setOnTouchListener((v, event) -> {
-            if (modeAuto) {
-                // Hands-free: tap toggles listening; VAD also auto-stops.
+            if (modeAuto || "tap".equals(recordMode)) {
+                // Tap to start, tap again to stop. Auto adds VAD auto-stop; the manual "tap" gesture has no VAD.
                 if (event.getAction() == MotionEvent.ACTION_DOWN) {
                     if (mRecorder.isInProgress()) mRecorder.stop();
-                    else if (mWhisper != null && !mWhisper.isInProgress()) startListening(true);
+                    else if (mWhisper != null && !mWhisper.isInProgress()) startListening(modeAuto);
                 }
                 return true;
             }
-            // Push-to-talk: record while held, transcribe on release.
+            // Hold (push-to-talk): record while held, transcribe on release.
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
                 if (mWhisper != null && !mWhisper.isInProgress()) startListening(false);
             } else if (event.getAction() == MotionEvent.ACTION_UP
@@ -238,12 +242,14 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     /** Reflect the current mode on the toggle pill and the idle prompt (when not busy). */
     private void applyModeUi() {
         TextView modeToggle = findViewById(R.id.dialog_mode);
-        modeToggle.setText(modeAuto ? R.string.dialog_mode_auto : R.string.dialog_mode_hold);
+        modeToggle.setText(R.string.dialog_mode_auto);   // the pill is the Auto (hands-free) toggle; warm bg = on
         modeToggle.setBackgroundResource(
                 modeAuto ? R.drawable.living_glass_pill_warm : R.drawable.living_glass_pill);
         if (mRecorder == null || !mRecorder.isInProgress()) {
             orb.setSignalState(LivingSignalView.SignalState.READY);
-            setStatus(modeAuto ? R.string.dialog_tap_to_talk : R.string.dialog_hold_to_speak);
+            setStatus(modeAuto ? R.string.dialog_tap_to_talk
+                    : "tap".equals(recordMode) ? R.string.ime_hint_tap_start
+                    : R.string.dialog_hold_to_speak);
             if (partialText != null) partialText.setVisibility(View.GONE);  // no dead band at idle
             if (sendButton != null) sendButton.setVisibility(View.GONE);
         }

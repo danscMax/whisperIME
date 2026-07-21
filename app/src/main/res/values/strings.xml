@@ -125,7 +125,11 @@
     <string name="dialog_listening">Listening…</string>
     <string name="dialog_processing">Processing…</string>
     <string name="ime_listening_release">Listening… release when done</string>
+    <string name="ime_hint_tap_start">Tap to start</string>
+    <string name="ime_listening_tap">Listening… tap to stop</string>
     <string name="record_mode_label">How to record</string>
+    <string name="settings_auto_mode">Auto (hands-free)</string>
+    <string name="settings_auto_mode_sub">Starts on its own and stops when you pause</string>
     <string name="dialog_loading">Loading model…</string>
     <string name="dialog_no_model_title">Model not downloaded yet</string>
     <string name="dialog_no_model_desc">Voice input needs a recognition model.</string>
@@ -135,7 +139,8 @@
     <string name="dialog_send">Insert</string>
     <string name="dialog_review">Check it, then send</string>
     <string name="dialog_mode_auto">Auto</string>
-    <string name="dialog_mode_hold">Push</string>
+    <string name="dialog_mode_hold">Hold</string>
+    <string name="dialog_mode_tap">Tap</string>
     <string name="dialog_mode_cd">Recognition mode: automatic or push-to-talk</string>
     <string name="switch_to_keyboard">Switch to keyboard</string>
 

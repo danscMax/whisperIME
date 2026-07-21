@@ -329,18 +329,18 @@
                         app:singleSelection="true">
 
                         <com.google.android.material.button.MaterialButton
-                            android:id="@+id/onb_mode_push"
+                            android:id="@+id/onb_mode_hold"
                             style="@style/Widget.Glass.SegButton"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/dialog_mode_hold" />
 
                         <com.google.android.material.button.MaterialButton
-                            android:id="@+id/onb_mode_auto"
+                            android:id="@+id/onb_mode_tap"
                             style="@style/Widget.Glass.SegButton"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="@string/dialog_mode_auto" />
+                            android:text="@string/dialog_mode_tap" />
                     </com.google.android.material.button.MaterialButtonToggleGroup>
 
                     <com.google.android.material.button.MaterialButton

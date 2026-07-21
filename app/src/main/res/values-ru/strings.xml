@@ -114,10 +114,15 @@
     <string name="dialog_listening">Слушаю…</string>
     <string name="dialog_processing">Обрабатываю…</string>
     <string name="ime_listening_release">Слушаю… отпустите, когда закончите</string>
+    <string name="ime_hint_tap_start">Нажмите, чтобы начать</string>
+    <string name="ime_listening_tap">Слушаю… нажмите, чтобы остановить</string>
     <string name="record_mode_label">Как записывать</string>
+    <string name="settings_auto_mode">Авто (руки свободны)</string>
+    <string name="settings_auto_mode_sub">Сам начинает и останавливается по тишине</string>
     <string name="dialog_loading">Загрузка модели…</string>
     <string name="dialog_mode_auto">Авто</string>
     <string name="dialog_mode_hold">Зажать</string>
+    <string name="dialog_mode_tap">Нажать</string>
     <string name="dialog_mode_cd">Режим распознавания: автоматический или по нажатию</string>
     <string name="switch_to_keyboard">Переключить на клавиатуру</string>
     <string name="dialog_no_model_title">Модель ещё не скачана</string>

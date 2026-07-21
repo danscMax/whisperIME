@@ -110,12 +110,13 @@ class DownloadActivity : AppCompatActivity(), ModelDownloadManager.Listener {
             )
         }
 
-        // Recording mode: hold (push-to-talk, default) vs auto (hands-free). Picked here, then the test
-        // above opens in that mode; shared with the IME + settings via the imeModeAuto pref.
+        // Recording gesture: hold (press-hold-release) vs tap (tap to start / tap to stop). Picked here,
+        // then the test above opens in that gesture; shared with the IME + settings via the recordMode pref.
+        // (Auto hands-free is a separate switch in Settings, not part of first-run.)
         val prefs = androidx.preference.PreferenceManager.getDefaultSharedPreferences(this)
-        b.onbModeGroup.check(if (prefs.getBoolean("imeModeAuto", false)) b.onbModeAuto.id else b.onbModePush.id)
+        b.onbModeGroup.check(if (prefs.getString("recordMode", "hold") == "tap") b.onbModeTap.id else b.onbModeHold.id)
         b.onbModeGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
-            if (isChecked) prefs.edit().putBoolean("imeModeAuto", checkedId == b.onbModeAuto.id).apply()
+            if (isChecked) prefs.edit().putString("recordMode", if (checkedId == b.onbModeTap.id) "tap" else "hold").apply()
         }
 
         goTo(0)

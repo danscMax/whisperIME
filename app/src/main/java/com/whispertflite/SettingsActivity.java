@@ -120,17 +120,18 @@ public class SettingsActivity extends AppCompatActivity {
         return g;
     }
 
-    /** Recording mode: push-to-talk (hold) vs hands-free auto (tap). Shared with the IME + recognizer via
-     *  the {@code imeModeAuto} pref. */
+    /** Recording controls: the manual GESTURE (hold vs tap, {@code recordMode}) and a separate hands-free
+     *  AUTO switch ({@code imeModeAuto}). Both shared with the IME + recognizer. */
     private void buildModeToggle() {
         MaterialButtonToggleGroup group = findViewById(R.id.record_mode_group);
-        group.check(sp.getBoolean("imeModeAuto", false) ? R.id.mode_auto : R.id.mode_push);
+        group.check("tap".equals(sp.getString("recordMode", "hold")) ? R.id.mode_tap : R.id.mode_hold);
         group.addOnButtonCheckedListener((g, id, isChecked) -> {
             if (!isChecked) return;
-            boolean auto = id == R.id.mode_auto;
-            if (auto == sp.getBoolean("imeModeAuto", false)) return;
-            sp.edit().putBoolean("imeModeAuto", auto).apply();
+            String m = id == R.id.mode_tap ? "tap" : "hold";
+            if (m.equals(sp.getString("recordMode", "hold"))) return;
+            sp.edit().putString("recordMode", m).apply();
         });
+        bindSwitch(R.id.switch_auto_mode, "imeModeAuto", false);   // hands-free VAD, separate from the gesture
     }
 
     private void buildOrbToggle() {

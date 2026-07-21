@@ -83,6 +83,9 @@ public class WhisperInputMethodService extends InputMethodService {
     // MainActivity writes the same key. Loaded on view init, persisted on toggle.
     private boolean translate = false;
     private boolean modeAuto = false;
+    // Manual gesture used when auto is OFF: "hold" (press, hold, release) or "tap" (tap to start, tap to
+    // stop). Auto (modeAuto) is a SEPARATE hands-free layer: it auto-starts and VAD-auto-stops on silence.
+    private String recordMode = "hold";
 
     // Auto (VAD) mode grabs the mic on open; delay it a beat so the strip isn't recording the room the
     // instant it appears (D12). Cancelled if the view goes away before it fires.
@@ -308,6 +311,7 @@ public class WhisperInputMethodService extends InputMethodService {
         btnMore.setColorFilter(accent);
 
         modeAuto = sp.getBoolean("imeModeAuto", false);
+        recordMode = sp.getString("recordMode", "hold");
         translate = sp.getBoolean("translate", false);   // shared with the app (D9)
         // Keys (keyboard-exit above all) stay visible in both modes: auto must never trap the user.
         checkRecordPermission();
@@ -382,8 +386,9 @@ public class WhisperInputMethodService extends InputMethodService {
         });
 
         btnRecord.setOnTouchListener((v, event) -> {
-            if (modeAuto) {
-                // Hands-free: tap to start listening, tap again to stop (VAD also auto-stops).
+            if (modeAuto || "tap".equals(recordMode)) {
+                // Tap to start, tap again to stop. Auto adds VAD auto-stop (+ auto-start on keyboard show);
+                // the manual "tap" gesture is the same toggle WITHOUT VAD (records until the second tap).
                 if (event.getAction() == MotionEvent.ACTION_DOWN) {
                     if (mRecorder != null && mRecorder.isInProgress()) {
                         mRecorder.stop();
@@ -741,7 +746,9 @@ public class WhisperInputMethodService extends InputMethodService {
         if (recording) {
             recordStartMs = System.currentTimeMillis();
             // PTT tells the user to release; hands-free just says "listening" (VAD ends it). Red = recording orb.
-            setStatus(getString(modeAuto ? R.string.dialog_listening : R.string.ime_listening_release),
+            setStatus(getString(modeAuto ? R.string.dialog_listening
+                            : "tap".equals(recordMode) ? R.string.ime_listening_tap
+                            : R.string.ime_listening_release),
                     R.color.glass_danger);
             if (tvTimer != null) { tvTimer.setText("0:00"); tvTimer.setVisibility(View.VISIBLE); }
             timerHandler.post(timerTick);
@@ -771,7 +778,9 @@ public class WhisperInputMethodService extends InputMethodService {
     private void updateModelChip() {
         // Idle: instruct for the active mode (hold vs tap) so the user always knows what to do — the
         // orb carries the live recording state and the strip is too narrow for a model name.
-        setStatus(getString(modeAuto ? R.string.dialog_tap_to_talk : R.string.dialog_hold_to_speak),
+        setStatus(getString(modeAuto ? R.string.dialog_tap_to_talk
+                        : "tap".equals(recordMode) ? R.string.ime_hint_tap_start
+                        : R.string.dialog_hold_to_speak),
                 R.color.glass_ink_dim);
     }
 

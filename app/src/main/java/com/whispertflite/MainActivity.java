@@ -171,7 +171,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (orb != null) orb.resumeRender();   // re-arm the orb surface (+ pick up a style change) on resume
+        if (orb != null) orb.resumeRender();   // re-arm the orb surface on resume
         // The catalog can add/remove/select models while we're backgrounded. Re-sync the spinner
         // and, if the active model changed, reload the engine — without this the main screen keeps
         // showing/using the old model until the app is restarted.

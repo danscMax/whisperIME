@@ -37,8 +37,11 @@ public final class LivingSignalDynamics {
      */
     public static float blobRadius(float baseR, float angle, float t, float spin,
                                    float wobAmp, float petalAmp, int lobes, float burstAmp) {
-        float wob = wobAmp * (float) (Math.sin(2 * angle + t * 0.7)
-                + 0.6 * Math.sin(3 * angle - t * 0.5 + 1.3));
+        // Higher-order harmonics (3/4/5) only: a low 2-lobe term pinches one side into a "deflated ball",
+        // so we skip it. These sum to gentle undulations spread all around the rim — organic, never dented.
+        float wob = wobAmp * (float) (Math.sin(3 * angle + t * 0.7)
+                + 0.7 * Math.sin(4 * angle - t * 0.9 + 1.3)
+                + 0.5 * Math.sin(5 * angle + t * 0.5 + 2.1));
         float petals = petalAmp * (float) Math.sin(lobes * angle + spin);
         float burst = burstAmp * (float) Math.sin(12 * angle - spin);
         float k = wob + petals + burst;

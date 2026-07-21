@@ -49,7 +49,6 @@ public class SettingsActivity extends AppCompatActivity {
 
         buildPaletteRow();
         buildThemeToggle();
-        buildOrbToggle();
         buildModeToggle();
 
         // simpleChinese is an existing upstream key; hapticFeedback/speakResult are new
@@ -217,17 +216,6 @@ public class SettingsActivity extends AppCompatActivity {
             String m = id == R.id.mode_auto ? "auto" : id == R.id.mode_tap ? "tap" : "hold";
             if (m.equals(sp.getString("recordMode", "hold"))) return;
             sp.edit().putString("recordMode", m).apply();
-        });
-    }
-
-    private void buildOrbToggle() {
-        MaterialButtonToggleGroup group = findViewById(R.id.orb_group);
-        group.check(sp.getInt("orbStyle", 0) == 1 ? R.id.orb_plasma : R.id.orb_cloud);
-        group.addOnButtonCheckedListener((g, id, isChecked) -> {
-            if (!isChecked) return;
-            int s = id == R.id.orb_plasma ? 1 : 0;
-            if (s == sp.getInt("orbStyle", 0)) return;
-            sp.edit().putInt("orbStyle", s).apply();   // orbs re-read this on resume (LivingSignalView.refreshStyle)
         });
     }
 

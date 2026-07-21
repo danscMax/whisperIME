@@ -277,39 +277,6 @@
                         android:layout_weight="1"
                         android:text="@string/settings_theme_dark" />
                 </com.google.android.material.button.MaterialButtonToggleGroup>
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:text="@string/settings_orb"
-                    android:textColor="@color/glass_ink"
-                    android:textAppearance="?attr/textAppearanceBodyMedium" />
-
-                <com.google.android.material.button.MaterialButtonToggleGroup
-                    android:id="@+id/orb_group"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    app:selectionRequired="true"
-                    app:singleSelection="true">
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/orb_cloud"
-                        style="@style/Widget.Glass.SegButton"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/settings_orb_cloud" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/orb_plasma"
-                        style="@style/Widget.Glass.SegButton"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/settings_orb_plasma" />
-                </com.google.android.material.button.MaterialButtonToggleGroup>
             </LinearLayout>
 
             <!-- 4. Advanced — collapsed by default; power settings live here -->

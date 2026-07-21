@@ -86,10 +86,11 @@ public class LivingSignalView extends View {
     }
 
     public void pushLevel(float rms) {
-        // Speech RMS from the recorder lands in a narrow ~0.02–0.08 band (measured on-device); subtract a
-        // silence floor and expand so the voice drives the full activity range and the orb visibly pulses
-        // with speech instead of sitting near its idle baseline.
-        targetLevel = clamp01(Math.max(0f, rms - 0.015f) * 16f);
+        // Calibrated to the ACTUAL vivo mic level (measured via logcat 2026-07-21): raw RMS peaks only
+        // ~0.005-0.007 for speech, so the value here (raw*4) lands ~0.003 (silence) .. ~0.027 (loud). Map that
+        // tiny band across 0..1 so the orb reacts strongly to normal speech instead of barely twitching.
+        // ponytail: fixed device-tuned gain; a running-peak AGC-relative normalize is the multi-device upgrade.
+        targetLevel = clamp01((rms - 0.003f) * 45f);
         postInvalidateOnAnimation();   // react even if the idle loop is paused (reduced motion)
     }
 
@@ -133,9 +134,10 @@ public class LivingSignalView extends View {
         boolean result = state == SignalState.RESULT;
         boolean error = state == SignalState.ERROR;
 
-        // Mic level: fast attack / slow decay, and only while listening.
+        // Mic level: fast attack / snappy decay, and only while listening — so it dips between words and the
+        // orb visibly beats per syllable instead of holding at one size.
         float lvlTarget = listening ? targetLevel : 0f;
-        level += (lvlTarget - level) * (lvlTarget > level ? 0.55f : 0.10f);
+        level += (lvlTarget - level) * (lvlTarget > level ? 0.60f : 0.18f);
 
         // Idle breathing — the gentle "just sitting there" motion; faster while active.
         phase += dt * (listening || result ? 2.6f : 1.0f);
@@ -161,12 +163,12 @@ public class LivingSignalView extends View {
         float cx = w * 0.5f, cy = h * 0.5f;
         // Padding (0.96) so the outer glow always fades INSIDE the view — never a hard clip.
         float maxR = Math.min(w, h) * 0.5f * 0.96f;
-        // Mean radius. It grows with the smoothed activity AND, while listening, directly with the live voice
-        // level, so the orb visibly swells in rhythm with loudness (fast attack / slow decay via `level`).
-        // Capped so the petal peaks never clip the view edge (peak ~= meanR * 1.21 at full voice; 0.78*1.21
-        // stays inside the 0.96 padding).
-        float voiceBoost = listening ? level * 0.18f : 0f;
-        float meanR = maxR * Math.min(0.78f, 0.52f + act * 0.16f + voiceBoost);
+        // Mean radius. While listening it grows STRONGLY and directly with the live voice level (fast attack
+        // via `level`), so the orb visibly swells and pulses in rhythm with loudness — the main way it reacts
+        // to speech. Idle ~0.49, typical speech ~0.78, loud ~0.90 of the padded radius. Capped so the gentle
+        // wobble never clips the edge (peak ~= meanR * 1.10).
+        float voiceBoost = listening ? level * 0.34f : 0f;
+        float meanR = maxR * Math.min(0.90f, 0.46f + act * 0.16f + voiceBoost);
         if (meanR < 1f) { postInvalidateOnAnimation(); return; }
 
         // Hue encodes STATE so the orb is glanceable: palette-tinted calm when idle, red while recording,
@@ -175,19 +177,18 @@ public class LivingSignalView extends View {
                 : processing ? 38f              // amber — transcribing
                 : result ? 140f                 // green — done
                 : accentValid ? accentHue : 200f;   // ready — palette accent (calm)
-        // Luminous, not merely saturated: a bright near-white core reads as a glowing light (harmonises with
-        // any background) while a moderate body keeps the hue. Over-saturating turned it into a colour block
-        // that clashed with the warm glass background.
-        int body = error ? 0xFFE0564B : hsv(hue, 0.72f, 1f);                                 // luminous coloured body
-        int rim = error ? 0xFFC24A40 : hsv(hue, 0.90f, 0.90f);                               // deeper rim -> soft glow edge
-        int core = error ? 0xFFF7D2CE : hsv(hue, Math.max(0.14f, 0.24f - act * 0.10f), 1f);  // bright near-white core
+        // Luminous, not merely saturated: a bright near-white core reads as a glowing light while a moderate
+        // body keeps the hue.
+        int body = error ? 0xFFE0564B : hsv(hue, 0.72f, 1f);                                 // coloured body
+        int rim = error ? 0xFFC24A40 : hsv(hue, 0.90f, 0.90f);                               // deeper glow edge
+        int core = error ? 0xFFF7D2CE : hsv(hue, Math.max(0.10f, 0.24f - act * 0.10f), 1f);  // bright near-white core
 
-        // Blob edge amplitudes — kept GENTLE so the silhouette is a softly-living orb, not a spiky inkblot.
-        // Idle breathes lightly; listening opens iris petals with the voice; processing keeps a tight
-        // rotating aperture; a fresh result flares a subtle burst.
-        float wobAmp = reducedMotion ? 0f : (listening ? 0.03f : processing ? 0.03f : 0.045f);
-        float petalAmp = reducedMotion ? 0f : (listening ? 0.04f + 0.12f * level : processing ? 0.04f : 0.015f);
-        int lobes = listening ? 8 : 6;
+        // Blob edge amplitudes — kept SMOOTH and near-round. The voice drives SIZE (below), NOT petals:
+        // strong iris lobes rotate into a faceted "diamond" star while recording, which reads worse than
+        // the old orb. Only a whisper of organic wobble here, plus a soft rotating processing aperture.
+        float wobAmp = reducedMotion ? 0f : 0.03f;   // gentle, constant organic ripple (higher harmonics, no pinch)
+        float petalAmp = reducedMotion ? 0f : (processing ? 0.045f : 0.015f);
+        int lobes = 6;
         float burstAmp = reducedMotion ? 0f : burst * 0.22f;
 
         // Sample the organic edge, tracking the outermost tip so the gradient reaches it (tips fade to
@@ -215,15 +216,16 @@ public class LivingSignalView extends View {
         // 1) Soft outer glow halo — a wide radial gradient fading into the background so the orb reads as a
         // glowing light, not a hard-edged sticker. Drawn as a circle (NOT clipped to the blob) so the glow
         // extends past the silhouette; capped at maxR so it never hits the view edge.
-        float haloR = Math.min(peakR * 1.7f, maxR);
+        float haloR = Math.min(peakR * 1.8f, maxR);   // slightly wider halo softens the transition into the bg
         paint.setShader(new RadialGradient(cx, cy, haloR,
-                new int[]{setAlpha(body, 90), setAlpha(body, 0)}, new float[]{0.22f, 1f}, Shader.TileMode.CLAMP));
+                new int[]{setAlpha(body, 85), setAlpha(body, 0)}, new float[]{0.20f, 1f}, Shader.TileMode.CLAMP));
         canvas.drawCircle(cx, cy, haloR, paint);
 
         // 2) The organic body: bright core -> body -> rim -> a soft transparent edge. The core stays solid
-        // (never breathes toward transparent) while the edge falls off gently, so the silhouette is soft.
+        // (never breathes toward transparent) while the edge falls off gently, so the silhouette never reads
+        // as a hard-edged ball.
         int[] colors = {core, body, rim, setAlpha(rim, 0)};
-        float[] stops = {0f, 0.42f, 0.78f, 1f};
+        float[] stops = {0f, 0.40f, 0.74f, 1f};
         paint.setShader(new RadialGradient(cx, cy, peakR, colors, stops, Shader.TileMode.CLAMP));
         canvas.drawPath(blobPath, paint);
         paint.setShader(null);

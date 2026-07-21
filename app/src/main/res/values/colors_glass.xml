@@ -61,6 +61,9 @@
     <color name="glass_bg_top">#D7EAF1</color>
     <color name="glass_bg_mid">#ECE6E4</color>
     <color name="glass_bg_bottom">#F8D6BB</color>
+    <!-- Calm, near-uniform glass field (neutral) — replaces the strong cool→warm sweep so any accent orb reads -->
+    <color name="glass_field_top">#EFEAE8</color>
+    <color name="glass_field_bottom">#E6E1DF</color>
     <color name="glass_bloom_cool">#7FC7E0F0</color>
     <color name="glass_bloom_cool_out">#00C7E0F0</color>
     <color name="glass_bloom_warm">#66FBBE8E</color>

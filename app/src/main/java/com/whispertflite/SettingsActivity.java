@@ -28,8 +28,10 @@ import com.whispertflite.utils.ThemeUtils;
 public class SettingsActivity extends AppCompatActivity {
 
     // Palette keys map to ThemeUtils overlays; dynamic (last) uses a gradient swatch.
-    private static final String[] PALETTE_KEYS = {"teal", "terracotta", "indigo", "forest", "dynamic"};
-    private static final int[] PALETTE_COLORS = {0xFF006A60, 0xFF9C4234, 0xFF3F51E0, 0xFF3E6837, 0};
+    private static final String[] PALETTE_KEYS = {"teal", "terracotta", "indigo", "forest", "amber", "mint",
+            "aqua", "sky", "violet", "plum", "rose", "dynamic"};
+    private static final int[] PALETTE_COLORS = {0xFF006A60, 0xFF9C4234, 0xFF3F51E0, 0xFF3E6837, 0xFFC0801E,
+            0xFF17A06B, 0xFF009CAE, 0xFF2E7FD6, 0xFF7A4FE0, 0xFFA63BB8, 0xFFD6457E, 0};
 
     private SharedPreferences sp;
 
@@ -156,11 +158,22 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void buildPaletteRow() {
-        LinearLayout row = findViewById(R.id.palette_row);
+        LinearLayout container = findViewById(R.id.palette_row);
+        container.removeAllViews();
         String current = sp.getString("palette", "teal");
         int size = dp(44);
         int margin = dp(8);
+        final int perRow = 6;                    // 12 swatches wrap to two rows so they fit a phone width
+        LinearLayout row = null;
         for (int i = 0; i < PALETTE_KEYS.length; i++) {
+            if (i % perRow == 0) {
+                row = new LinearLayout(this);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                if (i > 0) rlp.topMargin = margin;
+                container.addView(row, rlp);
+            }
             final String key = PALETTE_KEYS[i];
             View swatch = new View(this);
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(size, size);

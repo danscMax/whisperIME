@@ -54,4 +54,96 @@
     <color name="palette_forest_onSurfaceVariant">#424940</color>
     <color name="palette_forest_outline">#72796F</color>
 
+
+    <!-- Amber (seed #C0801E) -->
+    <color name="palette_amber_primary">#C0801E</color>
+    <color name="palette_amber_onPrimary">#FFFFFF</color>
+    <color name="palette_amber_primaryContainer">#F4E8D7</color>
+    <color name="palette_amber_onPrimaryContainer">#422A05</color>
+    <color name="palette_amber_secondaryContainer">#F0E8DB</color>
+    <color name="palette_amber_onSecondaryContainer">#3B2D16</color>
+    <color name="palette_amber_surface">#FCFBFA</color>
+    <color name="palette_amber_onSurface">#1F1D19</color>
+    <color name="palette_amber_surfaceVariant">#E8E4DE</color>
+    <color name="palette_amber_onSurfaceVariant">#534C41</color>
+    <color name="palette_amber_outline">#847A6C</color>
+
+    <!-- Mint (seed #17A06B) -->
+    <color name="palette_mint_primary">#17A06B</color>
+    <color name="palette_mint_onPrimary">#FFFFFF</color>
+    <color name="palette_mint_primaryContainer">#D7F4E9</color>
+    <color name="palette_mint_onPrimaryContainer">#05422B</color>
+    <color name="palette_mint_secondaryContainer">#DBF0E8</color>
+    <color name="palette_mint_onSecondaryContainer">#163B2D</color>
+    <color name="palette_mint_surface">#FAFCFB</color>
+    <color name="palette_mint_onSurface">#191F1D</color>
+    <color name="palette_mint_surfaceVariant">#DEE8E4</color>
+    <color name="palette_mint_onSurfaceVariant">#41534C</color>
+    <color name="palette_mint_outline">#6C847B</color>
+
+    <!-- Aqua (seed #009CAE) -->
+    <color name="palette_aqua_primary">#009CAE</color>
+    <color name="palette_aqua_onPrimary">#FFFFFF</color>
+    <color name="palette_aqua_primaryContainer">#D7F1F4</color>
+    <color name="palette_aqua_onPrimaryContainer">#053C42</color>
+    <color name="palette_aqua_secondaryContainer">#DBEEF0</color>
+    <color name="palette_aqua_onSecondaryContainer">#16373B</color>
+    <color name="palette_aqua_surface">#FAFCFC</color>
+    <color name="palette_aqua_onSurface">#191E1F</color>
+    <color name="palette_aqua_surfaceVariant">#DEE7E8</color>
+    <color name="palette_aqua_onSurfaceVariant">#415153</color>
+    <color name="palette_aqua_outline">#6C8184</color>
+
+    <!-- Sky (seed #2E7FD6) -->
+    <color name="palette_sky_primary">#2E7FD6</color>
+    <color name="palette_sky_onPrimary">#FFFFFF</color>
+    <color name="palette_sky_primaryContainer">#D7E5F4</color>
+    <color name="palette_sky_onPrimaryContainer">#052342</color>
+    <color name="palette_sky_secondaryContainer">#DBE5F0</color>
+    <color name="palette_sky_onSecondaryContainer">#16283B</color>
+    <color name="palette_sky_surface">#FAFBFC</color>
+    <color name="palette_sky_onSurface">#191C1F</color>
+    <color name="palette_sky_surfaceVariant">#DEE3E8</color>
+    <color name="palette_sky_onSurfaceVariant">#414A53</color>
+    <color name="palette_sky_outline">#6C7784</color>
+
+    <!-- Violet (seed #7A4FE0) -->
+    <color name="palette_violet_primary">#7A4FE0</color>
+    <color name="palette_violet_onPrimary">#FFFFFF</color>
+    <color name="palette_violet_primaryContainer">#E0D7F4</color>
+    <color name="palette_violet_onPrimaryContainer">#170542</color>
+    <color name="palette_violet_secondaryContainer">#E1DBF0</color>
+    <color name="palette_violet_onSecondaryContainer">#21163B</color>
+    <color name="palette_violet_surface">#FBFAFC</color>
+    <color name="palette_violet_onSurface">#1B191F</color>
+    <color name="palette_violet_surfaceVariant">#E1DEE8</color>
+    <color name="palette_violet_onSurfaceVariant">#464153</color>
+    <color name="palette_violet_outline">#736C84</color>
+
+    <!-- Plum (seed #A63BB8) -->
+    <color name="palette_plum_primary">#A63BB8</color>
+    <color name="palette_plum_onPrimary">#FFFFFF</color>
+    <color name="palette_plum_primaryContainer">#EFD7F4</color>
+    <color name="palette_plum_onPrimaryContainer">#390542</color>
+    <color name="palette_plum_secondaryContainer">#EDDBF0</color>
+    <color name="palette_plum_onSecondaryContainer">#36163B</color>
+    <color name="palette_plum_surface">#FCFAFC</color>
+    <color name="palette_plum_onSurface">#1E191F</color>
+    <color name="palette_plum_surfaceVariant">#E7DEE8</color>
+    <color name="palette_plum_onSurfaceVariant">#504153</color>
+    <color name="palette_plum_outline">#806C84</color>
+
+    <!-- Rose (seed #D6457E) -->
+    <color name="palette_rose_primary">#D6457E</color>
+    <color name="palette_rose_onPrimary">#FFFFFF</color>
+    <color name="palette_rose_primaryContainer">#F4D7E3</color>
+    <color name="palette_rose_onPrimaryContainer">#42051D</color>
+    <color name="palette_rose_secondaryContainer">#F0DBE3</color>
+    <color name="palette_rose_onSecondaryContainer">#3B1625</color>
+    <color name="palette_rose_surface">#FCFAFB</color>
+    <color name="palette_rose_onSurface">#1F191B</color>
+    <color name="palette_rose_surfaceVariant">#E8DEE2</color>
+    <color name="palette_rose_onSurfaceVariant">#534148</color>
+    <color name="palette_rose_outline">#846C75</color>
+
 </resources>

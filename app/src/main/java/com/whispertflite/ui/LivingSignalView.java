@@ -161,9 +161,12 @@ public class LivingSignalView extends View {
         float cx = w * 0.5f, cy = h * 0.5f;
         // Padding (0.96) so the outer glow always fades INSIDE the view — never a hard clip.
         float maxR = Math.min(w, h) * 0.5f * 0.96f;
-        // Mean radius; iris petals + burst extend OUTWARD from it into the padding, so the mean stays below
-        // maxR to leave room for the peaks. Kept large so the body reads as prominent as the old solid orb.
-        float meanR = maxR * (0.52f + act * 0.18f);
+        // Mean radius. It grows with the smoothed activity AND, while listening, directly with the live voice
+        // level, so the orb visibly swells in rhythm with loudness (fast attack / slow decay via `level`).
+        // Capped so the petal peaks never clip the view edge (peak ~= meanR * 1.21 at full voice; 0.78*1.21
+        // stays inside the 0.96 padding).
+        float voiceBoost = listening ? level * 0.18f : 0f;
+        float meanR = maxR * Math.min(0.78f, 0.52f + act * 0.16f + voiceBoost);
         if (meanR < 1f) { postInvalidateOnAnimation(); return; }
 
         // Hue encodes STATE so the orb is glanceable: palette-tinted calm when idle, red while recording,

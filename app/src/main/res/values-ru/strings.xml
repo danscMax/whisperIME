@@ -223,6 +223,8 @@
     <string name="settings_dl_mirror">Зеркало</string>
     <string name="settings_dl_hf">Только HF</string>
     <string name="settings_dl_source_hint">Авто: сначала Hugging Face, потом наше зеркало. Выберите «Зеркало», если Hugging Face заблокирован в вашем регионе.</string>
+    <string name="dl_notif_channel">Загрузка моделей</string>
+    <string name="dl_notif_title">Загрузка модели…</string>
 
     <!-- Дружелюбные локализованные названия моделей — везде, где показывается модель -->
     <string name="model_gigaam_rnnt">Русский · точная (с пунктуацией)</string>

@@ -40,6 +40,13 @@ public class ModelDownloadManager {
     public static final String ERR_WIFI = "wifi_required";
     public static final String ERR_CORRUPT = "corrupt_download";
 
+    private static final String HF_BASE = "https://huggingface.co/";
+    /** VPS mirror of the HuggingFace model tree (same {@code {org}/{repo}/resolve/main/{path}} tail), for
+     *  regions where huggingface.co is blocked. Static file server, no auth; shared with the desktop app. */
+    static final String MIRROR_BASE = "https://sweetwhisper.app/models";
+    /** Download source: "auto" (HF then mirror — default), "mirror" (mirror then HF), "hf" (HF only). */
+    public static final String PREF_DOWNLOAD_SOURCE = "modelDownloadSource";
+
     public interface Listener {
         void onProgress(String modelId, long bytes, long total, long bytesPerSec);
         void onDone(String modelId);
@@ -232,13 +239,67 @@ public class ModelDownloadManager {
     }
 
     /**
-     * Download ONE file to its own {@code .part}, verify, and promote it. Progress is reported against
-     * the whole model ({@code doneBase} = bytes from files already complete, {@code total} = model total).
-     * Returns true on success; false when stopped without a retry (user cancel / Wi-Fi lost / truncated)
-     * after emitting the reason. Throws IOException on retryable transport errors — runWithRetry re-runs
-     * runDownload, which skips files already promoted (per-file resume via {@code target.exists()}).
+     * Download one asset, trying each candidate host (HuggingFace / VPS mirror) in the configured order.
+     * On a transport failure the partial {@code .part} is deleted before moving to the next host, so a 206
+     * resume never splices bytes from two different hosts. Returns true when promoted, false when stopped
+     * without a retry (cancel / Wi-Fi lost / incomplete). Throws when EVERY host failed — runWithRetry then
+     * re-runs the whole download.
      */
     private boolean downloadAsset(String modelId, ModelInfo.Asset asset, long doneBase, long total)
+            throws IOException {
+        java.util.List<String> hosts = downloadCandidates(asset.url);
+        IOException last = null;
+        for (int i = 0; i < hosts.size(); i++) {
+            try {
+                return downloadAssetFrom(hosts.get(i), modelId, asset, doneBase, total);
+            } catch (IOException e) {
+                last = e;
+                boolean more = i + 1 < hosts.size();
+                Log.w(TAG, "download host failed (" + hosts.get(i) + "): " + e.getMessage()
+                        + (more ? " — trying next host" : " — no more hosts"));
+                if (more) deletePart(asset); // start the next host clean: never resume across hosts
+            }
+        }
+        if (last != null) throw last;
+        return false;
+    }
+
+    /** The VPS-mirror URL for a HuggingFace resolve URL (pure host+prefix swap, path tail preserved), or
+     *  null if the URL is not a mirrorable HF file URL (e.g. an API/search URL). */
+    static String mirrorUrl(String hfUrl) {
+        if (hfUrl == null || !hfUrl.startsWith(HF_BASE)) return null;
+        String tail = hfUrl.substring(HF_BASE.length());
+        if (!tail.contains("/resolve/")) return null; // only {org}/{repo}/resolve/... file URLs are mirrored
+        return MIRROR_BASE + "/" + tail;
+    }
+
+    /** Ordered download hosts for an asset, per the {@link #PREF_DOWNLOAD_SOURCE} preference. A non-mirrorable
+     *  URL or "hf" yields a single candidate. */
+    private java.util.List<String> downloadCandidates(String hfUrl) {
+        java.util.List<String> out = new java.util.ArrayList<>(2);
+        String source = prefs().getString(PREF_DOWNLOAD_SOURCE, "auto");
+        String mirror = mirrorUrl(hfUrl);
+        if (mirror == null || "hf".equals(source)) { out.add(hfUrl); return out; }
+        if ("mirror".equals(source)) { out.add(mirror); out.add(hfUrl); }  // RU / HF-blocked: mirror first
+        else { out.add(hfUrl); out.add(mirror); }                          // auto (default): HF, mirror fallback
+        return out;
+    }
+
+    /** Delete an asset's leftover {@code .part} (used between hosts so a resume never mixes hosts). */
+    private void deletePart(ModelInfo.Asset asset) {
+        File part = new File(new File(filesDir, asset.relPath).getPath() + ".part");
+        //noinspection ResultOfMethodCallIgnored
+        if (part.exists()) part.delete();
+    }
+
+    /**
+     * Download ONE file from ONE host to its own {@code .part}, verify, and promote it. Progress is reported
+     * against the whole model ({@code doneBase} = bytes from files already complete, {@code total} = model
+     * total). Returns true on success; false when stopped without a retry (user cancel / Wi-Fi lost /
+     * truncated) after emitting the reason. Throws IOException on transport errors (the host-fallback + the
+     * runWithRetry loops handle those).
+     */
+    private boolean downloadAssetFrom(String url, String modelId, ModelInfo.Asset asset, long doneBase, long total)
             throws IOException {
         File target = new File(filesDir, asset.relPath);
         File parent = target.getParentFile();
@@ -251,7 +312,8 @@ public class ModelDownloadManager {
         // download cost ever matters. Un-hashed assets keep the existing resume behaviour unchanged.
         final MessageDigest digest = asset.sha256 != null ? newSha256() : null;
         long existing = (digest == null && part.exists()) ? part.length() : 0L;
-        HttpURLConnection conn = (HttpURLConnection) new URL(asset.url).openConnection();
+        Log.d(TAG, "fetch " + asset.relPath + " from " + url);   // records which host (HF vs VPS mirror) served it
+        HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
         conn.setConnectTimeout(10000);
         conn.setReadTimeout(15000);
         if (existing > 0) conn.setRequestProperty("Range", "bytes=" + existing + "-");

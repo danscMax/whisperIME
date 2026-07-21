@@ -64,6 +64,13 @@
     <string name="settings_orb">Signal style</string>
     <string name="settings_orb_cloud">Cloud</string>
     <string name="settings_orb_plasma">Glow</string>
+    <string name="settings_dl_source">Model download source</string>
+    <string name="settings_dl_auto">Auto</string>
+    <string name="settings_dl_mirror">Mirror</string>
+    <string name="settings_dl_hf">HF only</string>
+    <string name="settings_dl_source_hint">Auto tries Hugging Face, then our mirror. Pick Mirror if Hugging Face is blocked in your region.</string>
+    <string name="dl_notif_channel">Model downloads</string>
+    <string name="dl_notif_title">Downloading model…</string>
     <string name="settings_recognition">Recognition</string>
     <string name="settings_haptic">Haptic feedback</string>
     <string name="settings_tts">Speak result</string>

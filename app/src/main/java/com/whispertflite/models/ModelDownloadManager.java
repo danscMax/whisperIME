@@ -1,15 +1,29 @@
 package com.whispertflite.models;
 
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.pm.ServiceInfo;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.preference.PreferenceManager;
+import androidx.work.Data;
+import androidx.work.ExistingWorkPolicy;
+import androidx.work.ForegroundInfo;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkManager;
+
+import com.whispertflite.R;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -21,8 +35,6 @@ import java.net.URL;
 import java.security.MessageDigest;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * Background download manager for {@link ModelInfo}. Process-scoped singleton:
@@ -34,11 +46,19 @@ public class ModelDownloadManager {
     private static final String TAG = "ModelDownloadManager";
     private static final int BUFFER = 8 * 1024;
     private static final long PROGRESS_INTERVAL_MS = 250; // <=4 callbacks/sec
-    private static final int MAX_PARALLEL = 2;
+    private static final String NOTIF_CHANNEL = "model_downloads";
+    private static final int NOTIF_ID_BASE = 4200;
     public static final String PREF_SELECTED_MODEL = "selectedModelId";
     public static final String PREF_WIFI_ONLY = "wifiOnlyDownloads";
     public static final String ERR_WIFI = "wifi_required";
     public static final String ERR_CORRUPT = "corrupt_download";
+
+    private static final String HF_BASE = "https://huggingface.co/";
+    /** VPS mirror of the HuggingFace model tree (same {@code {org}/{repo}/resolve/main/{path}} tail), for
+     *  regions where huggingface.co is blocked. Static file server, no auth; shared with the desktop app. */
+    static final String MIRROR_BASE = "https://sweetwhisper.app/models";
+    /** Download source: "auto" (HF then mirror — default), "mirror" (mirror then HF), "hf" (HF only). */
+    public static final String PREF_DOWNLOAD_SOURCE = "modelDownloadSource";
 
     public interface Listener {
         void onProgress(String modelId, long bytes, long total, long bytesPerSec);
@@ -50,7 +70,6 @@ public class ModelDownloadManager {
 
     private final Context appContext;
     private final File filesDir;
-    private final ExecutorService pool = Executors.newFixedThreadPool(MAX_PARALLEL);
     private final Handler main = new Handler(Looper.getMainLooper());
     private final CopyOnWriteArrayList<Listener> listeners = new CopyOnWriteArrayList<>();
     // modelId -> cancel flag for the in-flight download
@@ -151,35 +170,60 @@ public class ModelDownloadManager {
         return ModelState.AVAILABLE;
     }
 
-    /** Start (or resume) a download. No-op if already downloading. */
+    /**
+     * Start (or resume) a download. Enqueued as a unique WorkManager job so it survives process death
+     * (aggressive OEMs kill a backgrounded app mid-transfer) and shows a foreground progress notification.
+     * No-op if already queued/running for this model.
+     */
     public void download(final ModelInfo model) {
-        if (active.putIfAbsent(model.id, Boolean.FALSE) != null) return; // already running
+        if (active.putIfAbsent(model.id, Boolean.FALSE) != null) return; // already queued/running
 
         if (isWifiOnly() && !isOnWifi()) {
             active.remove(model.id);
             emitError(model.id, ERR_WIFI);
             return;
         }
-        pool.execute(() -> {
-            try {
-                // TFLite models need their vocab file present; copy from assets if missing.
-                if (model.engine == ModelInfo.Engine.TFLITE) {
-                    ensureVocab(ModelRegistry.vocabFor(model));
-                }
-                runWithRetry(model);
-            } catch (IOException e) {
-                Log.w(TAG, "download failed: " + model.id, e);
-                emitError(model.id, e.getMessage() == null ? "io_error" : e.getMessage());
-            } finally {
-                active.remove(model.id);
+        OneTimeWorkRequest req = new OneTimeWorkRequest.Builder(ModelDownloadWorker.class)
+                .setInputData(new Data.Builder().putString(ModelDownloadWorker.KEY_MODEL_ID, model.id).build())
+                .build();
+        WorkManager.getInstance(appContext).enqueueUniqueWork(workName(model.id), ExistingWorkPolicy.KEEP, req);
+    }
+
+    private static String workName(String modelId) { return "model-dl-" + modelId; }
+
+    /**
+     * The blocking download body, run on the WorkManager worker thread ({@link ModelDownloadWorker}).
+     * Reuses the same per-asset HF/VPS fallback + resume/verify/retry logic. Returns true when the model
+     * is fully present afterwards.
+     */
+    boolean runJob(ModelInfo model) {
+        active.putIfAbsent(model.id, Boolean.FALSE); // ensure present (esp. a WorkManager-resumed run after death)
+        try {
+            // TFLite models need their vocab file present; copy from assets if missing.
+            if (model.engine == ModelInfo.Engine.TFLITE) {
+                ensureVocab(ModelRegistry.vocabFor(model));
             }
-        });
+            runWithRetry(model);
+        } catch (IOException e) {
+            Log.w(TAG, "download failed: " + model.id, e);
+            emitError(model.id, e.getMessage() == null ? "io_error" : e.getMessage());
+        } finally {
+            active.remove(model.id);
+            dismissNotification(model.id);
+        }
+        return isPresent(model);
     }
 
     /** Cancel an in-flight download; the .part file is kept for resume. */
     public void cancel(String modelId) {
         // Atomic: only flip the flag if the entry is still present. containsKey-then-put could re-insert
         // a phantom active entry after the worker's finally removed it, wedging future downloads.
+        active.replace(modelId, Boolean.TRUE);
+        WorkManager.getInstance(appContext).cancelUniqueWork(workName(modelId));
+    }
+
+    /** Called from the worker's onStopped(): flip the cancel flag so the read loop stops, keeping the .part. */
+    void markCancelled(String modelId) {
         active.replace(modelId, Boolean.TRUE);
     }
 
@@ -232,13 +276,67 @@ public class ModelDownloadManager {
     }
 
     /**
-     * Download ONE file to its own {@code .part}, verify, and promote it. Progress is reported against
-     * the whole model ({@code doneBase} = bytes from files already complete, {@code total} = model total).
-     * Returns true on success; false when stopped without a retry (user cancel / Wi-Fi lost / truncated)
-     * after emitting the reason. Throws IOException on retryable transport errors — runWithRetry re-runs
-     * runDownload, which skips files already promoted (per-file resume via {@code target.exists()}).
+     * Download one asset, trying each candidate host (HuggingFace / VPS mirror) in the configured order.
+     * On a transport failure the partial {@code .part} is deleted before moving to the next host, so a 206
+     * resume never splices bytes from two different hosts. Returns true when promoted, false when stopped
+     * without a retry (cancel / Wi-Fi lost / incomplete). Throws when EVERY host failed — runWithRetry then
+     * re-runs the whole download.
      */
     private boolean downloadAsset(String modelId, ModelInfo.Asset asset, long doneBase, long total)
+            throws IOException {
+        java.util.List<String> hosts = downloadCandidates(asset.url);
+        IOException last = null;
+        for (int i = 0; i < hosts.size(); i++) {
+            try {
+                return downloadAssetFrom(hosts.get(i), modelId, asset, doneBase, total);
+            } catch (IOException e) {
+                last = e;
+                boolean more = i + 1 < hosts.size();
+                Log.w(TAG, "download host failed (" + hosts.get(i) + "): " + e.getMessage()
+                        + (more ? " — trying next host" : " — no more hosts"));
+                if (more) deletePart(asset); // start the next host clean: never resume across hosts
+            }
+        }
+        if (last != null) throw last;
+        return false;
+    }
+
+    /** The VPS-mirror URL for a HuggingFace resolve URL (pure host+prefix swap, path tail preserved), or
+     *  null if the URL is not a mirrorable HF file URL (e.g. an API/search URL). */
+    static String mirrorUrl(String hfUrl) {
+        if (hfUrl == null || !hfUrl.startsWith(HF_BASE)) return null;
+        String tail = hfUrl.substring(HF_BASE.length());
+        if (!tail.contains("/resolve/")) return null; // only {org}/{repo}/resolve/... file URLs are mirrored
+        return MIRROR_BASE + "/" + tail;
+    }
+
+    /** Ordered download hosts for an asset, per the {@link #PREF_DOWNLOAD_SOURCE} preference. A non-mirrorable
+     *  URL or "hf" yields a single candidate. */
+    private java.util.List<String> downloadCandidates(String hfUrl) {
+        java.util.List<String> out = new java.util.ArrayList<>(2);
+        String source = prefs().getString(PREF_DOWNLOAD_SOURCE, "auto");
+        String mirror = mirrorUrl(hfUrl);
+        if (mirror == null || "hf".equals(source)) { out.add(hfUrl); return out; }
+        if ("mirror".equals(source)) { out.add(mirror); out.add(hfUrl); }  // RU / HF-blocked: mirror first
+        else { out.add(hfUrl); out.add(mirror); }                          // auto (default): HF, mirror fallback
+        return out;
+    }
+
+    /** Delete an asset's leftover {@code .part} (used between hosts so a resume never mixes hosts). */
+    private void deletePart(ModelInfo.Asset asset) {
+        File part = new File(new File(filesDir, asset.relPath).getPath() + ".part");
+        //noinspection ResultOfMethodCallIgnored
+        if (part.exists()) part.delete();
+    }
+
+    /**
+     * Download ONE file from ONE host to its own {@code .part}, verify, and promote it. Progress is reported
+     * against the whole model ({@code doneBase} = bytes from files already complete, {@code total} = model
+     * total). Returns true on success; false when stopped without a retry (user cancel / Wi-Fi lost /
+     * truncated) after emitting the reason. Throws IOException on transport errors (the host-fallback + the
+     * runWithRetry loops handle those).
+     */
+    private boolean downloadAssetFrom(String url, String modelId, ModelInfo.Asset asset, long doneBase, long total)
             throws IOException {
         File target = new File(filesDir, asset.relPath);
         File parent = target.getParentFile();
@@ -251,7 +349,8 @@ public class ModelDownloadManager {
         // download cost ever matters. Un-hashed assets keep the existing resume behaviour unchanged.
         final MessageDigest digest = asset.sha256 != null ? newSha256() : null;
         long existing = (digest == null && part.exists()) ? part.length() : 0L;
-        HttpURLConnection conn = (HttpURLConnection) new URL(asset.url).openConnection();
+        Log.d(TAG, "fetch " + asset.relPath + " from " + url);   // records which host (HF vs VPS mirror) served it
+        HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
         conn.setConnectTimeout(10000);
         conn.setReadTimeout(15000);
         if (existing > 0) conn.setRequestProperty("Range", "bytes=" + existing + "-");
@@ -392,7 +491,64 @@ public class ModelDownloadManager {
     }
 
     private void emitProgress(String id, long bytes, long total, long bps) {
+        updateNotification(id, bytes, total);
         main.post(() -> { for (Listener l : listeners) l.onProgress(id, bytes, total, bps); });
+    }
+
+    // --- foreground download notification (WorkManager) ---
+
+    private int notifId(String modelId) {
+        return NOTIF_ID_BASE + Math.floorMod(modelId.hashCode(), 1000);
+    }
+
+    private void ensureChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
+        NotificationManager nm = appContext.getSystemService(NotificationManager.class);
+        if (nm == null || nm.getNotificationChannel(NOTIF_CHANNEL) != null) return;
+        NotificationChannel ch = new NotificationChannel(NOTIF_CHANNEL,
+                appContext.getString(R.string.dl_notif_channel), NotificationManager.IMPORTANCE_LOW);
+        ch.setShowBadge(false);
+        nm.createNotificationChannel(ch);
+    }
+
+    private Notification buildNotification(ModelInfo model, long bytes, long total) {
+        ensureChannel();
+        boolean indeterminate = total <= 0;
+        int pct = indeterminate ? 0 : (int) Math.min(100, bytes * 100 / total);
+        return new NotificationCompat.Builder(appContext, NOTIF_CHANNEL)
+                .setSmallIcon(android.R.drawable.stat_sys_download)
+                .setContentTitle(appContext.getString(R.string.dl_notif_title))
+                .setContentText(model.label(appContext))
+                .setProgress(100, pct, indeterminate)
+                .setOngoing(true)
+                .setSilent(true)
+                .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+                .build();
+    }
+
+    /** ForegroundInfo for the worker; the data-sync FGS type is required on Android 14+. */
+    ForegroundInfo buildForegroundInfo(ModelInfo model, long bytes, long total) {
+        Notification n = buildNotification(model, bytes, total);
+        int id = notifId(model.id);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) { // API 34+
+            return new ForegroundInfo(id, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+        }
+        return new ForegroundInfo(id, n);
+    }
+
+    private void updateNotification(String modelId, long bytes, long total) {
+        ModelInfo model = ModelRegistry.byId(modelId);
+        if (model == null) return;
+        try {
+            NotificationManagerCompat.from(appContext)
+                    .notify(notifId(modelId), buildNotification(model, bytes, total));
+        } catch (SecurityException ignored) {
+            // POST_NOTIFICATIONS denied (Android 13+): the download continues silently.
+        }
+    }
+
+    private void dismissNotification(String modelId) {
+        NotificationManagerCompat.from(appContext).cancel(notifId(modelId));
     }
 
     private void emitDone(String id) {

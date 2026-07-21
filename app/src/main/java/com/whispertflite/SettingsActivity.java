@@ -50,6 +50,7 @@ public class SettingsActivity extends AppCompatActivity {
         buildPaletteRow();
         buildThemeToggle();
         buildModeToggle();
+        buildDownloadSourceToggle();
 
         // simpleChinese is an existing upstream key; hapticFeedback/speakResult are new
         // settings keys consumed when MainActivity is rewired in Task 1.3.
@@ -216,6 +217,20 @@ public class SettingsActivity extends AppCompatActivity {
             String m = id == R.id.mode_auto ? "auto" : id == R.id.mode_tap ? "tap" : "hold";
             if (m.equals(sp.getString("recordMode", "hold"))) return;
             sp.edit().putString("recordMode", m).apply();
+        });
+    }
+
+    /** Model download source: auto (HF then mirror) / mirror (mirror then HF) / hf. The VPS mirror is for
+     *  regions where huggingface.co is blocked. */
+    private void buildDownloadSourceToggle() {
+        MaterialButtonToggleGroup group = findViewById(R.id.dl_source_group);
+        String src = sp.getString(ModelDownloadManager.PREF_DOWNLOAD_SOURCE, "auto");
+        group.check("mirror".equals(src) ? R.id.dl_mirror : "hf".equals(src) ? R.id.dl_hf : R.id.dl_auto);
+        group.addOnButtonCheckedListener((g, id, isChecked) -> {
+            if (!isChecked) return;
+            String s = id == R.id.dl_mirror ? "mirror" : id == R.id.dl_hf ? "hf" : "auto";
+            if (s.equals(sp.getString(ModelDownloadManager.PREF_DOWNLOAD_SOURCE, "auto"))) return;
+            sp.edit().putString(ModelDownloadManager.PREF_DOWNLOAD_SOURCE, s).apply();
         });
     }
 

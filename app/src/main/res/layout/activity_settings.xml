@@ -324,6 +324,55 @@
                     android:orientation="vertical"
                     android:visibility="gone">
 
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/settings_dl_source"
+                        android:textColor="@color/glass_ink"
+                        android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+                    <com.google.android.material.button.MaterialButtonToggleGroup
+                        android:id="@+id/dl_source_group"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        app:selectionRequired="true"
+                        app:singleSelection="true">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/dl_auto"
+                            style="@style/Widget.Glass.SegButton"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/settings_dl_auto" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/dl_mirror"
+                            style="@style/Widget.Glass.SegButton"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/settings_dl_mirror" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/dl_hf"
+                            style="@style/Widget.Glass.SegButton"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/settings_dl_hf" />
+                    </com.google.android.material.button.MaterialButtonToggleGroup>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/settings_dl_source_hint"
+                        android:textColor="@color/glass_ink_dim"
+                        android:textSize="12sp" />
+
                     <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/switch_haptic"
                         android:layout_width="match_parent"

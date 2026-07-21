@@ -33,7 +33,6 @@
     <string name="processing_done">Elaborazione effettuata in </string>
     <string name="language">Lingua:</string>
     <string name="multi_lingual_slow">Multilingua, più lento</string>
-    <string name="voice_input">Input vocale Whisper</string>
     <string name="download_model_text">\nScarica il modello Whisper da Hugging Face (~435 MB)</string>
     <string name="select_model">Modello:</string>
     <string name="status">Stato:</string>

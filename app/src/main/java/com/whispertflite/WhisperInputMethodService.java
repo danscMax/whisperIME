@@ -37,6 +37,7 @@ import com.whispertflite.asr.WhisperResult;
 import com.whispertflite.history.HistoryDb;
 import com.whispertflite.models.ModelInfo;
 import com.whispertflite.models.ModelRegistry;
+import com.whispertflite.models.ThermalMonitor;
 import com.whispertflite.ui.LivingSignalView;
 import com.whispertflite.utils.HapticFeedback;
 import com.whispertflite.utils.InputLang;
@@ -60,6 +61,7 @@ public class WhisperInputMethodService extends InputMethodService {
     // the timer RIGHT of the orb (shown only while recording). Never drawn over the orb.
     private TextView tvStatusLeft;
     private TextView tvTimer;
+    private View statusRow;      // caption row under the orb; shown only while there is status text
     private LivingSignalView orb;
     private View rootView;
 
@@ -73,11 +75,17 @@ public class WhisperInputMethodService extends InputMethodService {
     private SharedPreferences sp = null;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private Context mContext;
+    // Live thermal signal for the active recording session (DeviceProfile is only a one-shot snapshot).
+    // API 29+; a no-op on 28. Registered on record start, unregistered on stop.
+    private ThermalMonitor thermalMonitor;
 
     // Read from / written to the SHARED "translate" pref so every surface honours the same choice (D9);
     // MainActivity writes the same key. Loaded on view init, persisted on toggle.
     private boolean translate = false;
     private boolean modeAuto = false;
+    // Manual gesture used when auto is OFF: "hold" (press, hold, release) or "tap" (tap to start, tap to
+    // stop). Auto (modeAuto) is a SEPARATE hands-free layer: it auto-starts and VAD-auto-stops on silence.
+    private String recordMode = "hold";
 
     // Auto (VAD) mode grabs the mic on open; delay it a beat so the strip isn't recording the room the
     // instant it appears (D12). Cancelled if the view goes away before it fires.
@@ -101,7 +109,7 @@ public class WhisperInputMethodService extends InputMethodService {
             return;
         }
         autoStartRetries = 0;
-        HapticFeedback.vibrate(mContext);
+        HapticFeedback.perform(rootView);
         startRecording();
     }
 
@@ -109,6 +117,10 @@ public class WhisperInputMethodService extends InputMethodService {
      *  runnable self-guards against a double start / an unready model. */
     private void maybeAutoStart() {
         if (!modeAuto) return;
+        // No editable field (system dialogs, the package installer, launchers) → there is nowhere to
+        // type, so never auto-arm the mic. onStartInput already bails on TYPE_NULL, but onStartInputView
+        // fires afterwards and would otherwise re-arm auto-start over the same field-less screen.
+        if (currentInputType == InputType.TYPE_NULL) return;
         autoStartRetries = 0;
         handler.removeCallbacks(autoStartRunnable);
         handler.postDelayed(autoStartRunnable, AUTO_START_DELAY_MS);
@@ -140,6 +152,9 @@ public class WhisperInputMethodService extends InputMethodService {
     public void onCreate() {
         mContext = this;
         autoStartRunnable = this::autoStartTick;
+        // Monitor exposes isThrottling() + logs on severe throttling; a Consumer hook could actively
+        // react (e.g. downgrade the decode) but we leave it null so the decode thread stays untouched.
+        thermalMonitor = new ThermalMonitor(this, null);
         super.onCreate();
     }
 
@@ -160,10 +175,33 @@ public class WhisperInputMethodService extends InputMethodService {
         if (ic != null) ic.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, keyCode));
     }
 
+    // Delete one word (plus its trailing whitespace) before the cursor — used by the backspace
+    // long-hold once it accelerates past char-by-char. Falls back to a single DEL when there's no IC.
+    private void deleteWordBackward() {
+        InputConnection ic = getCurrentInputConnection();
+        if (ic == null) { sendKey(KeyEvent.KEYCODE_DEL); return; }
+        // Batch the query + delete so the editor sees one atomic edit (fewer IPC/redraw passes, no
+        // duplicate TalkBack announcement). try/finally so endBatchEdit always balances beginBatchEdit,
+        // including the early return when there is nothing before the cursor.
+        ic.beginBatchEdit();
+        try {
+            CharSequence before = ic.getTextBeforeCursor(64, 0);
+            if (before == null || before.length() == 0) return;
+            int i = before.length();
+            while (i > 0 && Character.isWhitespace(before.charAt(i - 1))) i--;   // eat trailing spaces
+            while (i > 0 && !Character.isWhitespace(before.charAt(i - 1))) i--;  // then the word itself
+            int count = before.length() - i;
+            ic.deleteSurroundingText(count > 0 ? count : 1, 0);
+        } finally {
+            ic.endBatchEdit();
+        }
+    }
+
     @Override
     public void onDestroy() {
         handler.removeCallbacks(autoStartRunnable);   // don't fire a pending auto-start after teardown (D12)
         timerHandler.removeCallbacks(timerTick);      // the 1s self-reposting timer must not outlive us (F13)
+        if (thermalMonitor != null) thermalMonitor.stop();   // drop the thermal listener if a session was live
         deinitModel();
         if (mRecorder != null) {
             mRecorder.shutdown();   // ends the worker thread; stop() alone left it parked (leak)
@@ -260,6 +298,7 @@ public class WhisperInputMethodService extends InputMethodService {
         btnMore = rootView.findViewById(R.id.btnMore);
         tvStatusLeft = rootView.findViewById(R.id.tv_status_left);
         tvTimer = rootView.findViewById(R.id.tv_timer);
+        statusRow = rootView.findViewById(R.id.status_row);
         orb = rootView.findViewById(R.id.orb);
         int[] orbTint = ThemeUtils.orbColors(this);
         orb.setColors(orbTint[0], orbTint[1]);
@@ -271,7 +310,8 @@ public class WhisperInputMethodService extends InputMethodService {
         btnKeyboard.setColorFilter(accent);
         btnMore.setColorFilter(accent);
 
-        modeAuto = sp.getBoolean("imeModeAuto", false);
+        recordMode = sp.getString("recordMode", sp.getBoolean("imeModeAuto", false) ? "auto" : "hold");
+        modeAuto = "auto".equals(recordMode);   // one 3-way pref (hold/tap/auto); auto derives modeAuto
         translate = sp.getBoolean("translate", false);   // shared with the app (D9)
         // Keys (keyboard-exit above all) stay visible in both modes: auto must never trap the user.
         checkRecordPermission();
@@ -283,10 +323,14 @@ public class WhisperInputMethodService extends InputMethodService {
         mRecorder.setListener(new Recorder.RecorderListener() {
             @Override
             public void onUpdateReceived(String message) {
+                // Any message other than "still recording" ends the session — DONE, ERROR, or an error
+                // string from a caught mic exception / permission-denied. Drop the thermal listener on all
+                // of them (idempotent; safe off the worker thread), not just the two known-good constants.
+                if (!Recorder.MSG_RECORDING.equals(message)) thermalMonitor.stop();
                 if (message.equals(Recorder.MSG_RECORDING)) {
                     // Speech started; view already in RECORDING state.
                 } else if (message.equals(Recorder.MSG_RECORDING_DONE)) {
-                    HapticFeedback.vibrate(mContext);
+                    HapticFeedback.perform(rootView);
                     recordingStopped = true;
                     recordDurationMs = System.currentTimeMillis() - recordStartMs;
                     // Both modes capture one buffer -> transcribe it once here (was: push-to-talk streamed
@@ -294,7 +338,7 @@ public class WhisperInputMethodService extends InputMethodService {
                     startTranscription();
                     handler.post(() -> applyState(UiState.PROCESSING));
                 } else if (message.equals(Recorder.MSG_RECORDING_ERROR)) {
-                    HapticFeedback.vibrate(mContext);
+                    HapticFeedback.perform(rootView);
                     handler.post(() -> {
                         applyState(UiState.IDLE);
                         setImeStatus(R.string.error_no_input, true);
@@ -309,32 +353,32 @@ public class WhisperInputMethodService extends InputMethodService {
         // is cached and runs at most once per process, so posting it here missed later opens (D12).
 
         btnDel.setOnTouchListener(new View.OnTouchListener() {
-            private Runnable initialDeleteRunnable;
             private Runnable repeatDeleteRunnable;
+            private int repeatCount;
 
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 if (event.getAction() == MotionEvent.ACTION_DOWN) {
                     sendKey(KeyEvent.KEYCODE_DEL);
-                    initialDeleteRunnable = new Runnable() {
+                    repeatCount = 0;
+                    repeatDeleteRunnable = new Runnable() {
                         @Override
                         public void run() {
-                            sendKey(KeyEvent.KEYCODE_DEL);
-                            repeatDeleteRunnable = new Runnable() {
-                                @Override
-                                public void run() {
-                                    sendKey(KeyEvent.KEYCODE_DEL);
-                                    handler.postDelayed(this, 100);
-                                }
-                            };
-                            handler.postDelayed(repeatDeleteRunnable, 100);
+                            // Long-hold accelerates like a stock keyboard: the first ~12 ticks delete
+                            // char-by-char, after that whole words go at once (faster to clear a line).
+                            if (repeatCount < 12) {
+                                sendKey(KeyEvent.KEYCODE_DEL);
+                            } else {
+                                deleteWordBackward();
+                            }
+                            repeatCount++;
+                            handler.postDelayed(this, repeatCount < 12 ? 90 : 130);
                         }
                     };
-                    handler.postDelayed(initialDeleteRunnable, 500);
-                } else if (event.getAction() == MotionEvent.ACTION_UP) {
-                    if (initialDeleteRunnable != null) handler.removeCallbacks(initialDeleteRunnable);
+                    handler.postDelayed(repeatDeleteRunnable, 500);
+                } else if (event.getAction() == MotionEvent.ACTION_UP
+                        || event.getAction() == MotionEvent.ACTION_CANCEL) {
                     if (repeatDeleteRunnable != null) handler.removeCallbacks(repeatDeleteRunnable);
-                    initialDeleteRunnable = null;
                     repeatDeleteRunnable = null;
                 }
                 return true;
@@ -342,13 +386,14 @@ public class WhisperInputMethodService extends InputMethodService {
         });
 
         btnRecord.setOnTouchListener((v, event) -> {
-            if (modeAuto) {
-                // Hands-free: tap to start listening, tap again to stop (VAD also auto-stops).
+            if (modeAuto || "tap".equals(recordMode)) {
+                // Tap to start, tap again to stop. Auto adds VAD auto-stop (+ auto-start on keyboard show);
+                // the manual "tap" gesture is the same toggle WITHOUT VAD (records until the second tap).
                 if (event.getAction() == MotionEvent.ACTION_DOWN) {
                     if (mRecorder != null && mRecorder.isInProgress()) {
                         mRecorder.stop();
                     } else if (checkRecordPermission() && mWhisper != null && !mWhisper.isInProgress()) {
-                        HapticFeedback.vibrate(this);
+                        HapticFeedback.perform(rootView);
                         startRecording();
                     }
                 }
@@ -357,7 +402,7 @@ public class WhisperInputMethodService extends InputMethodService {
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
                 if (checkRecordPermission()) {
                     if (mWhisper != null && !mWhisper.isInProgress()) {
-                        HapticFeedback.vibrate(this);
+                        HapticFeedback.perform(rootView);
                         startRecording();
                     } else {
                         handler.post(() -> {
@@ -380,7 +425,13 @@ public class WhisperInputMethodService extends InputMethodService {
 
         btnEnter.setOnClickListener(v -> sendKey(KeyEvent.KEYCODE_ENTER));
 
-        btnMore.setOnClickListener(this::showImeMenu);
+        // The dock's overflow menu is gone: the gear opens the full Settings screen (mode, translate,
+        // language and everything else now live there). An IME has no task of its own, so NEW_TASK.
+        btnMore.setOnClickListener(v -> {
+            Intent i = new Intent(this, SettingsActivity.class);
+            i.addFlags(FLAG_ACTIVITY_NEW_TASK);
+            startActivity(i);
+        });
 
         return rootView;
     }
@@ -415,7 +466,8 @@ public class WhisperInputMethodService extends InputMethodService {
         checkAuto.setVisibility(modeAuto ? View.VISIBLE : View.INVISIBLE);
         v.findViewById(R.id.row_auto).setOnClickListener(x -> {
             modeAuto = !modeAuto;
-            sp.edit().putBoolean("imeModeAuto", modeAuto).apply();
+            recordMode = modeAuto ? "auto" : "hold";   // quick hands-free toggle; off falls back to the hold gesture
+            sp.edit().putString("recordMode", recordMode).apply();
             updateModelChip();
             checkAuto.setVisibility(modeAuto ? View.VISIBLE : View.INVISIBLE);
             if (modeAuto) {
@@ -493,6 +545,7 @@ public class WhisperInputMethodService extends InputMethodService {
 
 
     private void startRecording() {
+        thermalMonitor.start();   // watch for real throttling during this session; stopped on DONE/ERROR
         recordingStopped = false;
         imeDraft.setLength(0);
         draftComposed = false;
@@ -611,20 +664,27 @@ public class WhisperInputMethodService extends InputMethodService {
      *  dictation after switching to the IME is never lost. */
     private void appendAndCompose(String trimmed) {
         InputConnection ic = getCurrentInputConnection();
-        // Smart spacing (D5): one space between chunks; a leading space before the first chunk only when
-        // the existing field text doesn't already end in whitespace/opening punctuation.
-        char prev;
-        if (imeDraft.length() == 0) {
-            CharSequence before = ic != null ? ic.getTextBeforeCursor(1, 0) : null;
-            prev = (before != null && before.length() > 0) ? before.charAt(0) : ' ';
-        } else {
-            prev = imeDraft.charAt(imeDraft.length() - 1);
-        }
-        if (needsSpace(prev, trimmed)) imeDraft.append(' ');
-        imeDraft.append(trimmed);
-        if (ic != null) {
-            ic.setComposingText(imeDraft, 1);
-            draftComposed = true;
+        // Batch the read (getTextBeforeCursor) + write (setComposingText) into one atomic editor edit:
+        // fewer IPC/redraw passes and a single TalkBack announcement. Output is byte-for-byte identical.
+        if (ic != null) ic.beginBatchEdit();
+        try {
+            // Smart spacing (D5): one space between chunks; a leading space before the first chunk only when
+            // the existing field text doesn't already end in whitespace/opening punctuation.
+            char prev;
+            if (imeDraft.length() == 0) {
+                CharSequence before = ic != null ? ic.getTextBeforeCursor(1, 0) : null;
+                prev = (before != null && before.length() > 0) ? before.charAt(0) : ' ';
+            } else {
+                prev = imeDraft.charAt(imeDraft.length() - 1);
+            }
+            if (needsSpace(prev, trimmed)) imeDraft.append(' ');
+            imeDraft.append(trimmed);
+            if (ic != null) {
+                ic.setComposingText(imeDraft, 1);
+                draftComposed = true;
+            }
+        } finally {
+            if (ic != null) ic.endBatchEdit();
         }
     }
 
@@ -692,13 +752,17 @@ public class WhisperInputMethodService extends InputMethodService {
         // Status text (left) reflects the state; the timer (right) shows only while recording.
         if (recording) {
             recordStartMs = System.currentTimeMillis();
-            setStatus(getString(R.string.dialog_listening), R.color.living_cyan);
+            // PTT tells the user to release; hands-free just says "listening" (VAD ends it). Red = recording orb.
+            setStatus(getString(modeAuto ? R.string.dialog_listening
+                            : "tap".equals(recordMode) ? R.string.ime_listening_tap
+                            : R.string.ime_listening_release),
+                    R.color.glass_danger);
             if (tvTimer != null) { tvTimer.setText("0:00"); tvTimer.setVisibility(View.VISIBLE); }
             timerHandler.post(timerTick);
         } else {
             timerHandler.removeCallbacks(timerTick);
             if (tvTimer != null) tvTimer.setVisibility(View.INVISIBLE);
-            if (processing) setStatus(getString(R.string.dialog_processing), R.color.glass_ink_dim);
+            if (processing) setStatus(getString(R.string.dialog_processing), R.color.glass_warm);   // amber — matches the transcribing orb
             else updateModelChip();
         }
     }
@@ -708,15 +772,23 @@ public class WhisperInputMethodService extends InputMethodService {
         if (tvStatusLeft == null) return;
         tvStatusLeft.setText(text);
         tvStatusLeft.setTextColor(androidx.core.content.ContextCompat.getColor(this, colorRes));
+        // Reserve the caption row's height even when empty (INVISIBLE, never GONE) so the orb above
+        // never jumps up as the text appears — the dock height is constant.
+        if (statusRow != null) {
+            statusRow.setVisibility(text != null && text.length() > 0 ? View.VISIBLE : View.INVISIBLE);
+        }
     }
 
-    @SuppressLint("SetTextI18n")
+    /** Idle status. The dock no longer shows the model name — it's unreadable in the narrow strip on
+     *  phones (the orb already carries the recording/processing state); kept as a hook so the model-
+     *  change and menu-toggle callers stay simple. */
     private void updateModelChip() {
-        if (tvStatusLeft == null || selectedModel == null) return;
-        String langCode = sp.getString("language", "auto");
-        String action = translate ? getString(R.string.translate_short) : langCode;
-        // Idle status = model + language (the mode is shown by the orb behaviour and the overflow menu).
-        setStatus(selectedModel.displayName + " · " + action, R.color.glass_ink);
+        // Idle: instruct for the active mode (hold vs tap) so the user always knows what to do — the
+        // orb carries the live recording state and the strip is too narrow for a model name.
+        setStatus(getString(modeAuto ? R.string.dialog_tap_to_talk
+                        : "tap".equals(recordMode) ? R.string.ime_hint_tap_start
+                        : R.string.dialog_hold_to_speak),
+                R.color.glass_ink_dim);
     }
 
     private boolean checkRecordPermission() {

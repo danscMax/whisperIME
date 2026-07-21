@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="multi_lingual_slow">Многоязычный, медленно</string>
-    <string name="app_name">Whisper</string>
+    <string name="app_name">Sweet Whisper</string>
     <string name="need_record_audio_permission">Разрешение Запись аудио (RECORD_AUDIO) не предоставлено</string>
     <string name="error_download">Ошибка при скачивании</string>
     <string name="download_model">Скачать модель</string>
@@ -35,7 +35,6 @@
     <string name="simple_chinese">Китайский (упрощённый):</string>
     <string name="text_to_speech">Синтез речи:</string>
     <string name="tts_language_not_supported">TTS: Язык не поддерживается</string>
-    <string name="voice_input">Источник голоса для Whisper</string>
     <string name="instructions">Нажмите и удерживайте микрофон пока говорите.</string>
     <string name="auto_lang">Определить язык</string>
     <string name="history_title">История</string>
@@ -48,6 +47,11 @@
     <string name="history_clear_all">Очистить всё</string>
     <string name="history_clear_all_confirm">Удалить всю историю распознавания? Это действие необратимо.</string>
     <string name="settings_title">Настройки</string>
+    <string name="settings_model_language">Модель и язык</string>
+    <string name="settings_model_language_sub">Выберите движок распознавания и скачайте модель для своего языка.</string>
+    <string name="settings_howto">Как вызвать</string>
+    <string name="settings_howto_sub">Включите клавиатуру, затем нажимайте микрофон в любом приложении, чтобы диктовать.</string>
+    <string name="settings_advanced">Дополнительно</string>
     <string name="settings_appearance">Внешний вид</string>
     <string name="settings_palette">Цветовая палитра</string>
     <string name="settings_theme">Тема</string>
@@ -109,9 +113,17 @@
     <string name="dialog_tap_to_talk">Коснитесь, чтобы говорить</string>
     <string name="dialog_listening">Слушаю…</string>
     <string name="dialog_processing">Обрабатываю…</string>
+    <string name="ime_listening_release">Слушаю… отпустите, когда закончите</string>
+    <string name="ime_hint_tap_start">Нажмите, чтобы начать</string>
+    <string name="ime_listening_tap">Слушаю… нажмите, чтобы остановить</string>
+    <string name="record_mode_label">Как записывать</string>
+    <string name="settings_auto_mode">Авто (руки свободны)</string>
+    <string name="settings_auto_mode_sub">Сам начинает и останавливается по тишине</string>
     <string name="dialog_loading">Загрузка модели…</string>
     <string name="dialog_mode_auto">Авто</string>
     <string name="dialog_mode_hold">Зажать</string>
+    <string name="dialog_mode_tap">Нажать</string>
+    <string name="dialog_mode_autostart">Автостарт</string>
     <string name="dialog_mode_cd">Режим распознавания: автоматический или по нажатию</string>
     <string name="switch_to_keyboard">Переключить на клавиатуру</string>
     <string name="dialog_no_model_title">Модель ещё не скачана</string>
@@ -139,6 +151,14 @@
     <string name="catalog_section_tflite_sub">совместимо</string>
     <string name="catalog_group_parakeet_sub">мультиязычный · 25 языков</string>
     <string name="catalog_group_gigaam_sub">только русский</string>
+    <string name="catalog_filter_parakeet">Мультиязычные</string>
+    <string name="catalog_filter_gigaam">Русский</string>
+    <string name="catalog_filter_tflite">Устаревшие TFLite</string>
+    <string name="catalog_filter_whispercpp">Устаревшие Whisper</string>
+    <string name="catalog_group_parakeet">Мультиязычные</string>
+    <string name="catalog_group_gigaam">Русский</string>
+    <string name="catalog_engine_tflite">Устаревшие TFLite</string>
+    <string name="catalog_engine_whispercpp">Устаревшие Whisper</string>
     <string name="catalog_speed_fast">быстро</string>
     <string name="catalog_speed_mid">средне</string>
     <string name="catalog_speed_slow">медленно</string>
@@ -165,19 +185,19 @@
     <string name="onb_enable">Включить</string>
     <string name="onb_done_check">Готово</string>
     <string name="onb_kb_title">Включить голосовой ввод</string>
-    <string name="onb_kb_body">Включите Whisper в списке клавиатур системы — тогда его можно будет вызывать.</string>
-    <string name="onb_howto">Как пользоваться: на своей обычной клавиатуре нажмите кнопку микрофона — откроется голосовой ввод Whisper. Он не заменяет клавиатуру, а вызывается, когда нужно продиктовать.</string>
+    <string name="onb_kb_body">Включите Sweet Whisper в списке клавиатур системы — тогда его можно будет вызывать.</string>
+    <string name="onb_howto">Как пользоваться: на своей обычной клавиатуре нажмите микрофон (или переключатель клавиатур) и выберите Sweet Whisper — и диктуйте в любое приложение. Он не заменяет клавиатуру, а вызывается, когда удобнее сказать, чем печатать.</string>
     <string name="onb_model_title">Модель распознавания</string>
     <string name="onb_model_change">Выбрать другую модель</string>
     <string name="onb_model_downloaded">Загружена ✓</string>
     <string name="onb_model_download">Скачать и продолжить</string>
     <string name="onb_device_summary">%1$d ядер · %2$s ОЗУ</string>
     <string name="onb_try_title">Первый тест</string>
-    <string name="onb_try_body">Проверим, что всё работает. Нажмите ниже, скажите короткую фразу — и увидите расшифровку.</string>
+    <string name="onb_try_body">Быстрое превью. Нажмите ниже и скажите короткую фразу. В обычной жизни этот же голосовой ввод открывается прямо внутри любого приложения — чаты, заметки, поиск — с микрофона вашей клавиатуры.</string>
     <string name="onb_try_button">Попробовать диктовку</string>
     <string name="onb_try_ok">Работает! 🎉</string>
     <string name="onb_done_title">Готово!</string>
-    <string name="onb_done_body">Всё настроено. В любой момент нажимайте микрофон на клавиатуре, чтобы диктовать.</string>
+    <string name="onb_done_body">Всё готово. Чтобы диктовать в любом приложении: откройте клавиатуру, нажмите микрофон (или переключатель клавиатур), выберите Sweet Whisper и говорите. Это голосовая клавиатура — вызывайте её, когда удобнее сказать, чем печатать.</string>
     <string name="onb_done_finish">Завершить</string>
     <string name="catalog_progress">%1$.0f / %2$.0f МБ · %3$.1f МБ/с</string>
     <string name="catalog_starting">Запуск…</string>
@@ -186,7 +206,7 @@
     <string name="catalog_err_wifi">Подключитесь к Wi-Fi для загрузки</string>
     <string name="catalog_err_download">Ошибка загрузки</string>
     <string name="tile_label">Голосовой ввод</string>
-    <string name="widget_label">Whisper голосовой ввод</string>
+    <string name="widget_label">Sweet Whisper голосовой ввод</string>
     <string name="widget_mic_description">Начать голосовой ввод</string>
     <string name="error_model_load">Не удалось загрузить модель — возможно, она слишком велика для устройства</string>
     <string name="error_transcription">Ошибка распознавания</string>
@@ -198,4 +218,23 @@
     <string name="settings_orb">Стиль сигнала</string>
     <string name="settings_orb_cloud">Облако</string>
     <string name="settings_orb_plasma">Сияние</string>
+
+    <!-- Дружелюбные локализованные названия моделей — везде, где показывается модель -->
+    <string name="model_gigaam_rnnt">Русский · точная (с пунктуацией)</string>
+    <string name="model_gigaam_ctc">Русский · быстрая (с пунктуацией)</string>
+    <string name="model_gigaam_fp32">Русский · макс. качество</string>
+    <string name="model_parakeet">Мультиязычная · быстрая (25 языков)</string>
+    <string name="model_gguf_tiny">Устаревшая · очень быстрая (tiny)</string>
+    <string name="model_gguf_base">Устаревшая · быстрая (base)</string>
+    <string name="model_gguf_small">Устаревшая · средняя (small)</string>
+    <string name="model_gguf_medium">Устаревшая · точная, медленная (medium)</string>
+    <string name="model_gguf_large">Устаревшая · очень точная, медленная</string>
+    <string name="model_tflite_tiny_en">Устаревшая · английский (лёгкая)</string>
+    <string name="model_tflite_base">Устаревшая TFLite · базовая</string>
+    <string name="model_tflite_small">Устаревшая TFLite · точнее</string>
+    <string name="model_tflite_small_full">Устаревшая TFLite · 99 языков</string>
+
+    <!-- Встроенный выбор модели в настройках -->
+    <string name="settings_model_pick">Активная модель</string>
+    <string name="settings_model_none">Модели ещё не скачаны — нажмите ниже, чтобы выбрать.</string>
 </resources>

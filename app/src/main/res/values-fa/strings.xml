@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="text_to_speech">تبدیل متن به گفتار:</string>
-    <string name="voice_input">ورودی صوتی Whisper</string>
     <string name="need_record_audio_permission">دسترسی ضبط صدا اعطا نشده است</string>
     <string name="error_download">خطای دانلود</string>
     <string name="download_model_text">\nدانلود مدل های Whisper از هاگینگ فیس(~435 MB)</string>

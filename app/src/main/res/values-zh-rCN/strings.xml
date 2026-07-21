@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="voice_input">Whisper 语音输入</string>
     <string name="need_record_audio_permission">未授予录制音频权限</string>
     <string name="error_download">下载错误</string>
     <string name="download_model">下载模型</string>

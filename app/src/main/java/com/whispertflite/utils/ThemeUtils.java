@@ -39,6 +39,13 @@ public class ThemeUtils {
             case "terracotta": return R.style.ThemeOverlay_Whisper_Terracotta;
             case "indigo":     return R.style.ThemeOverlay_Whisper_Indigo;
             case "forest":     return R.style.ThemeOverlay_Whisper_Forest;
+            case "amber":      return R.style.ThemeOverlay_Whisper_Amber;
+            case "mint":       return R.style.ThemeOverlay_Whisper_Mint;
+            case "aqua":       return R.style.ThemeOverlay_Whisper_Aqua;
+            case "sky":        return R.style.ThemeOverlay_Whisper_Sky;
+            case "violet":     return R.style.ThemeOverlay_Whisper_Violet;
+            case "plum":       return R.style.ThemeOverlay_Whisper_Plum;
+            case "rose":       return R.style.ThemeOverlay_Whisper_Rose;
             case "teal":
             default:           return R.style.ThemeOverlay_Whisper_Teal;
         }

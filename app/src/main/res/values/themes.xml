@@ -3,7 +3,6 @@
     <style name="Theme.Whisper.NoActionBar" parent="Theme.Material3Expressive.DayNight.NoActionBar">
         <!-- Customize your light theme here. -->
         <item name="android:windowBackground">@color/windowBackground</item>
-        <item name="android:windowAnimationStyle">@style/Animation.Whisper.Activity</item>
         <!-- Edge-to-edge immersion: let the ambient backdrop bleed under transparent system bars. -->
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
@@ -19,7 +18,6 @@
     <style name="Theme.Whisper.ActionBar" parent="Theme.Material3Expressive.DayNight">
         <!-- Customize your light theme here. -->
         <item name="android:windowBackground">@color/windowBackground</item>
-        <item name="android:windowAnimationStyle">@style/Animation.Whisper.Activity</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:enforceStatusBarContrast">false</item>
@@ -287,6 +285,125 @@
         <item name="colorSurfaceVariant">@color/palette_forest_surfaceVariant</item>
         <item name="colorOnSurfaceVariant">@color/palette_forest_onSurfaceVariant</item>
         <item name="colorOutline">@color/palette_forest_outline</item>
+    </style>
+
+    <style name="ThemeOverlay.Whisper.Amber" parent="">
+        <item name="colorPrimary">@color/palette_amber_primary</item>
+        <item name="colorOnPrimary">@color/palette_amber_onPrimary</item>
+        <item name="colorPrimaryContainer">@color/palette_amber_primaryContainer</item>
+        <item name="colorOnPrimaryContainer">@color/palette_amber_onPrimaryContainer</item>
+        <item name="paletteAccent">@color/palette_amber_primary</item>
+        <item name="paletteOnAccent">@color/palette_amber_onPrimary</item>
+        <item name="colorSecondaryContainer">@color/palette_amber_secondaryContainer</item>
+        <item name="colorOnSecondaryContainer">@color/palette_amber_onSecondaryContainer</item>
+        <item name="android:colorBackground">@color/palette_amber_surface</item>
+        <item name="colorSurface">@color/palette_amber_surface</item>
+        <item name="colorOnSurface">@color/palette_amber_onSurface</item>
+        <item name="colorSurfaceVariant">@color/palette_amber_surfaceVariant</item>
+        <item name="colorOnSurfaceVariant">@color/palette_amber_onSurfaceVariant</item>
+        <item name="colorOutline">@color/palette_amber_outline</item>
+    </style>
+
+    <style name="ThemeOverlay.Whisper.Mint" parent="">
+        <item name="colorPrimary">@color/palette_mint_primary</item>
+        <item name="colorOnPrimary">@color/palette_mint_onPrimary</item>
+        <item name="colorPrimaryContainer">@color/palette_mint_primaryContainer</item>
+        <item name="colorOnPrimaryContainer">@color/palette_mint_onPrimaryContainer</item>
+        <item name="paletteAccent">@color/palette_mint_primary</item>
+        <item name="paletteOnAccent">@color/palette_mint_onPrimary</item>
+        <item name="colorSecondaryContainer">@color/palette_mint_secondaryContainer</item>
+        <item name="colorOnSecondaryContainer">@color/palette_mint_onSecondaryContainer</item>
+        <item name="android:colorBackground">@color/palette_mint_surface</item>
+        <item name="colorSurface">@color/palette_mint_surface</item>
+        <item name="colorOnSurface">@color/palette_mint_onSurface</item>
+        <item name="colorSurfaceVariant">@color/palette_mint_surfaceVariant</item>
+        <item name="colorOnSurfaceVariant">@color/palette_mint_onSurfaceVariant</item>
+        <item name="colorOutline">@color/palette_mint_outline</item>
+    </style>
+
+    <style name="ThemeOverlay.Whisper.Aqua" parent="">
+        <item name="colorPrimary">@color/palette_aqua_primary</item>
+        <item name="colorOnPrimary">@color/palette_aqua_onPrimary</item>
+        <item name="colorPrimaryContainer">@color/palette_aqua_primaryContainer</item>
+        <item name="colorOnPrimaryContainer">@color/palette_aqua_onPrimaryContainer</item>
+        <item name="paletteAccent">@color/palette_aqua_primary</item>
+        <item name="paletteOnAccent">@color/palette_aqua_onPrimary</item>
+        <item name="colorSecondaryContainer">@color/palette_aqua_secondaryContainer</item>
+        <item name="colorOnSecondaryContainer">@color/palette_aqua_onSecondaryContainer</item>
+        <item name="android:colorBackground">@color/palette_aqua_surface</item>
+        <item name="colorSurface">@color/palette_aqua_surface</item>
+        <item name="colorOnSurface">@color/palette_aqua_onSurface</item>
+        <item name="colorSurfaceVariant">@color/palette_aqua_surfaceVariant</item>
+        <item name="colorOnSurfaceVariant">@color/palette_aqua_onSurfaceVariant</item>
+        <item name="colorOutline">@color/palette_aqua_outline</item>
+    </style>
+
+    <style name="ThemeOverlay.Whisper.Sky" parent="">
+        <item name="colorPrimary">@color/palette_sky_primary</item>
+        <item name="colorOnPrimary">@color/palette_sky_onPrimary</item>
+        <item name="colorPrimaryContainer">@color/palette_sky_primaryContainer</item>
+        <item name="colorOnPrimaryContainer">@color/palette_sky_onPrimaryContainer</item>
+        <item name="paletteAccent">@color/palette_sky_primary</item>
+        <item name="paletteOnAccent">@color/palette_sky_onPrimary</item>
+        <item name="colorSecondaryContainer">@color/palette_sky_secondaryContainer</item>
+        <item name="colorOnSecondaryContainer">@color/palette_sky_onSecondaryContainer</item>
+        <item name="android:colorBackground">@color/palette_sky_surface</item>
+        <item name="colorSurface">@color/palette_sky_surface</item>
+        <item name="colorOnSurface">@color/palette_sky_onSurface</item>
+        <item name="colorSurfaceVariant">@color/palette_sky_surfaceVariant</item>
+        <item name="colorOnSurfaceVariant">@color/palette_sky_onSurfaceVariant</item>
+        <item name="colorOutline">@color/palette_sky_outline</item>
+    </style>
+
+    <style name="ThemeOverlay.Whisper.Violet" parent="">
+        <item name="colorPrimary">@color/palette_violet_primary</item>
+        <item name="colorOnPrimary">@color/palette_violet_onPrimary</item>
+        <item name="colorPrimaryContainer">@color/palette_violet_primaryContainer</item>
+        <item name="colorOnPrimaryContainer">@color/palette_violet_onPrimaryContainer</item>
+        <item name="paletteAccent">@color/palette_violet_primary</item>
+        <item name="paletteOnAccent">@color/palette_violet_onPrimary</item>
+        <item name="colorSecondaryContainer">@color/palette_violet_secondaryContainer</item>
+        <item name="colorOnSecondaryContainer">@color/palette_violet_onSecondaryContainer</item>
+        <item name="android:colorBackground">@color/palette_violet_surface</item>
+        <item name="colorSurface">@color/palette_violet_surface</item>
+        <item name="colorOnSurface">@color/palette_violet_onSurface</item>
+        <item name="colorSurfaceVariant">@color/palette_violet_surfaceVariant</item>
+        <item name="colorOnSurfaceVariant">@color/palette_violet_onSurfaceVariant</item>
+        <item name="colorOutline">@color/palette_violet_outline</item>
+    </style>
+
+    <style name="ThemeOverlay.Whisper.Plum" parent="">
+        <item name="colorPrimary">@color/palette_plum_primary</item>
+        <item name="colorOnPrimary">@color/palette_plum_onPrimary</item>
+        <item name="colorPrimaryContainer">@color/palette_plum_primaryContainer</item>
+        <item name="colorOnPrimaryContainer">@color/palette_plum_onPrimaryContainer</item>
+        <item name="paletteAccent">@color/palette_plum_primary</item>
+        <item name="paletteOnAccent">@color/palette_plum_onPrimary</item>
+        <item name="colorSecondaryContainer">@color/palette_plum_secondaryContainer</item>
+        <item name="colorOnSecondaryContainer">@color/palette_plum_onSecondaryContainer</item>
+        <item name="android:colorBackground">@color/palette_plum_surface</item>
+        <item name="colorSurface">@color/palette_plum_surface</item>
+        <item name="colorOnSurface">@color/palette_plum_onSurface</item>
+        <item name="colorSurfaceVariant">@color/palette_plum_surfaceVariant</item>
+        <item name="colorOnSurfaceVariant">@color/palette_plum_onSurfaceVariant</item>
+        <item name="colorOutline">@color/palette_plum_outline</item>
+    </style>
+
+    <style name="ThemeOverlay.Whisper.Rose" parent="">
+        <item name="colorPrimary">@color/palette_rose_primary</item>
+        <item name="colorOnPrimary">@color/palette_rose_onPrimary</item>
+        <item name="colorPrimaryContainer">@color/palette_rose_primaryContainer</item>
+        <item name="colorOnPrimaryContainer">@color/palette_rose_onPrimaryContainer</item>
+        <item name="paletteAccent">@color/palette_rose_primary</item>
+        <item name="paletteOnAccent">@color/palette_rose_onPrimary</item>
+        <item name="colorSecondaryContainer">@color/palette_rose_secondaryContainer</item>
+        <item name="colorOnSecondaryContainer">@color/palette_rose_onSecondaryContainer</item>
+        <item name="android:colorBackground">@color/palette_rose_surface</item>
+        <item name="colorSurface">@color/palette_rose_surface</item>
+        <item name="colorOnSurface">@color/palette_rose_onSurface</item>
+        <item name="colorSurfaceVariant">@color/palette_rose_surfaceVariant</item>
+        <item name="colorOnSurfaceVariant">@color/palette_rose_onSurfaceVariant</item>
+        <item name="colorOutline">@color/palette_rose_outline</item>
     </style>
 
     <!-- Onboarding wizard building blocks -->

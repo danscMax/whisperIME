@@ -3,6 +3,7 @@ package com.whispertflite.ui;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.RadialGradient;
 import android.graphics.Shader;
 import android.provider.Settings;
@@ -25,11 +26,20 @@ public class LivingSignalView extends View {
 
     public enum SignalState { READY, LISTENING, PROCESSING, RESULT, ERROR }
 
+    // Organic "liquid signal" blob: the silhouette is a smooth closed spline through N angular
+    // samples, each radius shaped by LivingSignalDynamics.blobRadius (breathing + iris petals + burst).
+    private static final int SAMPLES = 64;
+    private final float[] px = new float[SAMPLES];
+    private final float[] py = new float[SAMPLES];
+    private final Path blobPath = new Path();
+
     private SignalState state = SignalState.READY;
     private float targetLevel;   // 0..1, set from pushLevel (already amplified from raw RMS)
     private float level;         // smoothed toward targetLevel
     private float act;           // smoothed activity that drives size + brightness
     private float phase;         // breathing phase
+    private float spin;          // accumulated petal rotation (Focused-Iris spins faster)
+    private float burst;         // 0..1 Signal-Burst envelope, kicked on a fresh RESULT, decays to a calm glow
 
     // Palette accent as HUE only; the orb keeps its own airy saturation/value so it reads as a bright
     // glowing sphere (blending toward raw palette colours darkened it, exactly what went wrong first).
@@ -65,6 +75,7 @@ public class LivingSignalView extends View {
 
     public void setSignalState(SignalState next) {
         if (next != null && next != state) {
+            if (next == SignalState.RESULT) burst = 1f;   // radiant Signal-Burst on a fresh result
             state = next;
             postInvalidateOnAnimation();
         }
@@ -75,10 +86,11 @@ public class LivingSignalView extends View {
     }
 
     public void pushLevel(float rms) {
-        // Speech RMS from the recorder lands in a narrow ~0.02–0.08 band (measured on-device); subtract a
-        // silence floor and expand so the voice drives the full activity range and the orb visibly pulses
-        // with speech instead of sitting near its idle baseline.
-        targetLevel = clamp01(Math.max(0f, rms - 0.015f) * 16f);
+        // Calibrated to the ACTUAL vivo mic level (measured via logcat 2026-07-21): raw RMS peaks only
+        // ~0.005-0.007 for speech, so the value here (raw*4) lands ~0.003 (silence) .. ~0.027 (loud). Map that
+        // tiny band across 0..1 so the orb reacts strongly to normal speech instead of barely twitching.
+        // ponytail: fixed device-tuned gain; a running-peak AGC-relative normalize is the multi-device upgrade.
+        targetLevel = clamp01((rms - 0.003f) * 45f);
         postInvalidateOnAnimation();   // react even if the idle loop is paused (reduced motion)
     }
 
@@ -122,9 +134,10 @@ public class LivingSignalView extends View {
         boolean result = state == SignalState.RESULT;
         boolean error = state == SignalState.ERROR;
 
-        // Mic level: fast attack / slow decay, and only while listening.
+        // Mic level: fast attack / snappy decay, and only while listening — so it dips between words and the
+        // orb visibly beats per syllable instead of holding at one size.
         float lvlTarget = listening ? targetLevel : 0f;
-        level += (lvlTarget - level) * (lvlTarget > level ? 0.55f : 0.10f);
+        level += (lvlTarget - level) * (lvlTarget > level ? 0.60f : 0.18f);
 
         // Idle breathing — the gentle "just sitting there" motion; faster while active.
         phase += dt * (listening || result ? 2.6f : 1.0f);
@@ -137,28 +150,88 @@ public class LivingSignalView extends View {
         float actTarget = clamp01(base + voice * 0.9f + breath * breathAmp);
         act += (actTarget - act) * Math.min(1f, dt * 10f);
 
+        // Petal rotation + burst envelope advance with the frame (frozen under reduced-motion so the frame
+        // is static). Focused-Iris (processing) spins fastest; the burst decays into a calm result glow.
+        if (!reducedMotion) {
+            spin += dt * (processing ? 3.2f : listening ? 1.4f : 0.5f);
+            burst -= burst * Math.min(1f, dt * 4f);
+        } else {
+            burst = 0f;
+        }
+
         int w = getWidth(), h = getHeight();
         float cx = w * 0.5f, cy = h * 0.5f;
-        // Padding (0.96) so the glow's soft edge always fades out INSIDE the view — never a hard clip.
+        // Padding (0.96) so the outer glow always fades INSIDE the view — never a hard clip.
         float maxR = Math.min(w, h) * 0.5f * 0.96f;
-        float r = maxR * (0.60f + act * 0.32f);   // 0.60 (idle) .. 0.92 (loud) of the padded radius
-        if (r < 1f) { postInvalidateOnAnimation(); return; }
+        // Mean radius. While listening it grows STRONGLY and directly with the live voice level (fast attack
+        // via `level`), so the orb visibly swells and pulses in rhythm with loudness — the main way it reacts
+        // to speech. Idle ~0.49, typical speech ~0.78, loud ~0.90 of the padded radius. Capped so the gentle
+        // wobble never clips the edge (peak ~= meanR * 1.10).
+        float voiceBoost = listening ? level * 0.34f : 0f;
+        float meanR = maxR * Math.min(0.90f, 0.46f + act * 0.16f + voiceBoost);
+        if (meanR < 1f) { postInvalidateOnAnimation(); return; }
 
-        float hue = accentValid ? accentHue : 190f;
-        // Airy, bright colours (hue from palette; the orb owns its S/V) so it glows instead of muddying.
-        int body = error ? 0xFFE0564B : hsv(hue, 0.55f, 0.99f);                        // saturated bright body
-        int rim = error ? 0xFFC24A40 : hsv(hue, 0.72f, 0.92f);                         // deeper rim for the glow edge
-        int core = error ? 0xFFF7D2CE : hsv(hue, Math.max(0f, 0.16f - act * 0.12f), 1f); // near-white core, whiter on voice
+        // Hue encodes STATE so the orb is glanceable: palette-tinted calm when idle, red while recording,
+        // amber while transcribing, green on a fresh result. Colour, not just size, tells the states apart.
+        float hue = listening ? 4f              // red — recording
+                : processing ? 38f              // amber — transcribing
+                : result ? 140f                 // green — done
+                : accentValid ? accentHue : 200f;   // ready — palette accent (calm)
+        // Luminous, not merely saturated: a bright near-white core reads as a glowing light while a moderate
+        // body keeps the hue.
+        int body = error ? 0xFFE0564B : hsv(hue, 0.72f, 1f);                                 // coloured body
+        int rim = error ? 0xFFC24A40 : hsv(hue, 0.90f, 0.90f);                               // deeper glow edge
+        int core = error ? 0xFFF7D2CE : hsv(hue, Math.max(0.10f, 0.24f - act * 0.10f), 1f);  // bright near-white core
 
-        // white-ish core -> saturated body -> soft rim -> transparent glow tail
+        // Blob edge amplitudes — kept SMOOTH and near-round. The voice drives SIZE (below), NOT petals:
+        // strong iris lobes rotate into a faceted "diamond" star while recording, which reads worse than
+        // the old orb. Only a whisper of organic wobble here, plus a soft rotating processing aperture.
+        float wobAmp = reducedMotion ? 0f : 0.03f;   // gentle, constant organic ripple (higher harmonics, no pinch)
+        float petalAmp = reducedMotion ? 0f : (processing ? 0.045f : 0.015f);
+        int lobes = 6;
+        float burstAmp = reducedMotion ? 0f : burst * 0.22f;
+
+        // Sample the organic edge, tracking the outermost tip so the gradient reaches it (tips fade to
+        // transparent -> a soft liquid silhouette, no facets).
+        float peakR = meanR;
+        for (int i = 0; i < SAMPLES; i++) {
+            float a = (float) (2 * Math.PI * i / SAMPLES);
+            float rr = LivingSignalDynamics.blobRadius(meanR, a, phase, spin, wobAmp, petalAmp, lobes, burstAmp);
+            if (rr > peakR) peakR = rr;
+            px[i] = cx + rr * (float) Math.cos(a);
+            py[i] = cy + rr * (float) Math.sin(a);
+        }
+
+        // Smooth closed spline (Catmull-Rom -> cubic Bézier) through the samples.
+        blobPath.reset();
+        blobPath.moveTo(px[0], py[0]);
+        for (int i = 0; i < SAMPLES; i++) {
+            int i0 = (i - 1 + SAMPLES) % SAMPLES, i1 = i, i2 = (i + 1) % SAMPLES, i3 = (i + 2) % SAMPLES;
+            float c1x = px[i1] + (px[i2] - px[i0]) / 6f, c1y = py[i1] + (py[i2] - py[i0]) / 6f;
+            float c2x = px[i2] - (px[i3] - px[i1]) / 6f, c2y = py[i2] - (py[i3] - py[i1]) / 6f;
+            blobPath.cubicTo(c1x, c1y, c2x, c2y, px[i2], py[i2]);
+        }
+        blobPath.close();
+
+        // 1) Soft outer glow halo — a wide radial gradient fading into the background so the orb reads as a
+        // glowing light, not a hard-edged sticker. Drawn as a circle (NOT clipped to the blob) so the glow
+        // extends past the silhouette; capped at maxR so it never hits the view edge.
+        float haloR = Math.min(peakR * 1.8f, maxR);   // slightly wider halo softens the transition into the bg
+        paint.setShader(new RadialGradient(cx, cy, haloR,
+                new int[]{setAlpha(body, 85), setAlpha(body, 0)}, new float[]{0.20f, 1f}, Shader.TileMode.CLAMP));
+        canvas.drawCircle(cx, cy, haloR, paint);
+
+        // 2) The organic body: bright core -> body -> rim -> a soft transparent edge. The core stays solid
+        // (never breathes toward transparent) while the edge falls off gently, so the silhouette never reads
+        // as a hard-edged ball.
         int[] colors = {core, body, rim, setAlpha(rim, 0)};
-        float[] stops = {0f, 0.42f, 0.72f, 1f};
-        paint.setShader(new RadialGradient(cx, cy, r, colors, stops, Shader.TileMode.CLAMP));
-        canvas.drawCircle(cx, cy, r, paint);
+        float[] stops = {0f, 0.40f, 0.74f, 1f};
+        paint.setShader(new RadialGradient(cx, cy, peakR, colors, stops, Shader.TileMode.CLAMP));
+        canvas.drawPath(blobPath, paint);
         paint.setShader(null);
 
         // Keep animating while there is motion; honour reduced-motion by settling to a static idle frame.
-        boolean moving = level > 0.01f || Math.abs(act - actTarget) > 0.003f;
+        boolean moving = level > 0.01f || burst > 0.01f || Math.abs(act - actTarget) > 0.003f;
         if (!reducedMotion || moving) postInvalidateOnAnimation();
     }
 

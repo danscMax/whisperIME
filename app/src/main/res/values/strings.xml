@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name" translatable="false">Whisper</string>
-    <string name="voice_input">Whisper Voice Input</string>
+    <string name="app_name" translatable="false">Sweet Whisper</string>
+    <string name="voice_input" translatable="false">Sweet Whisper</string>
     <string name="need_record_audio_permission">"RECORD_AUDIO permission is not granted"</string>
     <string name="error_download">Download error</string>
     <string name="download_model">Download Model</string>
@@ -50,6 +50,11 @@
     <string name="history_clear_all">Clear all</string>
     <string name="history_clear_all_confirm">Delete all recognition history? This cannot be undone.</string>
     <string name="settings_title">Settings</string>
+    <string name="settings_model_language">Model &amp; language</string>
+    <string name="settings_model_language_sub">Pick a recognition engine and download a model for your language.</string>
+    <string name="settings_howto">How to use</string>
+    <string name="settings_howto_sub">Turn on the keyboard, then tap the mic in any app to dictate.</string>
+    <string name="settings_advanced">Advanced</string>
     <string name="settings_appearance">Appearance</string>
     <string name="settings_palette">Color palette</string>
     <string name="settings_theme">Theme</string>
@@ -119,6 +124,12 @@
     <string name="dialog_tap_to_talk">Tap to talk</string>
     <string name="dialog_listening">Listening…</string>
     <string name="dialog_processing">Processing…</string>
+    <string name="ime_listening_release">Listening… release when done</string>
+    <string name="ime_hint_tap_start">Tap to start</string>
+    <string name="ime_listening_tap">Listening… tap to stop</string>
+    <string name="record_mode_label">How to record</string>
+    <string name="settings_auto_mode">Auto (hands-free)</string>
+    <string name="settings_auto_mode_sub">Starts on its own and stops when you pause</string>
     <string name="dialog_loading">Loading model…</string>
     <string name="dialog_no_model_title">Model not downloaded yet</string>
     <string name="dialog_no_model_desc">Voice input needs a recognition model.</string>
@@ -128,23 +139,25 @@
     <string name="dialog_send">Insert</string>
     <string name="dialog_review">Check it, then send</string>
     <string name="dialog_mode_auto">Auto</string>
-    <string name="dialog_mode_hold">Push</string>
+    <string name="dialog_mode_hold">Hold</string>
+    <string name="dialog_mode_tap">Tap</string>
+    <string name="dialog_mode_autostart">Auto-start</string>
     <string name="dialog_mode_cd">Recognition mode: automatic or push-to-talk</string>
     <string name="switch_to_keyboard">Switch to keyboard</string>
 
     <string name="catalog_title">Models</string>
     <string name="catalog_filter_all">All</string>
-    <string name="catalog_filter_tflite" translatable="false">TFLite</string>
-    <string name="catalog_filter_whispercpp" translatable="false">whisper.cpp</string>
-    <string name="catalog_engine_tflite" translatable="false">TFLite</string>
-    <string name="catalog_engine_whispercpp" translatable="false">whisper.cpp</string>
+    <string name="catalog_filter_tflite">Legacy TFLite</string>
+    <string name="catalog_filter_whispercpp">Legacy Whisper</string>
+    <string name="catalog_engine_tflite">Legacy TFLite</string>
+    <string name="catalog_engine_whispercpp">Legacy Whisper</string>
     <string name="catalog_engine_sherpa" translatable="false">sherpa-onnx</string>
     <string name="catalog_filter_sherpa" translatable="false">sherpa</string>
-    <string name="catalog_filter_parakeet" translatable="false">Parakeet</string>
-    <string name="catalog_filter_gigaam" translatable="false">GigaAM</string>
-    <string name="catalog_group_parakeet" translatable="false">Parakeet</string>
+    <string name="catalog_filter_parakeet">Multilingual</string>
+    <string name="catalog_filter_gigaam">Russian</string>
+    <string name="catalog_group_parakeet">Multilingual</string>
     <string name="catalog_group_parakeet_sub">multilingual · 25 languages</string>
-    <string name="catalog_group_gigaam" translatable="false">GigaAM</string>
+    <string name="catalog_group_gigaam">Russian</string>
     <string name="catalog_group_gigaam_sub">Russian only</string>
     <string name="catalog_active">Active</string>
     <string name="catalog_engine_soon">engine soon</string>
@@ -188,19 +201,19 @@
     <string name="onb_enable">Enable</string>
     <string name="onb_done_check">Done</string>
     <string name="onb_kb_title">Enable voice input</string>
-    <string name="onb_kb_body">Turn Whisper on in the system keyboard list so it can be invoked.</string>
-    <string name="onb_howto">How to use: on your normal keyboard, tap the microphone button — Whisper voice input opens. It doesn\'t replace your keyboard; it\'s there when you need to dictate.</string>
+    <string name="onb_kb_body">Turn Sweet Whisper on in the system keyboard list so it can be invoked.</string>
+    <string name="onb_howto">How to use: on your normal keyboard, tap the microphone (or keyboard-switch) button and pick Sweet Whisper — then dictate into any app. It doesn\'t replace your keyboard; it\'s there when you\'d rather talk than type.</string>
     <string name="onb_model_title">Recognition model</string>
     <string name="onb_model_change">Choose another model</string>
     <string name="onb_model_downloaded">Downloaded ✓</string>
     <string name="onb_model_download">Download and continue</string>
     <string name="onb_device_summary">%1$d cores · %2$s RAM</string>
     <string name="onb_try_title">First test</string>
-    <string name="onb_try_body">Let\'s make sure it works. Tap below, say a short phrase, and see it transcribed.</string>
+    <string name="onb_try_body">A quick preview. Tap below and say a short phrase. In everyday use this same voice input opens right inside any app — chats, notes, search — from your keyboard\'s mic.</string>
     <string name="onb_try_button">Try dictation</string>
     <string name="onb_try_ok">It works! 🎉</string>
     <string name="onb_done_title">All set!</string>
-    <string name="onb_done_body">You\'re ready. Tap the microphone on your keyboard anytime to dictate.</string>
+    <string name="onb_done_body">You\'re ready. To dictate in any app: open your keyboard, tap the mic (or keyboard-switch) button, choose Sweet Whisper, and speak. It\'s a voice keyboard — use it whenever you\'d rather talk than type.</string>
     <string name="onb_done_finish">Finish</string>
     <string name="catalog_progress">%1$.0f / %2$.0f MB · %3$.1f MB/s</string>
     <string name="catalog_starting">Starting…</string>
@@ -209,6 +222,25 @@
     <string name="catalog_err_wifi">Connect to Wi-Fi to download</string>
     <string name="catalog_err_download">Download failed</string>
     <string name="tile_label">Voice input</string>
-    <string name="widget_label">Whisper voice input</string>
+    <string name="widget_label">Sweet Whisper voice input</string>
     <string name="widget_mic_description">Start voice input</string>
+
+    <!-- Friendly, localized model names — shown wherever a model is listed -->
+    <string name="model_gigaam_rnnt">Russian · accurate (punctuation)</string>
+    <string name="model_gigaam_ctc">Russian · fast (punctuation)</string>
+    <string name="model_gigaam_fp32">Russian · max quality</string>
+    <string name="model_parakeet">Multilingual · fast (25 languages)</string>
+    <string name="model_gguf_tiny">Legacy · very fast (tiny)</string>
+    <string name="model_gguf_base">Legacy · fast (base)</string>
+    <string name="model_gguf_small">Legacy · medium (small)</string>
+    <string name="model_gguf_medium">Legacy · accurate, slow (medium)</string>
+    <string name="model_gguf_large">Legacy · very accurate, slow</string>
+    <string name="model_tflite_tiny_en">Legacy · English (light)</string>
+    <string name="model_tflite_base">Legacy TFLite · base</string>
+    <string name="model_tflite_small">Legacy TFLite · more accurate</string>
+    <string name="model_tflite_small_full">Legacy TFLite · 99 languages</string>
+
+    <!-- Inline model picker in Settings -->
+    <string name="settings_model_pick">Active model</string>
+    <string name="settings_model_none">No models downloaded yet — tap below to get one.</string>
 </resources>

@@ -169,7 +169,7 @@ public class HistoryActivity extends AppCompatActivity {
         String engine = getString(m.engine == ModelInfo.Engine.SHERPA ? R.string.main_badge_sherpa
                 : m.engine == ModelInfo.Engine.WHISPER_CPP ? R.string.catalog_engine_whispercpp
                 : R.string.main_badge_tflite);
-        return m.displayName + " · " + engine;
+        return m.label(this) + " · " + engine;
     }
 
     private class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.VH> {

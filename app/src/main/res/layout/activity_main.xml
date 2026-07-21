@@ -414,15 +414,15 @@
         <!-- The orb is the very last element: the thumb lands on the record target at the bottom
              edge, never reaching past a menu bar. -->
         <FrameLayout
-            android:layout_width="184dp"
-            android:layout_height="184dp"
+            android:layout_width="240dp"
+            android:layout_height="240dp"
             android:layout_gravity="center_horizontal"
             android:layout_marginTop="2dp">
 
             <com.whispertflite.ui.LivingSignalView
                 android:id="@+id/orb"
-                android:layout_width="184dp"
-                android:layout_height="184dp" />
+                android:layout_width="240dp"
+                android:layout_height="240dp" />
 
             <ImageButton
                 android:id="@+id/btnRecord"

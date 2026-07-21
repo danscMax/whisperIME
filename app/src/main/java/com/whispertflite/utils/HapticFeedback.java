@@ -8,10 +8,26 @@ import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.os.VibratorManager;
 import android.provider.Settings;
+import android.view.HapticFeedbackConstants;
+import android.view.View;
 
 import androidx.preference.PreferenceManager;
 
 public class HapticFeedback {
+
+    /**
+     * Preferred tap haptic: standard, permission-free, and it auto-honours the system (and
+     * per-keyboard) haptic-intensity setting because the platform routes KEYBOARD_TAP through it.
+     * Gated by the same in-app "Haptic feedback" pref (default on) as {@link #vibrate(Context)}.
+     * No-op when the view is null. Use this on any surface that has a View (the IME dock / the
+     * recognizer orb); {@link #vibrate(Context)} remains only for contexts without a View (a Service).
+     */
+    public static void perform(View view) {
+        if (view == null) return;
+        if (!PreferenceManager.getDefaultSharedPreferences(view.getContext())
+                .getBoolean("hapticFeedback", true)) return;
+        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
+    }
 
     public static void vibrate(Context context){
         if (!hapticEnabled(context)) return;

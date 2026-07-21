@@ -85,7 +85,7 @@ class DownloadActivity : AppCompatActivity(), ModelDownloadManager.Listener {
         val prof = DeviceProfile.detect(this)
         val reco = ModelRecommender.recommend(prof, isRussianUi())
         recommended = reco.model
-        b.modelName.text = reco.model.displayName
+        b.modelName.text = reco.model.label(this)
         b.modelSize.text = Formatter.formatShortFileSize(this, reco.model.sizeBytes)
         b.modelReason.text = getString(reco.reasonResId)
         b.deviceSummary.text = getString(
@@ -108,6 +108,23 @@ class DownloadActivity : AppCompatActivity(), ModelDownloadManager.Listener {
                 Intent(this, WhisperRecognizeActivity::class.java)
                     .setAction(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
             )
+        }
+
+        // Recording gesture: hold (press-hold-release) vs tap (tap to start / tap to stop). Picked here,
+        // then the test above opens in that gesture; shared with the IME + settings via the recordMode pref.
+        // (Auto hands-free is a separate switch in Settings, not part of first-run.)
+        val prefs = androidx.preference.PreferenceManager.getDefaultSharedPreferences(this)
+        b.onbModeGroup.check(when (prefs.getString("recordMode", "hold")) {
+            "auto" -> b.onbModeAuto.id
+            "tap" -> b.onbModeTap.id
+            else -> b.onbModeHold.id
+        })
+        b.onbModeGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (isChecked) prefs.edit().putString("recordMode", when (checkedId) {
+                b.onbModeAuto.id -> "auto"
+                b.onbModeTap.id -> "tap"
+                else -> "hold"
+            }).apply()
         }
 
         goTo(0)

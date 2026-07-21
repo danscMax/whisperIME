@@ -18,6 +18,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.security.MessageDigest;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
@@ -37,6 +38,7 @@ public class ModelDownloadManager {
     public static final String PREF_SELECTED_MODEL = "selectedModelId";
     public static final String PREF_WIFI_ONLY = "wifiOnlyDownloads";
     public static final String ERR_WIFI = "wifi_required";
+    public static final String ERR_CORRUPT = "corrupt_download";
 
     public interface Listener {
         void onProgress(String modelId, long bytes, long total, long bytesPerSec);
@@ -243,7 +245,12 @@ public class ModelDownloadManager {
         if (parent != null) parent.mkdirs();
         File part = new File(target.getPath() + ".part");
 
-        long existing = part.exists() ? part.length() : 0L;
+        // ponytail: hashed assets don't resume — a pre-existing .part can't feed the running SHA-256
+        // (no way to re-seed the digest with already-written bytes), so start clean and hash the whole
+        // file in one pass. Upgrade path: keep Range-resume and re-hash the finished .part if the extra
+        // download cost ever matters. Un-hashed assets keep the existing resume behaviour unchanged.
+        final MessageDigest digest = asset.sha256 != null ? newSha256() : null;
+        long existing = (digest == null && part.exists()) ? part.length() : 0L;
         HttpURLConnection conn = (HttpURLConnection) new URL(asset.url).openConnection();
         conn.setConnectTimeout(10000);
         conn.setReadTimeout(15000);
@@ -281,6 +288,7 @@ public class ModelDownloadManager {
                     return false;
                 }
                 out.write(buf, 0, len);
+                if (digest != null) digest.update(buf, 0, len);
                 done += len;
                 windowBytes += len;
                 long now = System.currentTimeMillis();
@@ -315,6 +323,17 @@ public class ModelDownloadManager {
         if (part.length() < floor) {
             emitError(modelId, "incomplete");
             return false;
+        }
+
+        // Integrity gate: the byte-count floor above only catches truncation — a corrupt-but-plausibly
+        // sized file would still be promoted and load as garbage. When the asset ships a SHA-256, verify
+        // the running digest (covers the whole file since hashed assets never resume). On mismatch, drop
+        // the .part and throw so runWithRetry re-downloads from scratch; after retries are exhausted the
+        // download() catch surfaces ERR_CORRUPT. No hash => no check (behaves exactly as before).
+        if (digest != null && !hashMatches(asset.sha256, toHex(digest.digest()))) {
+            //noinspection ResultOfMethodCallIgnored
+            part.delete();
+            throw new IOException(ERR_CORRUPT);
         }
 
         // completed without cancel: promote .part -> final name
@@ -386,5 +405,29 @@ public class ModelDownloadManager {
 
     private static void closeQuietly(java.io.Closeable c) {
         if (c != null) try { c.close(); } catch (IOException ignored) {}
+    }
+
+    /** SHA-256 digest; unchecked because the algorithm is guaranteed present on every Android device. */
+    private static MessageDigest newSha256() {
+        try {
+            return MessageDigest.getInstance("SHA-256");
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 unavailable", e);
+        }
+    }
+
+    /** Lowercase hex encoding of a digest's bytes. */
+    static String toHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder(bytes.length * 2);
+        for (byte b : bytes) {
+            sb.append(Character.forDigit((b >> 4) & 0xF, 16));
+            sb.append(Character.forDigit(b & 0xF, 16));
+        }
+        return sb.toString();
+    }
+
+    /** True when {@code actualHex} matches the expected hash. Null expected => no hash => skip (match). */
+    static boolean hashMatches(String expectedSha256, String actualHex) {
+        return expectedSha256 == null || expectedSha256.equalsIgnoreCase(actualHex);
     }
 }

@@ -38,6 +38,7 @@ import com.whispertflite.history.HistoryDb;
 import com.whispertflite.models.ModelDownloadManager;
 import com.whispertflite.models.ModelInfo;
 import com.whispertflite.models.ModelRegistry;
+import com.whispertflite.models.ThermalMonitor;
 import com.whispertflite.ui.LivingSignalView;
 import com.whispertflite.utils.HapticFeedback;
 import com.whispertflite.utils.InputLang;
@@ -62,7 +63,11 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     private SharedPreferences sp = null;
     private Context mContext;
     private String langCode = "auto";
-    private boolean modeAuto = false;   // false = push-to-talk (default), true = hands-free VAD
+    private boolean modeAuto = false;   // hands-free VAD layer, separate from the manual gesture below
+    private String recordMode = "hold"; // manual gesture when auto is off: "hold" or "tap"
+    // Live thermal signal for the active recording session (DeviceProfile is only a one-shot snapshot).
+    // API 29+; a no-op on 28. Registered on record start, unregistered on stop.
+    private ThermalMonitor thermalMonitor;
 
     // ACTION_PROCESS_TEXT support: dictation replaces the selected text.
     private boolean processTextMode = false;
@@ -73,6 +78,10 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mContext = this;
+        // Monitor exposes isThrottling() + logs on severe throttling; a Consumer hook could actively
+        // react (e.g. downgrade the decode) but we leave it null so the decode thread stays untouched.
+        // Created before any early return so onDestroy can always safely stop() it.
+        thermalMonitor = new ThermalMonitor(this, null);
         ThemeUtils.applyPalette(this);
         ThemeUtils.applyGlass(this);
         sp = PreferenceManager.getDefaultSharedPreferences(this);
@@ -165,17 +174,22 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
         mRecorder = new Recorder(this);
         mRecorder.setRmsListener(rms -> runOnUiThread(() -> orb.pushLevel(rms)));
         mRecorder.setListener(message -> {
+            // Any message other than "still recording" ends the session — drop the thermal listener on all
+            // of them (DONE / ERROR / a caught mic exception / permission-denied), not just the two constants.
+            if (!Recorder.MSG_RECORDING.equals(message)) thermalMonitor.stop();
             if (message.equals(Recorder.MSG_RECORDING)) {
                 runOnUiThread(() -> setStatus(R.string.dialog_listening));
             } else if (message.equals(Recorder.MSG_RECORDING_DONE)) {
-                HapticFeedback.vibrate(mContext);
+                HapticFeedback.perform(orb);
                 runOnUiThread(this::stopMicPulse);
                 startTranscription();
             } else if (message.equals(Recorder.MSG_RECORDING_ERROR)) {
-                HapticFeedback.vibrate(mContext);
+                HapticFeedback.perform(orb);
                 runOnUiThread(() -> {
                     orb.setSignalState(LivingSignalView.SignalState.ERROR);
-                    setStatus(modeAuto ? R.string.dialog_tap_to_talk : R.string.dialog_hold_to_speak);
+                    setStatus(modeAuto ? R.string.dialog_tap_to_talk
+                            : "tap".equals(recordMode) ? R.string.ime_hint_tap_start
+                            : R.string.dialog_hold_to_speak);
                     Toast.makeText(mContext, R.string.error_no_input, Toast.LENGTH_SHORT).show();
                 });
             }
@@ -183,25 +197,28 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
 
         // Two modes, same as the IME: push-to-talk (default) — hold the orb, release to transcribe;
         // auto (hands-free) — tap to start, VAD auto-stops on a speech pause, tap again to stop early.
-        modeAuto = sp.getBoolean("imeModeAuto", false);
+        recordMode = sp.getString("recordMode", sp.getBoolean("imeModeAuto", false) ? "auto" : "hold");
+        modeAuto = "auto".equals(recordMode);
         TextView modeToggle = findViewById(R.id.dialog_mode);
         modeToggle.setOnClickListener(v -> {
             if (mRecorder.isInProgress()) mRecorder.stop();
-            modeAuto = !modeAuto;
-            sp.edit().putBoolean("imeModeAuto", modeAuto).apply();
+            // Cycle the single 3-way mode: hold -> tap -> auto-start -> hold.
+            recordMode = "hold".equals(recordMode) ? "tap" : "tap".equals(recordMode) ? "auto" : "hold";
+            modeAuto = "auto".equals(recordMode);
+            sp.edit().putString("recordMode", recordMode).apply();
             applyModeUi();
         });
 
         btnRecord.setOnTouchListener((v, event) -> {
-            if (modeAuto) {
-                // Hands-free: tap toggles listening; VAD also auto-stops.
+            if (modeAuto || "tap".equals(recordMode)) {
+                // Tap to start, tap again to stop. Auto adds VAD auto-stop; the manual "tap" gesture has no VAD.
                 if (event.getAction() == MotionEvent.ACTION_DOWN) {
                     if (mRecorder.isInProgress()) mRecorder.stop();
-                    else if (mWhisper != null && !mWhisper.isInProgress()) startListening(true);
+                    else if (mWhisper != null && !mWhisper.isInProgress()) startListening(modeAuto);
                 }
                 return true;
             }
-            // Push-to-talk: record while held, transcribe on release.
+            // Hold (push-to-talk): record while held, transcribe on release.
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
                 if (mWhisper != null && !mWhisper.isInProgress()) startListening(false);
             } else if (event.getAction() == MotionEvent.ACTION_UP
@@ -227,12 +244,16 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     /** Reflect the current mode on the toggle pill and the idle prompt (when not busy). */
     private void applyModeUi() {
         TextView modeToggle = findViewById(R.id.dialog_mode);
-        modeToggle.setText(modeAuto ? R.string.dialog_mode_auto : R.string.dialog_mode_hold);
+        modeToggle.setText("auto".equals(recordMode) ? R.string.dialog_mode_autostart
+                : "tap".equals(recordMode) ? R.string.dialog_mode_tap
+                : R.string.dialog_mode_hold);   // pill shows the current mode; tap cycles hold->tap->auto
         modeToggle.setBackgroundResource(
                 modeAuto ? R.drawable.living_glass_pill_warm : R.drawable.living_glass_pill);
         if (mRecorder == null || !mRecorder.isInProgress()) {
             orb.setSignalState(LivingSignalView.SignalState.READY);
-            setStatus(modeAuto ? R.string.dialog_tap_to_talk : R.string.dialog_hold_to_speak);
+            setStatus(modeAuto ? R.string.dialog_tap_to_talk
+                    : "tap".equals(recordMode) ? R.string.ime_hint_tap_start
+                    : R.string.dialog_hold_to_speak);
             if (partialText != null) partialText.setVisibility(View.GONE);  // no dead band at idle
             if (sendButton != null) sendButton.setVisibility(View.GONE);
         }
@@ -243,7 +264,8 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
      * continuously until {@link Recorder#stop()} on release.
      */
     private void startListening(boolean auto) {
-        HapticFeedback.vibrate(this);
+        HapticFeedback.perform(orb);
+        thermalMonitor.start();   // watch for real throttling during this session; stopped on DONE/ERROR
         setStatus(R.string.dialog_listening);
         orb.setSignalState(LivingSignalView.SignalState.LISTENING);
         sendButton.setVisibility(View.GONE);      // clear any previous review before a new capture (D3)
@@ -276,7 +298,7 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
             // selected file reports only its name, so a plain equals never hit and the raw
             // "ggml-tiny-q5_1.bin" leaked into the chip.
             if (new File(m.filename).getName().equals(fileName)) {
-                modelLabel = m.displayName;
+                modelLabel = m.label(this);
                 break;
             }
         }
@@ -460,6 +482,7 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     @Override
     public void onDestroy() {
         stopMicPulse();
+        if (thermalMonitor != null) thermalMonitor.stop();   // drop the thermal listener if a session was live
         deinitModel();
         if (blurListener != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             getWindowManager().removeCrossWindowBlurEnabledListener(blurListener);

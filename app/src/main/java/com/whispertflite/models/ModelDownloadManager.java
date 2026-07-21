@@ -247,6 +247,11 @@ public class ModelDownloadManager {
                 runDownload(model);
                 return;
             } catch (IOException e) {
+                // A content-hash mismatch (ERR_CORRUPT) is deterministic, not transient: downloadAsset already
+                // tried every host once this pass, and re-fetching the same pinned file from the same servers
+                // can only reproduce it. Fast-fail instead of burning up to 3x the bytes of a multi-hundred-MB
+                // model on a doomed retry. Transient errors (dropped connection / timeout) still back off + retry.
+                if (ERR_CORRUPT.equals(e.getMessage())) throw e;
                 last = e;
                 Log.w(TAG, "download attempt " + attempt + "/" + maxAttempts + " failed: " + model.id, e);
                 if (attempt < maxAttempts) {
@@ -570,8 +575,9 @@ public class ModelDownloadManager {
         }
     }
 
-    /** SHA-256 of a file's contents as lowercase hex, streamed so a multi-GB model never loads into memory. */
-    private static String sha256OfFile(File f) throws IOException {
+    /** SHA-256 of a file's contents as lowercase hex, streamed so a multi-GB model never loads into memory.
+     *  Package-private so {@code ModelDownloadManagerTest} can exercise it directly (like {@link #toHex}). */
+    static String sha256OfFile(File f) throws IOException {
         MessageDigest digest = newSha256();
         try (InputStream in = new FileInputStream(f)) {
             byte[] buf = new byte[BUFFER];

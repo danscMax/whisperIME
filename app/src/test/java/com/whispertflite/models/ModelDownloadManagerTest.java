@@ -74,6 +74,27 @@ public class ModelDownloadManagerTest {
         assertFalse(ModelDownloadManager.hashMatches(expected, sha256Hex(corrupt)));
     }
 
+    @Test
+    public void sha256OfFileHashesFileContentsAndCatchesCorruption() throws Exception {
+        // Exercises the streamed file hashing that feeds the integrity gate in downloadAssetFrom — the one
+        // genuinely new code path in the "activate the check" change (toHex/hashMatches predate it).
+        byte[] good = "sherpa encoder bytes on disk".getBytes("UTF-8");
+        java.io.File f = java.io.File.createTempFile("md-hash", ".bin");
+        f.deleteOnExit();
+        writeBytes(f, good);
+        assertEquals(sha256Hex(good), ModelDownloadManager.sha256OfFile(f));
+
+        // Flip one byte on disk: the streamed hash must change, so the gate would reject the file.
+        byte[] corrupt = good.clone();
+        corrupt[0] ^= 0x01;
+        writeBytes(f, corrupt);
+        assertFalse(sha256Hex(good).equals(ModelDownloadManager.sha256OfFile(f)));
+    }
+
+    private static void writeBytes(java.io.File f, byte[] data) throws Exception {
+        try (java.io.FileOutputStream out = new java.io.FileOutputStream(f)) { out.write(data); }
+    }
+
     private static String sha256Hex(byte[] data) throws Exception {
         return ModelDownloadManager.toHex(MessageDigest.getInstance("SHA-256").digest(data));
     }

@@ -123,6 +123,7 @@
     <string name="dialog_mode_auto">Авто</string>
     <string name="dialog_mode_hold">Зажать</string>
     <string name="dialog_mode_tap">Нажать</string>
+    <string name="dialog_mode_autostart">Автостарт</string>
     <string name="dialog_mode_cd">Режим распознавания: автоматический или по нажатию</string>
     <string name="switch_to_keyboard">Переключить на клавиатуру</string>
     <string name="dialog_no_model_title">Модель ещё не скачана</string>

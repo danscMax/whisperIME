@@ -90,9 +90,9 @@
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:background="@drawable/living_glass_circle"
-            android:contentDescription="@string/main_cd_menu"
+            android:contentDescription="@string/settings_title"
             android:padding="12dp"
-            android:src="@drawable/ic_more_vert_24dp"
+            android:src="@drawable/ic_settings_24dp"
             app:tint="@color/glass_ink_dim" />
     </LinearLayout>
 

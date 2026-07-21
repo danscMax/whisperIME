@@ -114,9 +114,17 @@ class DownloadActivity : AppCompatActivity(), ModelDownloadManager.Listener {
         // then the test above opens in that gesture; shared with the IME + settings via the recordMode pref.
         // (Auto hands-free is a separate switch in Settings, not part of first-run.)
         val prefs = androidx.preference.PreferenceManager.getDefaultSharedPreferences(this)
-        b.onbModeGroup.check(if (prefs.getString("recordMode", "hold") == "tap") b.onbModeTap.id else b.onbModeHold.id)
+        b.onbModeGroup.check(when (prefs.getString("recordMode", "hold")) {
+            "auto" -> b.onbModeAuto.id
+            "tap" -> b.onbModeTap.id
+            else -> b.onbModeHold.id
+        })
         b.onbModeGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
-            if (isChecked) prefs.edit().putString("recordMode", if (checkedId == b.onbModeTap.id) "tap" else "hold").apply()
+            if (isChecked) prefs.edit().putString("recordMode", when (checkedId) {
+                b.onbModeAuto.id -> "auto"
+                b.onbModeTap.id -> "tap"
+                else -> "hold"
+            }).apply()
         }
 
         goTo(0)

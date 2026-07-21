@@ -310,8 +310,8 @@ public class WhisperInputMethodService extends InputMethodService {
         btnKeyboard.setColorFilter(accent);
         btnMore.setColorFilter(accent);
 
-        modeAuto = sp.getBoolean("imeModeAuto", false);
-        recordMode = sp.getString("recordMode", "hold");
+        recordMode = sp.getString("recordMode", sp.getBoolean("imeModeAuto", false) ? "auto" : "hold");
+        modeAuto = "auto".equals(recordMode);   // one 3-way pref (hold/tap/auto); auto derives modeAuto
         translate = sp.getBoolean("translate", false);   // shared with the app (D9)
         // Keys (keyboard-exit above all) stay visible in both modes: auto must never trap the user.
         checkRecordPermission();
@@ -425,7 +425,13 @@ public class WhisperInputMethodService extends InputMethodService {
 
         btnEnter.setOnClickListener(v -> sendKey(KeyEvent.KEYCODE_ENTER));
 
-        btnMore.setOnClickListener(this::showImeMenu);
+        // The dock's overflow menu is gone: the gear opens the full Settings screen (mode, translate,
+        // language and everything else now live there). An IME has no task of its own, so NEW_TASK.
+        btnMore.setOnClickListener(v -> {
+            Intent i = new Intent(this, SettingsActivity.class);
+            i.addFlags(FLAG_ACTIVITY_NEW_TASK);
+            startActivity(i);
+        });
 
         return rootView;
     }
@@ -460,7 +466,8 @@ public class WhisperInputMethodService extends InputMethodService {
         checkAuto.setVisibility(modeAuto ? View.VISIBLE : View.INVISIBLE);
         v.findViewById(R.id.row_auto).setOnClickListener(x -> {
             modeAuto = !modeAuto;
-            sp.edit().putBoolean("imeModeAuto", modeAuto).apply();
+            recordMode = modeAuto ? "auto" : "hold";   // quick hands-free toggle; off falls back to the hold gesture
+            sp.edit().putString("recordMode", recordMode).apply();
             updateModelChip();
             checkAuto.setVisibility(modeAuto ? View.VISIBLE : View.INVISIBLE);
             if (modeAuto) {

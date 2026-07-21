@@ -161,24 +161,15 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="@string/dialog_mode_tap" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/mode_auto"
+                        style="@style/Widget.Glass.SegButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/dialog_mode_autostart" />
                 </com.google.android.material.button.MaterialButtonToggleGroup>
-
-                <com.google.android.material.materialswitch.MaterialSwitch
-                    android:id="@+id/switch_auto_mode"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:minHeight="48dp"
-                    android:gravity="center_vertical"
-                    android:text="@string/settings_auto_mode"
-                    android:textColor="@color/glass_ink" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/settings_auto_mode_sub"
-                    android:textColor="@color/glass_ink_dim"
-                    android:textSize="12sp" />
 
                 <TextView
                     android:id="@+id/row_enable_keyboard"
@@ -194,18 +185,6 @@
                     android:textColor="@color/glass_ink"
                     android:textAppearance="?attr/textAppearanceBodyLarge" />
 
-                <TextView
-                    android:id="@+id/row_voice_input"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="?attr/selectableItemBackground"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:minHeight="48dp"
-                    android:text="@string/settings_voice_input"
-                    android:textColor="@color/glass_ink"
-                    android:textAppearance="?attr/textAppearanceBodyLarge" />
             </LinearLayout>
 
             <!-- 3. Appearance -->

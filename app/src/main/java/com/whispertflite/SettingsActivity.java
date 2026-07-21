@@ -59,8 +59,6 @@ public class SettingsActivity extends AppCompatActivity {
                 v -> startActivity(new Intent(this, com.whispertflite.models.ModelCatalogActivity.class)));
         findViewById(R.id.row_enable_keyboard).setOnClickListener(
                 v -> startActivity(new Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)));
-        findViewById(R.id.row_voice_input).setOnClickListener(
-                v -> startActivity(new Intent(this, WhisperRecognitionServiceSettingsActivity.class)));
         findViewById(R.id.row_github).setOnClickListener(
                 v -> startActivity(new Intent(Intent.ACTION_VIEW,
                         Uri.parse("https://github.com/danscMax/whisperIME"))));
@@ -120,18 +118,18 @@ public class SettingsActivity extends AppCompatActivity {
         return g;
     }
 
-    /** Recording controls: the manual GESTURE (hold vs tap, {@code recordMode}) and a separate hands-free
-     *  AUTO switch ({@code imeModeAuto}). Both shared with the IME + recognizer. */
+    /** Recording mode: one 3-way choice — hold / tap / auto-start ({@code recordMode}). Shared with the
+     *  IME + recognizer, which derive {@code modeAuto} from it. */
     private void buildModeToggle() {
         MaterialButtonToggleGroup group = findViewById(R.id.record_mode_group);
-        group.check("tap".equals(sp.getString("recordMode", "hold")) ? R.id.mode_tap : R.id.mode_hold);
+        String mode = sp.getString("recordMode", sp.getBoolean("imeModeAuto", false) ? "auto" : "hold");
+        group.check("auto".equals(mode) ? R.id.mode_auto : "tap".equals(mode) ? R.id.mode_tap : R.id.mode_hold);
         group.addOnButtonCheckedListener((g, id, isChecked) -> {
             if (!isChecked) return;
-            String m = id == R.id.mode_tap ? "tap" : "hold";
+            String m = id == R.id.mode_auto ? "auto" : id == R.id.mode_tap ? "tap" : "hold";
             if (m.equals(sp.getString("recordMode", "hold"))) return;
             sp.edit().putString("recordMode", m).apply();
         });
-        bindSwitch(R.id.switch_auto_mode, "imeModeAuto", false);   // hands-free VAD, separate from the gesture
     }
 
     private void buildOrbToggle() {

@@ -197,13 +197,15 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
 
         // Two modes, same as the IME: push-to-talk (default) — hold the orb, release to transcribe;
         // auto (hands-free) — tap to start, VAD auto-stops on a speech pause, tap again to stop early.
-        modeAuto = sp.getBoolean("imeModeAuto", false);
-        recordMode = sp.getString("recordMode", "hold");
+        recordMode = sp.getString("recordMode", sp.getBoolean("imeModeAuto", false) ? "auto" : "hold");
+        modeAuto = "auto".equals(recordMode);
         TextView modeToggle = findViewById(R.id.dialog_mode);
         modeToggle.setOnClickListener(v -> {
             if (mRecorder.isInProgress()) mRecorder.stop();
-            modeAuto = !modeAuto;
-            sp.edit().putBoolean("imeModeAuto", modeAuto).apply();
+            // Cycle the single 3-way mode: hold -> tap -> auto-start -> hold.
+            recordMode = "hold".equals(recordMode) ? "tap" : "tap".equals(recordMode) ? "auto" : "hold";
+            modeAuto = "auto".equals(recordMode);
+            sp.edit().putString("recordMode", recordMode).apply();
             applyModeUi();
         });
 
@@ -242,7 +244,9 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     /** Reflect the current mode on the toggle pill and the idle prompt (when not busy). */
     private void applyModeUi() {
         TextView modeToggle = findViewById(R.id.dialog_mode);
-        modeToggle.setText(R.string.dialog_mode_auto);   // the pill is the Auto (hands-free) toggle; warm bg = on
+        modeToggle.setText("auto".equals(recordMode) ? R.string.dialog_mode_autostart
+                : "tap".equals(recordMode) ? R.string.dialog_mode_tap
+                : R.string.dialog_mode_hold);   // pill shows the current mode; tap cycles hold->tap->auto
         modeToggle.setBackgroundResource(
                 modeAuto ? R.drawable.living_glass_pill_warm : R.drawable.living_glass_pill);
         if (mRecorder == null || !mRecorder.isInProgress()) {

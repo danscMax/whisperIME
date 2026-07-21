@@ -141,6 +141,7 @@
     <string name="dialog_mode_auto">Auto</string>
     <string name="dialog_mode_hold">Hold</string>
     <string name="dialog_mode_tap">Tap</string>
+    <string name="dialog_mode_autostart">Auto-start</string>
     <string name="dialog_mode_cd">Recognition mode: automatic or push-to-talk</string>
     <string name="switch_to_keyboard">Switch to keyboard</string>
 

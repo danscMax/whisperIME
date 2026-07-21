@@ -3,7 +3,6 @@
     <style name="Theme.Whisper.NoActionBar" parent="Theme.Material3Expressive.DayNight.NoActionBar">
         <!-- Customize your light theme here. -->
         <item name="android:windowBackground">@color/windowBackground</item>
-        <item name="android:windowAnimationStyle">@style/Animation.Whisper.Activity</item>
         <!-- Edge-to-edge immersion: let the ambient backdrop bleed under transparent system bars. -->
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
@@ -19,7 +18,6 @@
     <style name="Theme.Whisper.ActionBar" parent="Theme.Material3Expressive.DayNight">
         <!-- Customize your light theme here. -->
         <item name="android:windowBackground">@color/windowBackground</item>
-        <item name="android:windowAnimationStyle">@style/Animation.Whisper.Activity</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:enforceStatusBarContrast">false</item>

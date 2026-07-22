@@ -12,4 +12,4 @@
     android:textColor="@color/glass_ink"
     android:textSize="15sp"
     android:ellipsize="end"
-    android:maxLines="1" />
+    android:maxLines="2" />

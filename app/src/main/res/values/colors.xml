@@ -12,7 +12,10 @@
     <color name="glass_screen_alt">#EAF0FA</color>
     <color name="glass_scrim">#66000000</color>
     <color name="living_bg_mid">#EEF2FA</color>
-    <!-- IME voice-dock glass panel (translucent so the host app shows through). Light theme = airy frost. -->
+    <!-- IME voice-dock glass panel (translucent so the host app shows through). Light theme = airy frost.
+         NB 2026-07-22: the host's text still reads through the dock on light apps, but that is NOT this
+         alpha — measured on-device, 0xE6 / 0xFA / 0xFF all leave the identical bleed (208 vs 234 bg), so
+         the source is the IME window, not this fill. Don't "fix" it here. -->
     <color name="ime_dock_glass">#E6EAF0FA</color>
     <color name="living_backdrop_glow">#2F7D73FF</color>
     <color name="living_glass_pressed">#E5FFFFFF</color>

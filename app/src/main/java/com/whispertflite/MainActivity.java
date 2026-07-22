@@ -740,13 +740,9 @@ public class MainActivity extends AppCompatActivity {
         btnContext.setText(getString(R.string.main_context_format, model, language));
     }
 
+    /** Friendly localized name only — the engine is already shown by the badge next to the spinner. */
     private String modelLabel(ModelInfo m) {
-        String engine = m.engine == ModelInfo.Engine.SHERPA ? getString(R.string.main_badge_sherpa)
-                : m.engine == ModelInfo.Engine.WHISPER_CPP ? getString(R.string.catalog_engine_whispercpp)
-                : getString(R.string.main_badge_tflite);
-        // Friendly localized name + the engine badge (e.g. "Multilingual · fast (25 languages) · sherpa").
-        String name = m.label(this);
-        return name + " · " + engine;
+        return m.label(this);
     }
 
     private void checkPermissions() {

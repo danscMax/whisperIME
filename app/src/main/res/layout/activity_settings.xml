@@ -460,6 +460,19 @@
                         android:textAppearance="?attr/textAppearanceBodyLarge" />
 
                     <TextView
+                        android:id="@+id/row_licenses"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center_vertical"
+                        android:minHeight="48dp"
+                        android:text="@string/settings_licenses"
+                        android:textColor="@color/glass_ink"
+                        android:textAppearance="?attr/textAppearanceBodyLarge" />
+
+                    <TextView
                         android:id="@+id/row_github"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"

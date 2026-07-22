@@ -71,6 +71,15 @@ public class SettingsActivity extends AppCompatActivity {
                 v -> startActivity(new Intent(Intent.ACTION_VIEW,
                         Uri.parse("https://github.com/danscMax/whisperIME"))));
 
+        // Attribution is a licence obligation (CC-BY-4.0 for Parakeet, notice retention for MIT), so it
+        // ships in the app itself. A scrollable dialog is enough — no screen of its own.
+        findViewById(R.id.row_licenses).setOnClickListener(v ->
+                new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                        .setTitle(R.string.settings_licenses)
+                        .setMessage(R.string.licenses_body)
+                        .setPositiveButton(android.R.string.ok, null)
+                        .show());
+
         bindAdvancedToggle();
     }
 

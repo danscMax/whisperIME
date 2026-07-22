@@ -86,6 +86,34 @@
     <string name="settings_voice_input">Voice input settings</string>
     <string name="settings_models">Models &amp; engines</string>
     <string name="settings_github">Project on GitHub</string>
+    <string name="settings_licenses">Licences &amp; attribution</string>
+    <!-- Legal notice: kept untranslated on purpose — licence terms are quoted, not localized. The NVIDIA
+         line is REQUIRED by CC-BY-4.0 (Parakeet); the MIT lines carry the upstream copyright notices. -->
+    <string name="licenses_body" translatable="false">Sweet Whisper runs entirely on your device.
+
+SPEECH MODELS
+
+• Parakeet TDT 0.6b v3 — © NVIDIA Corporation, licensed under CC-BY-4.0 (creativecommons.org/licenses/by/4.0). Used unmodified as converted to ONNX by k2-fsa/sherpa-onnx.
+
+• GigaAM v3 (Russian) — © Salute Developers, MIT License.
+
+• Whisper — © OpenAI, MIT License.
+
+• Silero VAD — © Silero Team, MIT License.
+
+SOFTWARE
+
+• whisperIME (upstream) — © woheller69, MIT License.
+
+• whisper.cpp — © Georgi Gerganov, MIT License.
+
+• sherpa-onnx — © k2-fsa, Apache License 2.0.
+
+• TensorFlow Lite — © The TensorFlow Authors, Apache License 2.0.
+
+MIT License (applies to the MIT-licensed components above): Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+Apache License 2.0: full text at apache.org/licenses/LICENSE-2.0</string>
     <!-- Onboarding -->
     <string name="onboarding_title">Choose your model</string>
     <string name="onboarding_subtitle">One to start, the rest later. Everything offline.</string>

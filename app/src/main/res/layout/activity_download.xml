@@ -166,14 +166,11 @@
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
 
-                    <TextView
+                    <include
+                        layout="@layout/include_howto_strip"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp"
-                        android:lineSpacingMultiplier="1.15"
-                        android:text="@string/onb_howto"
-                        android:textColor="@color/glass_ink_dim"
-                        android:textSize="13sp" />
+                        android:layout_marginTop="16dp" />
                 </LinearLayout>
 
                 <!-- ===== Step 2: Recommended model ===== -->
@@ -312,6 +309,12 @@
                         android:textColor="@color/glass_ink_dim"
                         android:textSize="14sp" />
 
+                    <include
+                        layout="@layout/include_howto_strip"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp" />
+
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -350,12 +353,32 @@
                             android:text="@string/dialog_mode_autostart" />
                     </com.google.android.material.button.MaterialButtonToggleGroup>
 
+                    <!-- The rehearsal happens in a REAL editor: the user performs the same gesture they
+                         will use forever after (keyboard → mic/globe → Sweet Whisper → speak) and watches
+                         the text land in the field. A canned recognizer dialog taught the wrong model. -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/try_field_wrap"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:hint="@string/onb_try_field_hint">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/try_field"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textMultiLine"
+                            android:minLines="2"
+                            android:textColor="@color/glass_ink" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btn_try"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="24dp"
-                        app:icon="@drawable/ic_mic_48dp"
+                        android:layout_marginTop="14dp"
+                        app:icon="@drawable/ic_keyboard_36dp"
                         android:text="@string/onb_try_button" />
 
                     <TextView
@@ -404,6 +427,12 @@
                         android:text="@string/onb_done_body"
                         android:textColor="@color/glass_ink_dim"
                         android:textSize="14sp" />
+
+                    <include
+                        layout="@layout/include_howto_strip"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp" />
                 </LinearLayout>
             </ViewFlipper>
 

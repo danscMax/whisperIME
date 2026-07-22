@@ -6,7 +6,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.provider.Settings
-import android.speech.RecognizerIntent
 import android.text.format.Formatter
 import android.view.View
 import android.view.inputmethod.InputMethodManager
@@ -37,8 +36,13 @@ class DownloadActivity : AppCompatActivity(), ModelDownloadManager.Listener {
     private var tried = false
     private var downloading = false
 
-    private companion object {
-        const val STEP_COUNT = 5; const val STEP_SETUP = 1; const val STEP_MODEL = 2; const val STEP_TRY = 3
+    companion object {
+        /** Replay the wizard even though a model is already installed (Settings → run it again). */
+        const val EXTRA_REPLAY = "replay"
+        private const val STEP_COUNT = 5
+        private const val STEP_SETUP = 1
+        private const val STEP_MODEL = 2
+        private const val STEP_TRY = 3
     }
 
     /** The Get-ready step must not be passed until the two things dictation actually needs are in place. */
@@ -47,17 +51,12 @@ class DownloadActivity : AppCompatActivity(), ModelDownloadManager.Listener {
     private val micRequest =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { refreshSetup() }
 
-    private val tryRun =
-        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { res ->
-            tried = true
-            val text = res.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
-            binding?.tryOk?.apply {
-                this.text = if (!text.isNullOrBlank())
-                    getString(R.string.onb_try_ok) + "\n“" + text.trim() + "”"
-                else getString(R.string.onb_try_ok)
-                visibility = View.VISIBLE
-            }
-        }
+    /** Text arriving in the rehearsal field means the user pulled off the real gesture — celebrate it. */
+    private fun onRehearsalText(text: CharSequence?) {
+        if (text.isNullOrBlank() || tried) return
+        tried = true
+        binding?.tryOk?.visibility = View.VISIBLE
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,8 +69,8 @@ class DownloadActivity : AppCompatActivity(), ModelDownloadManager.Listener {
 
         manager = ModelDownloadManager.get(this)
 
-        // Returning user with a model already installed: don't re-onboard.
-        if (manager.hasAnyModel()) {
+        // Returning user with a model already installed: don't re-onboard — unless they asked to replay.
+        if (manager.hasAnyModel() && !intent.getBooleanExtra(EXTRA_REPLAY, false)) {
             startActivity(Intent(this, MainActivity::class.java))
             finish()
             return
@@ -102,13 +101,18 @@ class DownloadActivity : AppCompatActivity(), ModelDownloadManager.Listener {
         b.btnChange.setOnClickListener {
             startActivity(Intent(this, com.whispertflite.models.ModelCatalogActivity::class.java))
         }
+        // No canned dialog here: focus the real field and open the system keyboard picker, so the
+        // rehearsal IS the everyday gesture (keyboard → mic/globe → Sweet Whisper → speak).
         b.btnTry.setOnClickListener {
             if (!micGranted()) { micRequest.launch(Manifest.permission.RECORD_AUDIO); return@setOnClickListener }
-            tryRun.launch(
-                Intent(this, WhisperRecognizeActivity::class.java)
-                    .setAction(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
-            )
+            b.tryField.requestFocus()
+            (getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)?.showInputMethodPicker()
         }
+        b.tryField.addTextChangedListener(object : android.text.TextWatcher {
+            override fun afterTextChanged(s: android.text.Editable?) = onRehearsalText(s)
+            override fun beforeTextChanged(s: CharSequence?, st: Int, c: Int, a: Int) {}
+            override fun onTextChanged(s: CharSequence?, st: Int, b: Int, c: Int) {}
+        })
 
         // Recording gesture: hold (press-hold-release) vs tap (tap to start / tap to stop). Picked here,
         // then the test above opens in that gesture; shared with the IME + settings via the recordMode pref.
@@ -160,6 +164,13 @@ class DownloadActivity : AppCompatActivity(), ModelDownloadManager.Listener {
         }
         refreshSetup()
         refreshModel()
+        // Landing on the rehearsal step: put the caret in the field and raise the keyboard, so the very
+        // next thing on screen is the keyboard whose mic button the user is being taught to press.
+        if (step == STEP_TRY) {
+            b.tryField.requestFocus()
+            (getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)
+                ?.showSoftInput(b.tryField, InputMethodManager.SHOW_IMPLICIT)
+        }
     }
 
     private fun onNext() {

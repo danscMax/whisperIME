@@ -86,6 +86,7 @@
     <string name="settings_voice_input">Voice input settings</string>
     <string name="settings_models">Models &amp; engines</string>
     <string name="settings_github">Project on GitHub</string>
+    <string name="settings_replay_onboarding">Run the setup guide again</string>
     <string name="settings_licenses">Licences &amp; attribution</string>
     <!-- Legal notice: kept untranslated on purpose — licence terms are quoted, not localized. The NVIDIA
          line is REQUIRED by CC-BY-4.0 (Parakeet); the MIT lines carry the upstream copyright notices. -->
@@ -226,29 +227,35 @@ Apache License 2.0: full text at apache.org/licenses/LICENSE-2.0</string>
     <string name="onb_step_of">Step %1$d of %2$d</string>
     <string name="onb_back">Back</string>
     <string name="onb_next">Next</string>
-    <string name="onb_welcome_title">Private voice input</string>
-    <string name="onb_welcome_body">Speak instead of typing — in any app. Everything is recognized right on your device; nothing is sent anywhere.</string>
+    <string name="onb_welcome_title">Talk instead of typing</string>
+    <string name="onb_welcome_body">Dictate into any app — chats, notes, search. Your voice is recognized on this device and never sent anywhere.</string>
     <string name="onb_welcome_start">Get started</string>
-    <string name="onb_setup_title">Get ready</string>
-    <string name="onb_mic_title">Microphone access</string>
-    <string name="onb_mic_body">Needed to hear your voice. Audio never leaves the device.</string>
+    <string name="onb_setup_title">Two things to switch on</string>
+    <string name="onb_mic_title">Microphone</string>
+    <string name="onb_mic_body">To hear you. The audio never leaves this device.</string>
     <string name="onb_grant">Grant</string>
     <string name="onb_enable">Enable</string>
     <string name="onb_done_check">Done</string>
-    <string name="onb_kb_title">Enable voice input</string>
-    <string name="onb_kb_body">Turn Sweet Whisper on in the system keyboard list so it can be invoked.</string>
-    <string name="onb_howto">How to use: on your normal keyboard, tap the microphone (or keyboard-switch) button and pick Sweet Whisper — then dictate into any app. It doesn\'t replace your keyboard; it\'s there when you\'d rather talk than type.</string>
-    <string name="onb_model_title">Recognition model</string>
+    <string name="onb_kb_title">Sweet Whisper in the keyboard list</string>
+    <string name="onb_kb_body">This is what lets you call it up from any keyboard.</string>
+    <!-- The how-to strip, repeated on the setup, rehearsal and done steps. Keep each line one short
+         sentence — this is the message first-run users missed when it was a paragraph. -->
+    <string name="onb_howto_title">How you\'ll use it</string>
+    <string name="onb_howto_1">Open any app and tap a text field — your usual keyboard appears.</string>
+    <string name="onb_howto_2">Tap its mic or globe button and pick Sweet Whisper.</string>
+    <string name="onb_howto_3">Speak — your words land in the field. Your keyboard stays yours.</string>
+    <string name="onb_model_title">Pick a voice</string>
     <string name="onb_model_change">Choose another model</string>
     <string name="onb_model_downloaded">Downloaded ✓</string>
     <string name="onb_model_download">Download and continue</string>
     <string name="onb_device_summary">%1$d cores · %2$s RAM</string>
-    <string name="onb_try_title">First test</string>
-    <string name="onb_try_body">A quick preview. Tap below and say a short phrase. In everyday use this same voice input opens right inside any app — chats, notes, search — from your keyboard\'s mic.</string>
-    <string name="onb_try_button">Try dictation</string>
-    <string name="onb_try_ok">It works! 🎉</string>
-    <string name="onb_done_title">All set!</string>
-    <string name="onb_done_body">You\'re ready. To dictate in any app: open your keyboard, tap the mic (or keyboard-switch) button, choose Sweet Whisper, and speak. It\'s a voice keyboard — use it whenever you\'d rather talk than type.</string>
+    <string name="onb_try_title">Try it right here</string>
+    <string name="onb_try_body">Rehearse the real thing: tap the field, switch to Sweet Whisper, and say a short phrase.</string>
+    <string name="onb_try_field_hint">Dictate something here</string>
+    <string name="onb_try_button">Switch keyboard</string>
+    <string name="onb_try_ok">That\'s it — same gesture everywhere! 🎉</string>
+    <string name="onb_done_title">You\'re set</string>
+    <string name="onb_done_body">Sweet Whisper is now one tap away inside every app.</string>
     <string name="onb_done_finish">Finish</string>
     <string name="catalog_progress">%1$.0f / %2$.0f MB · %3$.1f MB/s</string>
     <string name="catalog_starting">Starting…</string>

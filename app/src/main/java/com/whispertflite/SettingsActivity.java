@@ -71,6 +71,11 @@ public class SettingsActivity extends AppCompatActivity {
                 v -> startActivity(new Intent(Intent.ACTION_VIEW,
                         Uri.parse("https://github.com/danscMax/whisperIME"))));
 
+        // The wizard teaches the invoke gesture; people who skimmed it once should be able to replay it
+        // without wiping the app (and it makes the wizard testable on a device that already onboarded).
+        findViewById(R.id.row_replay_onboarding).setOnClickListener(v -> startActivity(
+                new Intent(this, DownloadActivity.class).putExtra(DownloadActivity.EXTRA_REPLAY, true)));
+
         // Attribution is a licence obligation (CC-BY-4.0 for Parakeet, notice retention for MIT), so it
         // ships in the app itself. A scrollable dialog is enough — no screen of its own.
         findViewById(R.id.row_licenses).setOnClickListener(v ->
